@@ -11,7 +11,10 @@ import {
 } from './wallet-diagnostics.js';
 
 // Reduced from 10 000 ms to cut idle wait time between blockchain commits.
-// Increases API call volume ~3x but stays well within the 30-minute suite timeout.
+// Each iteration calls two HTTP endpoints (org-synced + wallet-diagnostics),
+// so the total request rate increase across all live jobs is ~6.7× vs the old
+// 10 s interval.  Both jobs (test-v2-live-api, test-v2-live-cascade-delete)
+// use this helper; the 30-minute suite timeout is not at risk.
 const COMMIT_POLL_INTERVAL_MS = 3000;
 
 /**
@@ -1199,7 +1202,7 @@ export const getLiveApiRequest = async (options = {}) => {
 export const waitForV2OrganizationReady = async (request, orgName = null, maxWaitTime = 900000, options = {}) => {
   const { isUpgrade = false } = options;
   const startTime = Date.now();
-  const interval = 10000;
+  const interval = 10000; // org-creation poller, not a commit poller — intentionally not COMMIT_POLL_INTERVAL_MS
   const timestamp = getTimestamp();
   const recoveryTracker = createRecoveryStuckTracker();
   let lastDiagAt = 0;
@@ -1496,7 +1499,7 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
  */
 export const waitForV1OrganizationReady = async (request, orgName = null, maxWaitTime = 900000) => {
   const startTime = Date.now();
-  const interval = 10000;
+  const interval = 10000; // org-creation poller, not a commit poller — intentionally not COMMIT_POLL_INTERVAL_MS
   const timestamp = getTimestamp();
   const recoveryTracker = createRecoveryStuckTracker();
   let lastDiagAt = 0;

@@ -48,7 +48,7 @@ describe('Cascade Delete Live API Tests', function () {
     }
     const data = row.diff?.change;
     const parsed = Array.isArray(data) ? data : [data];
-    return parsed[0]?.[key] === value;
+    return parsed.some((p) => p?.[key] === value);
   });
 
   it('should cascade delete project and sub-entity children through commit', async function () {
@@ -213,6 +213,21 @@ describe('Cascade Delete Live API Tests', function () {
     for (const [endpoint, id] of toVerifyMissingB) {
       const resp = await request.get(`${endpoint}/${id}`);
       expect([400, 404]).to.include(resp.status);
+    }
+
+    // Verify non-deleted Graph B siblings are still present (guards against
+    // overly-aggressive cascades that silently delete sibling entities)
+    const survivingGraphB = [
+      ['/v2/project', projectBId],
+      ['/v2/project-methodology', pm1Id],
+      ['/v2/verification', ver2Id],
+      ['/v2/verification', ver3Id],
+      ['/v2/issuance', iss3Id],
+    ];
+
+    for (const [endpoint, id] of survivingGraphB) {
+      const resp = await request.get(`${endpoint}/${id}`);
+      expect(resp.status, `expected ${endpoint}/${id} to still exist after cascade`).to.equal(200);
     }
   });
 });
