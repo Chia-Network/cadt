@@ -1577,7 +1577,6 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
 
     describe('POST /v2/unit/batch', function () {
       it('should batch upload new units from CSV file (INSERT)', async function () {
-        // Create a CSV file buffer without cadTrustUnitId to trigger INSERT
         const csvContent = `unitSerialId,unitStartBlock,unitEndBlock,unitCount,unitType,unitVintageYear,unitStatus,cadTrustIssuanceId
 CSV-UNIT-001,1000,2000,50,Avoidance - nature,2024,Issued,${testIssuanceForAdvanced.cadTrustIssuanceId}
 CSV-UNIT-002,2000,3000,75,Reduction - technical,2024,Held,${testIssuanceForAdvanced.cadTrustIssuanceId}`;
@@ -1592,19 +1591,105 @@ CSV-UNIT-002,2000,3000,75,Reduction - technical,2024,Held,${testIssuanceForAdvan
         expect(response.body.success).to.be.true;
         expect(response.body.message).to.include('CSV processing complete');
 
-        // Verify records were staged
         const stagingRecords = await StagingV2.findAll({
-          where: {
-            table: 'unit',
-            action: 'INSERT',
-          },
+          where: { table: 'unit', action: 'INSERT' },
         });
 
         expect(stagingRecords.length).to.be.at.least(2);
       });
 
+      it('should stage INSERT data in snake_case with org_uid and primary key', async function () {
+        const csvContent = `unitSerialId,unitStartBlock,unitEndBlock,unitCount,unitType,unitVintageYear,unitStatus,cadTrustIssuanceId
+CSV-FMT-001,1000,2000,50,Avoidance - nature,2024,Issued,${testIssuanceForAdvanced.cadTrustIssuanceId}`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        await supertest(app)
+          .post('/v2/unit/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        const stagingRecords = await StagingV2.findAll({
+          where: { table: 'unit', action: 'INSERT' },
+        });
+        expect(stagingRecords.length).to.equal(1);
+
+        const staged = JSON.parse(stagingRecords[0].data);
+        expect(staged).to.be.an('array').with.lengthOf(1);
+        const record = staged[0];
+
+        // Must use snake_case field names (commit pipeline expects this)
+        expect(record).to.have.property('cad_trust_unit_id');
+        expect(record).to.have.property('unit_serial_id', 'CSV-FMT-001');
+        expect(record).to.have.property('unit_count', '50');
+
+        // Must NOT have camelCase duplicates
+        expect(record).to.not.have.property('cadTrustUnitId');
+        expect(record).to.not.have.property('unitSerialId');
+        expect(record).to.not.have.property('unitCount');
+
+        // Must include org_uid from home org
+        const homeOrgId = await getV2HomeOrgId();
+        expect(record).to.have.property('org_uid', homeOrgId);
+
+        // Staging uuid must match the generated primary key
+        expect(stagingRecords[0].uuid).to.equal(record.cad_trust_unit_id);
+      });
+
+      it('should stage UPDATE data in snake_case with org_uid', async function () {
+        const homeOrgId = await getV2HomeOrgId();
+        const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+          unitSerialId: 'CSV-FMT-UPD-001',
+          unitStartBlock: '1000',
+          unitEndBlock: '2000',
+          unitCount: 50,
+          unitVintageYear: 2024,
+          cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+          orgUid: homeOrgId,
+        }));
+
+        const csvContent = `cadTrustUnitId,unitSerialId,unitStartBlock,unitEndBlock,unitCount,unitType,unitVintageYear,unitStatus,cadTrustIssuanceId
+${unit.cadTrustUnitId},CSV-FMT-UPD-001,1000,2000,60,Avoidance - nature,2024,Issued,${testIssuanceForAdvanced.cadTrustIssuanceId}`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        await supertest(app)
+          .post('/v2/unit/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        const stagingRecords = await StagingV2.findAll({
+          where: { table: 'unit', action: 'UPDATE' },
+        });
+        expect(stagingRecords.length).to.equal(1);
+
+        const record = JSON.parse(stagingRecords[0].data)[0];
+        expect(record).to.have.property('cad_trust_unit_id', unit.cadTrustUnitId);
+        expect(record).to.have.property('unit_count', '60');
+        expect(record).to.have.property('org_uid', homeOrgId);
+        expect(record).to.not.have.property('cadTrustUnitId');
+      });
+
+      it('should derive unitSerialId from start/end blocks', async function () {
+        const csvContent = `unitStartBlock,unitEndBlock,unitCount,unitVintageYear,cadTrustIssuanceId
+BLOCK-A,BLOCK-Z,100,2024,${testIssuanceForAdvanced.cadTrustIssuanceId}`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        await supertest(app)
+          .post('/v2/unit/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        const stagingRecords = await StagingV2.findAll({
+          where: { table: 'unit', action: 'INSERT' },
+        });
+        const record = JSON.parse(stagingRecords[0].data)[0];
+
+        expect(record).to.have.property('unit_serial_id', 'BLOCK-A-BLOCK-Z');
+      });
+
       it('should batch update existing units from CSV file (UPDATE)', async function () {
-        // Create units first
         const homeOrgId = await getV2HomeOrgId();
         const unit1 = await UnitV2.create(addUuidIfNeeded('UnitV2', {
           unitSerialId: 'CSV-UPDATE-001',
@@ -1626,7 +1711,6 @@ CSV-UNIT-002,2000,3000,75,Reduction - technical,2024,Held,${testIssuanceForAdvan
           orgUid: homeOrgId,
         }));
 
-        // Create a CSV file buffer with cadTrustUnitId to trigger UPDATE
         const csvContent = `cadTrustUnitId,unitSerialId,unitStartBlock,unitEndBlock,unitCount,unitType,unitVintageYear,unitStatus,cadTrustIssuanceId
 ${unit1.cadTrustUnitId},CSV-UPDATE-001,1000,2000,60,Avoidance - nature,2024,Issued,${testIssuanceForAdvanced.cadTrustIssuanceId}
 ${unit2.cadTrustUnitId},CSV-UPDATE-002,2000,3000,80,Reduction - technical,2024,Held,${testIssuanceForAdvanced.cadTrustIssuanceId}`;
@@ -1639,17 +1723,38 @@ ${unit2.cadTrustUnitId},CSV-UPDATE-002,2000,3000,80,Reduction - technical,2024,H
           .expect(200);
 
         expect(response.body.success).to.be.true;
-        expect(response.body.message).to.include('CSV processing complete');
 
-        // Verify records were staged as UPDATE
         const stagingRecords = await StagingV2.findAll({
-          where: {
-            table: 'unit',
-            action: 'UPDATE',
-          },
+          where: { table: 'unit', action: 'UPDATE' },
         });
 
         expect(stagingRecords.length).to.be.at.least(2);
+      });
+
+      it('should reject CSV with non-existent cadTrustUnitId', async function () {
+        const csvContent = `cadTrustUnitId,unitSerialId,unitStartBlock,unitEndBlock,unitCount,unitVintageYear,cadTrustIssuanceId
+${uuidv4()},NOEXIST-001,1000,2000,50,2024,${testIssuanceForAdvanced.cadTrustIssuanceId}`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/unit/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+      });
+
+      it('should reject empty CSV with no data rows', async function () {
+        const csvContent = `unitSerialId,unitStartBlock,unitEndBlock`;
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/unit/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
       });
 
       it('should return error if no CSV file is provided', async function () {

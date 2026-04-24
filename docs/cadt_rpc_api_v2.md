@@ -2416,12 +2416,20 @@ Response
 
 #### Batch upload projects from CSV
 
-**Array Field Formatting**: For array fields like `projectType` and `projectSector`, the CSV can use any of these formats:
+Stage one or more projects from a CSV file. Each row becomes a separate staging record.
+
+**Creating vs updating:**
+- To **create** a new project, omit the `cadTrustProjectId` column (or leave it blank). The server auto-generates a UUID.
+- To **update** an existing project, include `cadTrustProjectId` with the existing project's UUID. The project must already exist.
+
+> **Note**: `NEW-<n>` placeholder IDs (e.g., `NEW-1`, `NEW-2`) are only supported in the [XLSX import](#xlsx-importexport) workflow, not in CSV batch upload. For new projects via CSV, simply omit `cadTrustProjectId`.
+
+**Array field formatting**: For array fields like `projectType` and `projectSector`, the CSV can use any of these formats:
 - **Single value**: `Solar` → becomes `["Solar"]`
 - **JSON array**: `["Solar","Wind"]` → becomes `["Solar","Wind"]`
 - **Pipe-separated**: `Solar|Wind` → becomes `["Solar","Wind"]`
 
-Example CSV content:
+Example CSV content (creating new projects — `cadTrustProjectId` omitted):
 ```csv
 projectRegistryName,projectId,projectName,projectType,projectSector,projectStatus
 VCS,PROJ-001,Solar Farm Project,Solar,Energy,Registered
@@ -3688,6 +3696,23 @@ Response
 ---
 
 #### Batch upload units from CSV
+
+Stage one or more units from a CSV file. Each row becomes a separate staging record.
+
+**Creating vs updating:**
+- To **create** a new unit, omit the `cadTrustUnitId` column (or leave it blank). The server auto-generates a UUID.
+- To **update** an existing unit, include `cadTrustUnitId` with the existing unit's UUID. The unit must already exist.
+
+> **Note**: `NEW-<n>` placeholder IDs (e.g., `NEW-1`, `NEW-2`) are only supported in the [XLSX import](#xlsx-importexport) workflow, not in CSV batch upload. For new units via CSV, simply omit `cadTrustUnitId`.
+
+**Serial ID derivation**: If `unitSerialId` is omitted but `unitStartBlock` and `unitEndBlock` are provided, the server derives `unitSerialId` automatically (e.g., `BLOCK001-BLOCK050`).
+
+Example CSV content (creating new units — `cadTrustUnitId` omitted):
+```csv
+unitSerialId,unitStartBlock,unitEndBlock,unitVintageYear,unitCount,unitType,unitStatus,unitLink,unitMetric,cadTrustProjectId
+UNIT-001,BLOCK001,BLOCK050,2024,100,Removal - nature,Held,http://example.com/unit1,tCO2e,51ca9638-22b0-4e14-ae7a-c09d23b37b58
+UNIT-002,BLOCK051,BLOCK100,2024,200,Avoidance,Buffer,http://example.com/unit2,tCO2e,51ca9638-22b0-4e14-ae7a-c09d23b37b58
+```
 
 Request
 ```shell

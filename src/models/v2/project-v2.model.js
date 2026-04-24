@@ -10,7 +10,7 @@ import {
   createXlsFromSequelizeResults,
   transformFullXslsToChangeList,
 } from '../../utils/xls.js';
-import { parseV2Xlsx, stageV2XlsRecords } from '../../utils/v2-xls.js';
+import { parseV2Xlsx, stageV2XlsRecords, toDbFieldNames } from '../../utils/v2-xls.js';
 import { getDeletedItems } from '../../utils/model-utils.js';
 import { keyValueToChangeList } from '../../utils/datalayer-utils.js';
 import { LocationV2 } from './location-v2.model.js';
@@ -365,17 +365,21 @@ class ProjectV2 extends Model {
 
     const recordsToCreate = [];
 
+    const homeOrg = await OrganizationsV2.getHomeOrg(false);
+    if (!homeOrg) {
+      throw new Error('No home organization found');
+    }
+    const orgUid = homeOrg.org_uid;
+
     return new Promise((resolve, reject) => {
       csv()
         .fromStream(stream)
         .subscribe(async (newRecord) => {
           let action = 'UPDATE';
 
-          // Convert camelCase to snake_case for V2
           const projectId = newRecord.cadTrustProjectId || newRecord.cad_trust_project_id;
 
           if (projectId) {
-            // Check if project exists
             const possibleExistingRecord = await ProjectV2.findByPk(projectId);
 
             if (!possibleExistingRecord) {
@@ -386,32 +390,22 @@ class ProjectV2 extends Model {
               );
               return;
             }
-
-            // Verify it belongs to home org (for updates)
-            const homeOrg = await OrganizationsV2.getHomeOrg();
-            if (!homeOrg) {
-              reject(new Error('No home organization found'));
-              return;
-            }
           } else {
-            // New project - generate UUID
             newRecord.cadTrustProjectId = uuidv4();
-            const homeOrg = await OrganizationsV2.getHomeOrg();
-            if (!homeOrg) {
-              reject(new Error('No home organization found'));
-              return;
-            }
             action = 'INSERT';
           }
 
-          // Update project properties (handle child records)
           ProjectV2.updateProjectPropertiesV2(newRecord);
 
+          const uuid = newRecord.cadTrustProjectId || newRecord.cad_trust_project_id;
+          const dbRecord = toDbFieldNames(newRecord, ProjectV2);
+          dbRecord.org_uid = orgUid;
+
           const stagedData = {
-            uuid: newRecord.cadTrustProjectId,
-            action: action,
+            uuid,
+            action,
             table: 'project',
-            data: JSON.stringify([newRecord]),
+            data: JSON.stringify([dbRecord]),
           };
 
           recordsToCreate.push(stagedData);
