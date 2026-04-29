@@ -10,6 +10,12 @@ import {
   createRecoveryStuckTracker,
 } from './wallet-diagnostics.js';
 
+// Each iteration calls two HTTP endpoints (org-synced + wallet-diagnostics),
+// so the per-loop request rate is ~6.7× the org-creation polling interval.
+// Both live jobs (test-v2-live-api, test-v2-live-cascade-delete) share this
+// helper; the 30-minute suite timeout is not at risk.
+const COMMIT_POLL_INTERVAL_MS = 3000;
+
 /**
  * Format current timestamp as YYYY-MM-DD HH:mm:ss
  * @returns {string} - Formatted timestamp
@@ -595,7 +601,7 @@ export const checkOrganizationSynced = async (request) => {
  */
 export const waitForPendingCommits = async (request, maxWaitTime = 600000) => {
   const startTime = Date.now();
-  const interval = 10000;
+  const interval = COMMIT_POLL_INTERVAL_MS;
   const timestamp = new Date().toISOString();
   const recoveryTracker = createRecoveryStuckTracker();
 
@@ -633,7 +639,7 @@ export const waitForPendingCommits = async (request, maxWaitTime = 600000) => {
  */
 export const waitForStagingEmpty = async (request, maxWaitTime = 600000) => {
   const startTime = Date.now();
-  const interval = 10000;
+  const interval = COMMIT_POLL_INTERVAL_MS;
   const recoveryTracker = createRecoveryStuckTracker();
 
   console.log('Waiting for staging table to be empty...');
@@ -1195,7 +1201,7 @@ export const getLiveApiRequest = async (options = {}) => {
 export const waitForV2OrganizationReady = async (request, orgName = null, maxWaitTime = 900000, options = {}) => {
   const { isUpgrade = false } = options;
   const startTime = Date.now();
-  const interval = 10000;
+  const interval = 10000; // org-creation poller, not a commit poller — intentionally not COMMIT_POLL_INTERVAL_MS
   const timestamp = getTimestamp();
   const recoveryTracker = createRecoveryStuckTracker();
   let lastDiagAt = 0;
@@ -1492,7 +1498,7 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
  */
 export const waitForV1OrganizationReady = async (request, orgName = null, maxWaitTime = 900000) => {
   const startTime = Date.now();
-  const interval = 10000;
+  const interval = 10000; // org-creation poller, not a commit poller — intentionally not COMMIT_POLL_INTERVAL_MS
   const timestamp = getTimestamp();
   const recoveryTracker = createRecoveryStuckTracker();
   let lastDiagAt = 0;
