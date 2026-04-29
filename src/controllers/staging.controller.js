@@ -3,6 +3,8 @@ import _ from 'lodash';
 import { Sequelize } from 'sequelize';
 import { Staging } from '../models';
 
+import { logger } from '../config/logger.js';
+
 import {
   optionallyPaginatedResponse,
   paginationParams,
@@ -39,6 +41,8 @@ export const findAll = async (req, res) => {
     let { page, limit, type, table } = req.query;
 
     let pagination = paginationParams(page, limit);
+    const isPaginated = page !== undefined;
+    const order = [['id', 'ASC']];
 
     let where = {};
     if (type === 'staged') {
@@ -53,32 +57,37 @@ export const findAll = async (req, res) => {
       where.table = table;
     }
 
-    let stagingData = await Staging.findAndCountAll({
-      distinct: true,
-      where,
-      ...pagination,
+    const stagingData = isPaginated
+      ? await Staging.findAndCountAll({
+          distinct: true,
+          where,
+          order,
+          ...pagination,
+        })
+      : {
+          rows: await Staging.findAll({
+            where,
+            order,
+          }),
+        };
+
+    const diffs = await Staging.getDiffObjects(stagingData.rows);
+    const results = stagingData.rows.map((stagingRecord, index) => {
+      const workingData = _.cloneDeep(stagingRecord.dataValues);
+      workingData.diff = diffs[index];
+
+      delete workingData.data;
+
+      return workingData;
     });
 
-    const results = await Promise.all(
-      stagingData.rows.map(async (stagingRecord) => {
-        const { uuid, table, action, data } = stagingRecord;
-        const workingData = _.cloneDeep(stagingRecord.dataValues);
-        workingData.diff = await Staging.getDiffObject(
-          uuid,
-          table,
-          action,
-          data,
-        );
-
-        delete workingData.data;
-
-        return workingData;
-      }),
-    );
-
-    stagingData.rows = results;
-
-    const response = optionallyPaginatedResponse(stagingData, page, limit);
+    const response = isPaginated
+      ? optionallyPaginatedResponse(
+          { count: stagingData.count, rows: results },
+          page,
+          limit,
+        )
+      : results;
 
     res.json(response);
   } catch (error) {
@@ -110,7 +119,9 @@ export const commit = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    console.trace(error);
+    logger.error(`POST /v1/staging/commit failed: ${error.message}`, {
+      stack: error.stack,
+    });
     res.status(400).json({
       message: 'Error commiting staging table',
       error: error.message,

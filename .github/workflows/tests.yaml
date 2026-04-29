@@ -1082,6 +1082,1028 @@ jobs:
           chia stop all -d || true
           echo "Chia services stopped"
 
+  test-v2-live-staging-perf:
+    name: v2 staging perf live
+    runs-on: ubuntu-latest
+    container:
+      image: node:24
+
+    steps:
+      - uses: Chia-Network/actions/clean-workspace@main
+
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Ignore Husky
+        run: npm pkg delete scripts.prepare
+
+      - name: Install Mocha
+        run: npm install --save-dev mocha
+
+      - name: npm install
+        run: npm install
+
+      - name: install global packages
+        run: npm i -g @babel/cli sequelize-cli cross-env pm2@latest
+      - name: Show home directory
+        run: ls -lah ~
+
+      - name: Install system packages and Chia tools
+        shell: bash
+        run: |
+          curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
+
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
+
+          apt-get update
+          apt-get install -y yq jq bc iproute2 default-mysql-server default-mysql-client chia-blockchain-cli chia-tools
+
+      - name: Configure MySQL for mirror database testing
+        shell: bash
+        run: |
+          echo "Starting MariaDB service..."
+          service mariadb start
+
+          # Wait for MariaDB to be ready
+          echo "Waiting for MariaDB to be ready..."
+          for i in {1..30}; do
+            if mysqladmin ping -h localhost --silent 2>/dev/null; then
+              echo "MariaDB is ready!"
+              break
+            fi
+            echo "Waiting for MariaDB... ($i/30)"
+            sleep 1
+          done
+
+          echo "Creating test database and user..."
+          mysql -u root <<EOF
+          CREATE DATABASE IF NOT EXISTS cadt_mirror_test;
+          CREATE DATABASE IF NOT EXISTS cadt_mirror_test_v2;
+          CREATE USER IF NOT EXISTS 'cadt_test'@'localhost' IDENTIFIED BY 'cadt_test_password';
+          GRANT ALL PRIVILEGES ON cadt_mirror_test.* TO 'cadt_test'@'localhost';
+          GRANT ALL PRIVILEGES ON cadt_mirror_test_v2.* TO 'cadt_test'@'localhost';
+          FLUSH PRIVILEGES;
+          EOF
+
+          echo "Verifying MariaDB setup..."
+          mysql -u cadt_test -pcadt_test_password -e "SELECT 1 as test;" || {
+            echo "Failed to connect as test user"
+            exit 1
+          }
+          echo "✓ MariaDB (MySQL-compatible) mirror database is ready for testing"
+
+          # Stop MariaDB so CADT starts against a DOWN mirror. This exercises
+          # the startup race that k8s observers hit: CADT up before MySQL is
+          # reachable. The subsequent "Delay-start MariaDB (exercise mirror
+          # reconnect recovery)" step will restart MariaDB ~30s after CADT,
+          # and the V2 mirror reconnect path must transparently run
+          # migrations + backfill and catch up without losing any writes.
+          # If the test fails, either the init race fix or the
+          # reconnect-backfill logic has regressed.
+          #
+          # The race test is load-bearing on MariaDB actually being down
+          # when CADT starts - fail the job if mysqladmin can still ping it
+          # after 10 seconds of retries rather than letting the test
+          # silently degrade into a no-op.
+          echo "Stopping MariaDB so CADT starts against a down mirror..."
+          service mariadb stop
+          for STOP_ATTEMPT in $(seq 1 10); do
+            if ! mysqladmin ping -h localhost --silent 2>/dev/null; then
+              echo "✓ MariaDB stopped after ${STOP_ATTEMPT}s - CADT startup will race against delayed restart"
+              break
+            fi
+            if [ "$STOP_ATTEMPT" -eq 10 ]; then
+              echo "ERROR: MariaDB still responding 10s after 'service mariadb stop'."
+              echo "The race test's precondition (MariaDB down when CADT starts) cannot be met."
+              exit 1
+            fi
+            sleep 1
+          done
+
+      - name: Configure Chia
+        shell: bash
+        run: |
+          chia init
+          chia keys generate -l "functional_tests"
+          chia-tools network switch testneta
+          chia-tools config add-trusted-peer -y testneta-node-msp.chia.net 58444
+          chia-tools config edit --set wallet.connect_to_unknown_peers=false --set 'wallet.trusted_cidrs=["207.228.216.0/22"]'
+          chia configure -log-level INFO
+
+      - name: Configure CADT
+        shell: bash
+        run: |
+          # Run cadt momentarily to create config file. Note: MariaDB is
+          # intentionally stopped at this point to exercise the mirror
+          # init race on first boot - CADT must log the setup failure
+          # non-fatally and continue, then recover automatically once
+          # MariaDB restarts.
+          pm2 start npm --no-autorestart --name "cadt" -- start
+          sleep 10
+          pm2 logs cadt --nostream
+          pm2 stop cadt
+
+          # Remove cadt databases to reset system
+          echo "Removing cadt databases to reset system..."
+          rm -f ~/.chia/mainnet/cadt/v1/data.sqlite3*
+          rm -f ~/.chia/mainnet/cadt/v2/data.sqlite3*
+
+          # Configure CADT to most verbose logs
+          echo "Configuring CADT config.yaml..."
+          yq -yi '.APP.LOG_LEVEL = "debug"' ~/.chia/mainnet/cadt/config.yaml
+          # Set network to testnet to match the Chia network configuration
+          # Value must be lowercase - the check uses case-sensitive .includes()
+          yq -yi '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
+          # Use 127.0.0.1 instead of localhost for more reliable binding in containers
+          yq -yi '.APP.BIND_ADDRESS = "127.0.0.1"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V1.GOVERNANCE.GOVERNANCE_BODY_ID = "22a0331b3b789fde950511f1c13d4d96cda127d7f5ecf8eaab64e5cc8e8dfc48"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.DATALAYER_FILE_SERVER_URL = "https://127.0.0.1:8575"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = false' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = ""' ~/.chia/mainnet/cadt/config.yaml
+          # Enable V2 for V2 live API tests
+          yq -yi '.V2.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V1.ENABLE = false' ~/.chia/mainnet/cadt/config.yaml
+
+          # Configure MySQL mirror database for V2 testing
+          # MIRROR_DB must be under V2 section for V2 API
+          echo "Configuring MySQL mirror database for V2..."
+          yq -yi '.V2.MIRROR_DB.DB_HOST = "localhost"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V2.MIRROR_DB.DB_USERNAME = "cadt_test"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V2.MIRROR_DB.DB_PASSWORD = "cadt_test_password"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V2.MIRROR_DB.DB_NAME = "cadt_mirror_test"' ~/.chia/mainnet/cadt/config.yaml
+
+          # Show the config file
+          echo "Showing the config file after configuration ... (this is the final config file)"
+          cat ~/.chia/mainnet/cadt/config.yaml
+
+          # Clean up any existing PM2 processes with the same name
+          pm2 delete cadt 2>/dev/null || true
+
+      - name: Start Chia
+        shell: bash
+        run: |
+          chia start wallet data data_layer_http
+          sleep 10
+          tail ~/.chia/mainnet/log/debug.log
+          chia wallet show
+
+      - name: Faucet
+        shell: bash
+        run: |
+          CHIA_WALLET_ADDRESS=$(chia wallet get_address)
+          echo "Requesting funds from faucet for address: $CHIA_WALLET_ADDRESS"
+          FAUCET_SUCCESS=false
+          for FAUCET_ATTEMPT in 1 2 3 4 5; do
+            echo "Faucet request attempt $FAUCET_ATTEMPT/5..."
+            FAUCET_RESPONSE=$(curl -s -w "\n%{http_code}" --max-time 30 -X POST \
+              -H "Content-Type: application/json" \
+              -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' \
+              "${{ secrets.TESTNETA_FAUCET }}" 2>&1) || true
+            FAUCET_HTTP_CODE=$(echo "$FAUCET_RESPONSE" | tail -1)
+            FAUCET_BODY=$(echo "$FAUCET_RESPONSE" | head -n -1)
+            echo "  Response (HTTP $FAUCET_HTTP_CODE): $FAUCET_BODY"
+            if [ -n "$FAUCET_HTTP_CODE" ] && [ "$FAUCET_HTTP_CODE" -ge 200 ] 2>/dev/null && [ "$FAUCET_HTTP_CODE" -lt 300 ] 2>/dev/null; then
+              echo "Faucet request succeeded on attempt $FAUCET_ATTEMPT"
+              FAUCET_SUCCESS=true
+              break
+            fi
+            if [ "$FAUCET_ATTEMPT" -lt 5 ]; then
+              echo "  Faucet request failed, retrying in 15 seconds..."
+              sleep 15
+            fi
+          done
+          if [ "$FAUCET_SUCCESS" = "false" ]; then
+            echo "WARNING: All 5 faucet attempts failed or returned empty response. Proceeding to balance polling in case a request was queued."
+          fi
+
+          echo "Waiting for wallet to receive funds..."
+          MAX_ATTEMPTS=60  # 60 attempts * 10 seconds = 10 minutes
+          ATTEMPT=0
+          while true; do
+            BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
+            echo "Current balance: $BALANCE (attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS)"
+            if [ "$BALANCE" != "0" ] && [ "$BALANCE" != "null" ] && [ -n "$BALANCE" ]; then
+              XCH_BALANCE=$(echo "scale=12; $BALANCE / 1000000000000" | bc)
+              echo "Wallet funded! Balance: $BALANCE mojos ($XCH_BALANCE XCH)"
+              break
+            fi
+            ATTEMPT=$((ATTEMPT + 1))
+            if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
+              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
+              exit 1
+            fi
+            echo "Balance still zero, waiting 10 seconds..."
+            sleep 10
+          done
+
+      - name: Show wallet balance after funding from faucet
+        shell: bash
+        run: |
+          chia wallet show
+
+      - name: Start CADT
+        shell: bash
+        run: |
+          # MariaDB is still stopped at this point (see "Configure MySQL").
+          # CADT must start successfully, log the mirror setup failure as
+          # non-fatal, and expose its health endpoint. This exercises the
+          # mirror init race that broke production observers on k8s.
+          pm2 start npm --no-autorestart --name "cadt" -- start
+          echo "Waiting for CADT health endpoint..."
+          MAX_CADT_HEALTH_ATTEMPTS=30
+          for CADT_ATTEMPT in $(seq 1 "$MAX_CADT_HEALTH_ATTEMPTS"); do
+            if curl -fsS --max-time 5 http://127.0.0.1:31310/health >/dev/null 2>&1; then
+              echo "CADT health endpoint is ready"
+              break
+            fi
+            if [ "$CADT_ATTEMPT" -eq "$MAX_CADT_HEALTH_ATTEMPTS" ]; then
+              echo "ERROR: CADT health endpoint did not become ready in time"
+              pm2 logs cadt --lines 200 --nostream || true
+              exit 1
+            fi
+            sleep 2
+          done
+
+      - name: Delay-start MariaDB (exercise mirror reconnect recovery)
+        shell: bash
+        run: |
+          # Restart MariaDB now that CADT has been running without it for a
+          # while. The next V2 mirror operation should:
+          #   1. Detect authenticate success following previous failures.
+          #   2. Retry CREATE DATABASE + migrations via prepareMysqlMirrorV2
+          #      (they never ran at startup because MariaDB was down).
+          #   3. Run backfillMirrorV2 to catch up any writes + deletes that
+          #      happened while MariaDB was unavailable.
+          # The live-api tests' verifyMirrorRecordsBatch assertions will
+          # fail if any step regresses.
+          echo "Waiting a few seconds so CADT logs multiple mirror-down messages..."
+          sleep 10
+          echo "Starting MariaDB (CADT should reconnect and recover)..."
+          service mariadb start
+          for i in {1..30}; do
+            if mysqladmin ping -h localhost --silent 2>/dev/null; then
+              echo "MariaDB is back up"
+              break
+            fi
+            sleep 1
+          done
+          # Re-verify the DB and test user persist - they were created
+          # before the stop, and the data directory is unchanged.
+          mysql -u cadt_test -pcadt_test_password -e "SELECT 1 as test;" || {
+            echo "Failed to reconnect to MariaDB after restart"
+            exit 1
+          }
+          echo "✓ MariaDB back online - CADT mirror recovery path will engage"
+
+      - name: Wait for wallet sync and datalayer readiness
+        shell: bash
+        run: |
+          echo "Waiting for wallet to finish syncing..."
+          MAX_WAIT_MINUTES=10
+          WAIT_SECONDS=$((MAX_WAIT_MINUTES * 60))
+          START_TIME=$(date +%s)
+
+          while true; do
+            CURRENT_TIME=$(date +%s)
+            ELAPSED=$((CURRENT_TIME - START_TIME))
+            REMAINING=$((WAIT_SECONDS - ELAPSED))
+
+            if [ "$REMAINING" -le 0 ]; then
+              echo "Reached maximum wait time of $MAX_WAIT_MINUTES minutes"
+              break
+            fi
+
+            # Check wallet sync status
+            WALLET_STATUS=$(chia rpc wallet get_sync_status 2>/dev/null || echo '{"synced": false}')
+            WALLET_SYNCED=$(echo "$WALLET_STATUS" | jq -r '.synced // false')
+            WALLET_SYNCING=$(echo "$WALLET_STATUS" | jq -r '.syncing // true')
+
+            echo "Wallet status: synced=$WALLET_SYNCED, syncing=$WALLET_SYNCING (elapsed: ${ELAPSED}s, remaining: ${REMAINING}s)"
+
+            if [ "$WALLET_SYNCED" = "true" ]; then
+              echo "Wallet is synced!"
+              echo "Verifying CADT health stays ready after wallet sync..."
+              MAX_HEALTH_CHECKS=12
+              HEALTH_OK=false
+              for HEALTH_ATTEMPT in $(seq 1 "$MAX_HEALTH_CHECKS"); do
+                if curl -fsS --max-time 5 http://127.0.0.1:31310/health >/dev/null 2>&1; then
+                  HEALTH_OK=true
+                  echo "CADT health confirmed"
+                  break
+                fi
+                sleep 5
+              done
+              if [ "$HEALTH_OK" != "true" ]; then
+                echo "ERROR: CADT health endpoint not ready after wallet sync"
+                exit 1
+              fi
+              break
+            fi
+
+            echo "Wallet still syncing, waiting 30 seconds..."
+            sleep 30
+          done
+
+          echo ""
+          echo "=========================================="
+          echo "Final Status Check"
+          echo "=========================================="
+
+          echo ""
+          echo "Wallet sync status:"
+          chia rpc wallet get_sync_status || echo "Failed to get wallet sync status"
+
+          echo ""
+          echo "Wallet balance:"
+          chia wallet show || echo "Failed to show wallet"
+
+          echo ""
+          echo "Datalayer subscriptions:"
+          chia rpc data_layer subscriptions || echo "Failed to get datalayer subscriptions"
+
+          echo ""
+          echo "Datalayer root for governance store (22a0331b3b789fde950511f1c13d4d96cda127d7f5ecf8eaab64e5cc8e8dfc48):"
+          chia rpc data_layer get_root '{"id": "22a0331b3b789fde950511f1c13d4d96cda127d7f5ecf8eaab64e5cc8e8dfc48"}' || echo "Failed to get root"
+
+      - name: Show CADT logs before tests
+        shell: bash
+        run: |
+          echo "Last 100 lines of CADT logs:"
+          pm2 logs cadt --lines 100 --nostream
+
+      - name: Pre-flight check
+        shell: bash
+        run: |
+          echo "########################################################"
+          echo "Running pre-flight checks before V2 live API tests"
+          echo "########################################################"
+          # Run pre-flight check - requires V2 for this job
+          npm run preflight-check:v2 || {
+            echo ""
+            echo "########################################################"
+            echo "PRE-FLIGHT CHECK FAILED - Showing additional debug info:"
+            echo "########################################################"
+            echo ""
+            echo "PM2 status:"
+            pm2 list || true
+            echo ""
+            echo "CADT pm2 logs (last 100 lines):"
+            pm2 logs cadt --lines 100 --nostream || true
+            echo ""
+            echo "Config file contents:"
+            cat ~/.chia/mainnet/cadt/config.yaml || true
+            echo ""
+            echo "Node processes:"
+            ps aux | grep -E "node|cadt" | grep -v grep || true
+            exit 1
+          }
+
+      - name: npm live api tests
+        env:
+          TEST_API_HOST: 127.0.0.1
+        run: |
+          echo "########################################################"
+          echo "Running organization creation tests"
+          echo "########################################################"
+          npm run test:v2:live:organization:create
+          echo "########################################################"
+          echo "Running wallet health sanity check"
+          echo "########################################################"
+          npm run test:v2:live:wallet-health
+          echo "########################################################"
+          echo "Running V2 staging perf live tests"
+          echo "########################################################"
+          npm run test:v2:live:staging:perf
+          echo "########################################################"
+          echo "Running organization deletion tests"
+          echo "########################################################"
+          npm run test:v2:live:organization:delete
+
+      - name: Show MySQL mirror database status
+        if: always()
+        shell: bash
+        run: |
+          echo "=========================================="
+          echo "MySQL/MariaDB Mirror Database Status"
+          echo "=========================================="
+          echo ""
+          echo "Checking MariaDB service status..."
+          service mariadb status || echo "MariaDB service status check failed"
+          echo ""
+          echo "Checking mirror database tables..."
+          mysql -u cadt_test -pcadt_test_password -e "USE cadt_mirror_test; SHOW TABLES;" 2>/dev/null || echo "Could not list tables (DB may not have been created yet)"
+          echo ""
+          echo "Record counts in mirror tables:"
+          mysql -u cadt_test -pcadt_test_password cadt_mirror_test -e "
+            SELECT 'project_mirror' as table_name, COUNT(*) as count FROM project_mirror UNION ALL
+            SELECT 'methodology_mirror', COUNT(*) FROM methodology_mirror UNION ALL
+            SELECT 'program_mirror', COUNT(*) FROM program_mirror UNION ALL
+            SELECT 'unit_mirror', COUNT(*) FROM unit_mirror UNION ALL
+            SELECT 'issuance_mirror', COUNT(*) FROM issuance_mirror UNION ALL
+            SELECT 'verification_mirror', COUNT(*) FROM verification_mirror UNION ALL
+            SELECT 'validation_mirror', COUNT(*) FROM validation_mirror UNION ALL
+            SELECT 'location_mirror', COUNT(*) FROM location_mirror UNION ALL
+            SELECT 'estimation_mirror', COUNT(*) FROM estimation_mirror UNION ALL
+            SELECT 'rating_mirror', COUNT(*) FROM rating_mirror UNION ALL
+            SELECT 'label_mirror', COUNT(*) FROM label_mirror UNION ALL
+            SELECT 'stakeholder_mirror', COUNT(*) FROM stakeholder_mirror;
+          " 2>/dev/null || echo "Could not count records (tables may not exist)"
+
+      - name: Show CADT logs after tests
+        if: always()
+        shell: bash
+        run: |
+          for LOGFILE in ~/.pm2/logs/cadt-out.log ~/.pm2/logs/cadt-error.log; do
+            LOGNAME=$(basename "$LOGFILE")
+            echo "=========================================="
+            echo "CADT $LOGNAME:"
+            echo "=========================================="
+            if [ -f "$LOGFILE" ]; then
+              LOGSIZE=$(wc -c < "$LOGFILE")
+              LOGLINES=$(wc -l < "$LOGFILE")
+              echo "File size: $LOGSIZE bytes, $LOGLINES lines"
+              if [ "$LOGLINES" -le 2500 ]; then
+                cat "$LOGFILE"
+              else
+                echo "--- first 50 lines (startup) ---"
+                head -50 "$LOGFILE"
+                echo ""
+                echo "--- last 2000 lines (most recent) ---"
+                tail -2000 "$LOGFILE"
+              fi
+            else
+              echo "No $LOGNAME found"
+            fi
+            echo ""
+          done
+
+      - name: Upload CADT logs as artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cadt-logs-${{ github.job }}
+          path: |
+            ~/.pm2/logs/cadt-out.log
+            ~/.pm2/logs/cadt-error.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Show Chia debug log after tests (filtered)
+        if: always()
+        shell: bash
+        run: |
+          echo "=========================================="
+          echo "Chia debug log (filtered, last 5000 lines):"
+          echo "=========================================="
+          echo "Filtering out noisy messages..."
+          echo ""
+          tail -n 5000 ~/.chia/mainnet/log/debug.log 2>/dev/null | grep -v \
+            -e "Connecting: wss://127.0.0.1" \
+            -e "respond_block_headers from" \
+            -e "Time for request request_block_headers" \
+            -e "get_timestamp_for_height_from_peer add to cache" \
+            -e "request_puzzle_solution to peer" \
+            -e "acquired on.*keyring.yaml.lock" \
+            -e "released on.*keyring.yaml.lock" \
+            -e "request_header_blocks" \
+            -e "coin_state_update" \
+            -e "new_signage_point_or_end_of_sub_slot" \
+            -e "request_removal_proof" \
+            -e "RespondToCoinUpdates" \
+            -e "register_interest_in_coin" \
+            -e "request_children to peer" \
+            -e "respond_to_coin_update" \
+            -e "_coin_subscriptions" \
+            -e "Getting generator for" \
+            -e "SubscriptionConfig" \
+            -e "sub epoch.*start weight is" \
+            -e "Puzzle at index" \
+            -e "Attempting to acquire lock" \
+            -e "watchdog.observers.inotify_buffer" \
+            -e "filelock" \
+            -e "Adding derivation record" \
+            -e "Received message: WSMessage" \
+            -e "DataLayer subscription update pool" \
+            -e "register_service" \
+            -e "Cannot connect to host 127.0.0.1" \
+            -e "Failed to connect to PeerInfo" \
+            || echo "No Chia debug log found or all lines filtered"
+
+      - name: Stop CADT
+        if: always()
+        shell: bash
+        run: |
+          echo "Stopping CADT pm2 process..."
+          pm2 stop cadt || true
+          pm2 delete cadt || true
+          echo "CADT stopped"
+
+      - name: Show wallet balance (v2)
+        if: always()
+        shell: bash
+        run: |
+          echo "Wallet balance at end of job:"
+          chia wallet show || echo "Failed to show wallet"
+
+      - name: Stop Chia services (v2)
+        if: always()
+        shell: bash
+        run: |
+          echo "Stopping all Chia services..."
+          chia stop all -d || true
+          echo "Chia services stopped"
+
+  test-v1-live-staging-perf:
+    name: v1 staging perf live
+    runs-on: ubuntu-latest
+    container:
+      image: node:24
+
+    steps:
+      - uses: Chia-Network/actions/clean-workspace@main
+
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Ignore Husky
+        run: npm pkg delete scripts.prepare
+
+      - name: Install Mocha
+        run: npm install --save-dev mocha
+
+      - name: npm install
+        run: npm install
+
+      - name: install global packages
+        run: npm i -g @babel/cli sequelize-cli cross-env pm2@latest
+
+      - name: Show home directory
+        run: ls -lah ~
+
+      - name: Install system packages and Chia tools
+        shell: bash
+        run: |
+          curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
+
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
+
+          apt-get update
+          apt-get install -y yq jq bc iproute2 default-mysql-server default-mysql-client chia-blockchain-cli chia-tools
+
+      - name: Configure MySQL for V1 mirror database testing
+        shell: bash
+        run: |
+          echo "Starting MariaDB service..."
+          service mariadb start
+
+          echo "Waiting for MariaDB to be ready..."
+          for i in {1..30}; do
+            if mysqladmin ping -h localhost --silent 2>/dev/null; then
+              echo "MariaDB is ready!"
+              break
+            fi
+            echo "Waiting for MariaDB... ($i/30)"
+            sleep 1
+          done
+
+          echo "Creating V1 test database and user..."
+          mysql -u root <<EOF
+          CREATE DATABASE IF NOT EXISTS cadt_mirror_test;
+          CREATE USER IF NOT EXISTS 'cadt_test'@'localhost' IDENTIFIED BY 'cadt_test_password';
+          GRANT ALL PRIVILEGES ON cadt_mirror_test.* TO 'cadt_test'@'localhost';
+          FLUSH PRIVILEGES;
+          EOF
+
+          echo "Verifying MariaDB setup..."
+          mysql -u cadt_test -pcadt_test_password -e "SELECT 1 as test;" || {
+            echo "Failed to connect as test user"
+            exit 1
+          }
+          echo "✓ MariaDB (V1 mirror database) is ready for testing"
+
+          # Stop MariaDB so CADT starts against a DOWN mirror. This
+          # exercises the V1 mirror init race (same bug class as V2: the
+          # fire-and-forget handler would skip model.init() when MySQL was
+          # unreachable at module load). The "Delay-start MariaDB" step
+          # below restarts MariaDB ~30s after CADT, and the V1 mirror
+          # reconnect path must transparently run migrations + backfill.
+          #
+          # Fail the job if mysqladmin can still ping MariaDB after 10
+          # seconds of retries rather than letting the race test silently
+          # degrade into a no-op against an always-up DB.
+          echo "Stopping MariaDB so CADT starts against a down mirror..."
+          service mariadb stop
+          for STOP_ATTEMPT in $(seq 1 10); do
+            if ! mysqladmin ping -h localhost --silent 2>/dev/null; then
+              echo "✓ MariaDB stopped after ${STOP_ATTEMPT}s - CADT V1 startup will race against delayed restart"
+              break
+            fi
+            if [ "$STOP_ATTEMPT" -eq 10 ]; then
+              echo "ERROR: MariaDB still responding 10s after 'service mariadb stop'."
+              echo "The race test's precondition (MariaDB down when CADT starts) cannot be met."
+              exit 1
+            fi
+            sleep 1
+          done
+
+      - name: Configure Chia
+        shell: bash
+        run: |
+          chia init
+          chia keys generate -l "functional_tests"
+          chia-tools network switch testneta
+          chia-tools config add-trusted-peer -y testneta-node-msp.chia.net 58444
+          chia-tools config edit --set wallet.connect_to_unknown_peers=false --set 'wallet.trusted_cidrs=["207.228.216.0/22"]'
+          chia configure -log-level INFO
+
+      - name: Configure CADT
+        shell: bash
+        run: |
+          # Run cadt momentarily to create config file. MariaDB is
+          # intentionally stopped at this point to exercise the V1 mirror
+          # init race on first boot.
+          pm2 start npm --no-autorestart --name "cadt" -- start
+          sleep 10
+          pm2 logs cadt --nostream
+          pm2 stop cadt
+
+          # Remove cadt databases to reset system
+          echo "Removing cadt databases to reset system..."
+          rm -f ~/.chia/mainnet/cadt/v1/data.sqlite3*
+          rm -f ~/.chia/mainnet/cadt/v2/data.sqlite3*
+
+          # Configure CADT to most verbose logs
+          echo "Configuring CADT config.yaml..."
+          yq -yi '.APP.LOG_LEVEL = "debug"' ~/.chia/mainnet/cadt/config.yaml
+          # Set network to testnet to match the Chia network configuration
+          yq -yi '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
+          # Use 127.0.0.1 instead of localhost for more reliable binding in containers
+          yq -yi '.APP.BIND_ADDRESS = "127.0.0.1"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V1.GOVERNANCE.GOVERNANCE_BODY_ID = "22a0331b3b789fde950511f1c13d4d96cda127d7f5ecf8eaab64e5cc8e8dfc48"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.DATALAYER_FILE_SERVER_URL = "https://127.0.0.1:8575"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = false' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = ""' ~/.chia/mainnet/cadt/config.yaml
+          # Enable V1 only for V1 live API tests
+          yq -yi '.V1.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V2.ENABLE = false' ~/.chia/mainnet/cadt/config.yaml
+
+          # Configure MySQL mirror database for V1 testing.
+          # V1.MIRROR_DB is the V1 analog of V2.MIRROR_DB; the V1 live-api
+          # test runner (tests/v1/live-api/data-short.js) reads this path
+          # and asserts each record is mirrored correctly.
+          echo "Configuring MySQL mirror database for V1..."
+          yq -yi '.V1.MIRROR_DB.DB_HOST = "localhost"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V1.MIRROR_DB.DB_USERNAME = "cadt_test"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V1.MIRROR_DB.DB_PASSWORD = "cadt_test_password"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V1.MIRROR_DB.DB_NAME = "cadt_mirror_test"' ~/.chia/mainnet/cadt/config.yaml
+
+          # Show the config file
+          echo "Showing the config file after configuration..."
+          cat ~/.chia/mainnet/cadt/config.yaml
+
+          # Clean up any existing PM2 processes with the same name
+          pm2 delete cadt 2>/dev/null || true
+
+      - name: Start Chia
+        shell: bash
+        run: |
+          chia start wallet data data_layer_http
+          sleep 10
+          tail ~/.chia/mainnet/log/debug.log
+          chia wallet show
+
+      - name: Faucet
+        shell: bash
+        run: |
+          CHIA_WALLET_ADDRESS=$(chia wallet get_address)
+          echo "Requesting funds from faucet for address: $CHIA_WALLET_ADDRESS"
+          FAUCET_SUCCESS=false
+          for FAUCET_ATTEMPT in 1 2 3 4 5; do
+            echo "Faucet request attempt $FAUCET_ATTEMPT/5..."
+            FAUCET_RESPONSE=$(curl -s -w "\n%{http_code}" --max-time 30 -X POST \
+              -H "Content-Type: application/json" \
+              -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' \
+              "${{ secrets.TESTNETA_FAUCET }}" 2>&1) || true
+            FAUCET_HTTP_CODE=$(echo "$FAUCET_RESPONSE" | tail -1)
+            FAUCET_BODY=$(echo "$FAUCET_RESPONSE" | head -n -1)
+            echo "  Response (HTTP $FAUCET_HTTP_CODE): $FAUCET_BODY"
+            if [ -n "$FAUCET_HTTP_CODE" ] && [ "$FAUCET_HTTP_CODE" -ge 200 ] 2>/dev/null && [ "$FAUCET_HTTP_CODE" -lt 300 ] 2>/dev/null; then
+              echo "Faucet request succeeded on attempt $FAUCET_ATTEMPT"
+              FAUCET_SUCCESS=true
+              break
+            fi
+            if [ "$FAUCET_ATTEMPT" -lt 5 ]; then
+              echo "  Faucet request failed, retrying in 15 seconds..."
+              sleep 15
+            fi
+          done
+          if [ "$FAUCET_SUCCESS" = "false" ]; then
+            echo "WARNING: All 5 faucet attempts failed or returned empty response. Proceeding to balance polling in case a request was queued."
+          fi
+
+          echo "Waiting for wallet to receive funds..."
+          MAX_ATTEMPTS=60
+          ATTEMPT=0
+          while true; do
+            BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
+            echo "Current balance: $BALANCE (attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS)"
+            if [ "$BALANCE" != "0" ] && [ "$BALANCE" != "null" ] && [ -n "$BALANCE" ]; then
+              XCH_BALANCE=$(echo "scale=12; $BALANCE / 1000000000000" | bc)
+              echo "Wallet funded! Balance: $BALANCE mojos ($XCH_BALANCE XCH)"
+              break
+            fi
+            ATTEMPT=$((ATTEMPT + 1))
+            if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
+              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
+              exit 1
+            fi
+            echo "Balance still zero, waiting 10 seconds..."
+            sleep 10
+          done
+
+      - name: Show wallet balance after funding
+        shell: bash
+        run: |
+          chia wallet show
+
+      - name: Start CADT
+        shell: bash
+        run: |
+          # MariaDB is still stopped at this point (see "Configure MySQL
+          # for V1 mirror database testing"). CADT must start successfully,
+          # log the mirror setup failure as non-fatal, and expose its API.
+          # The subsequent "Delay-start MariaDB" step restarts MariaDB
+          # shortly after so the V1 mirror reconnect path is exercised
+          # while CADT is still booting.
+          pm2 start npm --no-autorestart --name "cadt" -- start
+          echo "Waiting for CADT API endpoint (V1 port ${CW_PORT:-31310})..."
+          MAX_CADT_HEALTH_ATTEMPTS=30
+          for CADT_ATTEMPT in $(seq 1 "$MAX_CADT_HEALTH_ATTEMPTS"); do
+            # V1 API doesn't expose /health - probe /v1/organizations instead
+            if curl -fsS --max-time 5 http://127.0.0.1:31310/v1/organizations >/dev/null 2>&1; then
+              echo "CADT V1 API is ready"
+              break
+            fi
+            if [ "$CADT_ATTEMPT" -eq "$MAX_CADT_HEALTH_ATTEMPTS" ]; then
+              echo "ERROR: CADT V1 API did not become ready in time"
+              pm2 logs cadt --lines 200 --nostream || true
+              exit 1
+            fi
+            sleep 2
+          done
+
+      - name: Delay-start MariaDB (exercise V1 mirror reconnect recovery)
+        shell: bash
+        run: |
+          # Restart MariaDB now that CADT has been running without it.
+          # The next V1 mirror operation should run prepareMysqlMirror +
+          # backfillMirror via the reconnect path, catching up any writes
+          # or deletes that would otherwise be lost during the outage
+          # window. The V1 live-api test runner
+          # (tests/v1/live-api/data-short.js) asserts each record lands
+          # in the MySQL mirror, so a regression in the init race or
+          # reconnect/backfill logic will fail this job.
+          #
+          # Small delay first so CADT accumulates multiple "mirror down"
+          # log entries - matches the V2 job's sequencing and gives the
+          # reconnect path a non-trivial backlog to catch up on.
+          echo "Waiting a few seconds so CADT logs multiple mirror-down messages..."
+          sleep 10
+          echo "Starting MariaDB (CADT should reconnect and recover)..."
+          service mariadb start
+          for i in {1..30}; do
+            if mysqladmin ping -h localhost --silent 2>/dev/null; then
+              echo "MariaDB is back up"
+              break
+            fi
+            sleep 1
+          done
+          mysql -u cadt_test -pcadt_test_password -e "SELECT 1 as test;" || {
+            echo "Failed to reconnect to MariaDB after restart"
+            exit 1
+          }
+          echo "✓ MariaDB back online - CADT V1 mirror recovery path will engage"
+
+      - name: Wait for wallet sync and datalayer readiness
+        shell: bash
+        run: |
+          echo "Waiting for wallet to finish syncing..."
+          MAX_WAIT_MINUTES=10
+          WAIT_SECONDS=$((MAX_WAIT_MINUTES * 60))
+          START_TIME=$(date +%s)
+
+          while true; do
+            CURRENT_TIME=$(date +%s)
+            ELAPSED=$((CURRENT_TIME - START_TIME))
+            REMAINING=$((WAIT_SECONDS - ELAPSED))
+
+            if [ "$REMAINING" -le 0 ]; then
+              echo "Reached maximum wait time of $MAX_WAIT_MINUTES minutes"
+              break
+            fi
+
+            WALLET_STATUS=$(chia rpc wallet get_sync_status 2>/dev/null || echo '{"synced": false}')
+            WALLET_SYNCED=$(echo "$WALLET_STATUS" | jq -r '.synced // false')
+            WALLET_SYNCING=$(echo "$WALLET_STATUS" | jq -r '.syncing // true')
+
+            echo "Wallet status: synced=$WALLET_SYNCED, syncing=$WALLET_SYNCING (elapsed: ${ELAPSED}s)"
+
+            if [ "$WALLET_SYNCED" = "true" ]; then
+              echo "Wallet is synced!"
+              echo "Waiting additional 60 seconds for datalayer to sync..."
+              sleep 60
+              break
+            fi
+
+            echo "Wallet still syncing, waiting 30 seconds..."
+            sleep 30
+          done
+
+          echo "Final status check..."
+          chia rpc wallet get_sync_status || echo "Failed to get wallet sync status"
+          chia wallet show || echo "Failed to show wallet"
+
+      - name: Show CADT logs before tests
+        shell: bash
+        run: |
+          echo "Last 100 lines of CADT logs:"
+          pm2 logs cadt --lines 100 --nostream
+
+      - name: Pre-flight check
+        shell: bash
+        run: |
+          echo "########################################################"
+          echo "Running pre-flight checks before V1 live API tests"
+          echo "########################################################"
+          # Run pre-flight check - requires V1 only
+          npm run preflight-check:v1 || {
+            echo ""
+            echo "########################################################"
+            echo "PRE-FLIGHT CHECK FAILED - Showing additional debug info:"
+            echo "########################################################"
+            pm2 list || true
+            pm2 logs cadt --lines 100 --nostream || true
+            cat ~/.chia/mainnet/cadt/config.yaml || true
+            exit 1
+          }
+
+      - name: V1 live api tests
+        env:
+          TEST_API_HOST: 127.0.0.1
+        run: |
+          echo "########################################################"
+          echo "Running V1 organization creation tests"
+          echo "########################################################"
+          npm run test:v1:live:organization:create
+          echo "########################################################"
+          echo "Running wallet health sanity check"
+          echo "########################################################"
+          npm run test:v2:live:wallet-health
+          echo "########################################################"
+          echo "Running V1 staging perf live tests"
+          echo "########################################################"
+          npm run test:v1:live:staging:perf
+
+      - name: Show MySQL mirror database status
+        if: always()
+        shell: bash
+        run: |
+          echo "=========================================="
+          echo "MySQL/MariaDB Mirror Database Status"
+          echo "=========================================="
+          echo ""
+          echo "Checking MariaDB service status..."
+          service mariadb status || echo "MariaDB service status check failed"
+          echo ""
+          echo "Checking mirror database tables..."
+          mysql -u cadt_test -pcadt_test_password -e "USE cadt_mirror_test; SHOW TABLES;" 2>/dev/null || echo "Could not list tables (DB may not have been created yet)"
+          echo ""
+          echo "Record counts in mirror tables:"
+          mysql -u cadt_test -pcadt_test_password cadt_mirror_test -e "
+            SELECT 'project_mirror' as table_name, COUNT(*) as count FROM project_mirror UNION ALL
+            SELECT 'methodology_mirror', COUNT(*) FROM methodology_mirror UNION ALL
+            SELECT 'program_mirror', COUNT(*) FROM program_mirror UNION ALL
+            SELECT 'unit_mirror', COUNT(*) FROM unit_mirror UNION ALL
+            SELECT 'issuance_mirror', COUNT(*) FROM issuance_mirror UNION ALL
+            SELECT 'verification_mirror', COUNT(*) FROM verification_mirror UNION ALL
+            SELECT 'validation_mirror', COUNT(*) FROM validation_mirror UNION ALL
+            SELECT 'location_mirror', COUNT(*) FROM location_mirror UNION ALL
+            SELECT 'estimation_mirror', COUNT(*) FROM estimation_mirror UNION ALL
+            SELECT 'rating_mirror', COUNT(*) FROM rating_mirror UNION ALL
+            SELECT 'label_mirror', COUNT(*) FROM label_mirror UNION ALL
+            SELECT 'stakeholder_mirror', COUNT(*) FROM stakeholder_mirror;
+          " 2>/dev/null || echo "Could not count records (tables may not exist)"
+
+      - name: Show CADT logs after tests
+        if: always()
+        shell: bash
+        run: |
+          for LOGFILE in ~/.pm2/logs/cadt-out.log ~/.pm2/logs/cadt-error.log; do
+            LOGNAME=$(basename "$LOGFILE")
+            echo "=========================================="
+            echo "CADT $LOGNAME:"
+            echo "=========================================="
+            if [ -f "$LOGFILE" ]; then
+              LOGSIZE=$(wc -c < "$LOGFILE")
+              LOGLINES=$(wc -l < "$LOGFILE")
+              echo "File size: $LOGSIZE bytes, $LOGLINES lines"
+              if [ "$LOGLINES" -le 2500 ]; then
+                cat "$LOGFILE"
+              else
+                echo "--- first 50 lines (startup) ---"
+                head -50 "$LOGFILE"
+                echo ""
+                echo "--- last 2000 lines (most recent) ---"
+                tail -2000 "$LOGFILE"
+              fi
+            else
+              echo "No $LOGNAME found"
+            fi
+            echo ""
+          done
+
+      - name: Upload CADT logs as artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cadt-logs-${{ github.job }}
+          path: |
+            ~/.pm2/logs/cadt-out.log
+            ~/.pm2/logs/cadt-error.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Show Chia debug log after tests (filtered)
+        if: always()
+        shell: bash
+        run: |
+          echo "=========================================="
+          echo "Chia debug log (filtered, last 5000 lines):"
+          echo "=========================================="
+          echo "Filtering out noisy messages..."
+          echo ""
+          tail -n 5000 ~/.chia/mainnet/log/debug.log 2>/dev/null | grep -v \
+            -e "Connecting: wss://127.0.0.1" \
+            -e "respond_block_headers from" \
+            -e "Time for request request_block_headers" \
+            -e "get_timestamp_for_height_from_peer add to cache" \
+            -e "request_puzzle_solution to peer" \
+            -e "acquired on.*keyring.yaml.lock" \
+            -e "released on.*keyring.yaml.lock" \
+            -e "request_header_blocks" \
+            -e "coin_state_update" \
+            -e "new_signage_point_or_end_of_sub_slot" \
+            -e "request_removal_proof" \
+            -e "RespondToCoinUpdates" \
+            -e "register_interest_in_coin" \
+            -e "request_children to peer" \
+            -e "respond_to_coin_update" \
+            -e "_coin_subscriptions" \
+            -e "Getting generator for" \
+            -e "SubscriptionConfig" \
+            -e "sub epoch.*start weight is" \
+            -e "Puzzle at index" \
+            -e "Attempting to acquire lock" \
+            -e "watchdog.observers.inotify_buffer" \
+            -e "filelock" \
+            -e "Adding derivation record" \
+            -e "Received message: WSMessage" \
+            -e "DataLayer subscription update pool" \
+            -e "register_service" \
+            -e "Cannot connect to host 127.0.0.1" \
+            -e "Failed to connect to PeerInfo" \
+            || echo "No Chia debug log found or all lines filtered"
+
+      - name: Stop CADT
+        if: always()
+        shell: bash
+        run: |
+          echo "Stopping CADT pm2 process..."
+          pm2 stop cadt || true
+          pm2 delete cadt || true
+          echo "CADT stopped"
+
+      - name: Show wallet balance (v1)
+        if: always()
+        shell: bash
+        run: |
+          echo "Wallet balance at end of job:"
+          chia wallet show || echo "Failed to show wallet"
+
+      - name: Stop Chia services (v1)
+        if: always()
+        shell: bash
+        run: |
+          echo "Stopping all Chia services..."
+          chia stop all -d || true
+          echo "Chia services stopped"
+
   test-readonly-live-smoke:
     name: READ_ONLY live smoke
     runs-on: ubuntu-latest

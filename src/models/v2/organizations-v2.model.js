@@ -1428,7 +1428,11 @@ class OrganizationsV2 extends Model {
         throw new Error(`Failed to get singleton data from ${dataModelVersionStoreId} in simulator mode`);
       }
     } else {
-      // In production mode, use getSubscribedStoreData with timeout
+      // In production mode, use getSubscribedStoreData with sync wait.
+      // For the background reconcile path, reconcileOrganization's pre-checks have
+      // already verified this store is synced, so the wait completes immediately
+      // without blocking.  Request-path callers (subscribe controller, import flow)
+      // still benefit from the wait in case the store is not yet fully synced.
       const timeout = Date.now() + 600000; // 10 minutes
 
       while (!singletonData) {
@@ -1436,7 +1440,7 @@ class OrganizationsV2 extends Model {
           singletonData = await datalayer.getSubscribedStoreData(
             dataModelVersionStoreId,
             undefined,
-            true, // wait for sync
+            true,
           );
           break;
         } catch (error) {
@@ -1597,12 +1601,23 @@ class OrganizationsV2 extends Model {
     // This ensures new org stores get subscribed on the first pass so they can
     // begin syncing, and subsequent runs will find them synced and proceed.
     if (!USE_SIMULATOR) {
+      // subscribeToStoreOnDataLayer returns falsy on the common failure paths
+      // (no storeId, getSubscriptions RPC failure) and also throws on
+      // unexpected errors, so guard on both.  Without the falsy-return check,
+      // the dominant datalayer-unreachable failure slips past the try/catch
+      // and the subsequent "not yet synced" skip log is misleading.  Same
+      // pattern as Governance.sync and reconcileOrganization.
       try {
-        // Subscribe to the store if not already subscribed (no-op if already subscribed)
-        await datalayer.subscribeToStoreOnDataLayer(orgUid);
+        const subscribed = await datalayer.subscribeToStoreOnDataLayer(orgUid);
+        if (!subscribed) {
+          loggerV2.warn(
+            `[v2]: Could not subscribe to org store ${orgUid}. Skipping import, will retry on next task run.`,
+          );
+          return;
+        }
       } catch (error) {
         loggerV2.warn(
-          `[v2]: Could not subscribe to store for ${orgUid}, skipping import: ${error.message}`,
+          `[v2]: Could not subscribe to org store ${orgUid}: ${error.message}. Skipping import, will retry on next task run.`,
         );
         return;
       }
@@ -1620,6 +1635,68 @@ class OrganizationsV2 extends Model {
       } catch (error) {
         loggerV2.warn(
           `[v2]: Could not check sync status for ${orgUid}, skipping import: ${error.message}`,
+        );
+        return;
+      }
+
+      // Read the org store to discover the data-model-version (singleton) store
+      // id, subscribe to it, and pre-check its sync status.  Without this,
+      // subscribeToOrganization → getRegistryStoreIdFromSingleton would enter a
+      // 10-minute blocking wait loop on the singleton store during first-time
+      // imports.  Skip this import now and let the next task run retry once
+      // the singleton has synced.
+      let singletonStoreId;
+      try {
+        const orgStoreData = await datalayer.getSubscribedStoreData(
+          orgUid,
+          undefined,
+          false,
+        );
+        singletonStoreId = orgStoreData?.registryId;
+      } catch (error) {
+        loggerV2.warn(
+          `[v2]: Could not read org store ${orgUid} to discover singleton id, skipping import: ${error.message}`,
+        );
+        return;
+      }
+
+      if (!singletonStoreId) {
+        loggerV2.warn(
+          `[v2]: Org store ${orgUid} does not contain a data-model-version store id, skipping import.`,
+        );
+        return;
+      }
+
+      try {
+        const singletonSubscribed = await datalayer.subscribeToStoreOnDataLayer(
+          singletonStoreId,
+        );
+        if (!singletonSubscribed) {
+          loggerV2.warn(
+            `[v2]: Could not subscribe to singleton store ${singletonStoreId} for org ${orgUid}. Skipping import, will retry on next task run.`,
+          );
+          return;
+        }
+      } catch (error) {
+        loggerV2.warn(
+          `[v2]: Could not subscribe to singleton store ${singletonStoreId} for org ${orgUid}: ${error.message}. Skipping import, will retry on next task run.`,
+        );
+        return;
+      }
+
+      try {
+        const singletonSyncStatus = await datalayer.getDataLayerStoreSyncStatus(
+          singletonStoreId,
+        );
+        if (!isDlStoreSynced(singletonSyncStatus?.sync_status)) {
+          loggerV2.info(
+            `[v2]: Skipping import of organization ${orgUid} - singleton store ${singletonStoreId} not yet synced. Will retry on next task run.`,
+          );
+          return;
+        }
+      } catch (error) {
+        loggerV2.warn(
+          `[v2]: Could not check sync status for singleton store ${singletonStoreId}, skipping import: ${error.message}`,
         );
         return;
       }
@@ -1831,12 +1908,25 @@ class OrganizationsV2 extends Model {
   }
 
   /**
-   * Reconcile organization - validate and update database with datalayer data
+   * Reconcile organization - validate and update database with datalayer data.
+   *
    * @param {Object} organization - Organization record
+   * @param {Object} [options]
+   * @param {boolean} [options.skipOnUnsynced=false] - When true, silently
+   *   return early if the org or singleton store is unsynced or if a subscribe
+   *   call fails.  Background task callers (validate-organization-table*) must
+   *   pass `true` so a transient datalayer hiccup doesn't block task cadence.
+   *   Request-path callers (e.g. POST /organizations/resync) MUST leave this
+   *   `false`: their downstream code (e.g. resetting registry_hash,
+   *   destroying audit records) depends on reconcile either completing or
+   *   throwing, never silently skipping — otherwise a datalayer hiccup causes
+   *   data deletion without reconciliation.
    * @returns {Promise<void>}
+   * @throws When `skipOnUnsynced` is false and any of: the org store subscribe
+   *   fails, the org or singleton store is unsynced, or a sync-status RPC fails.
    */
-  static async reconcileOrganization(organization) {
-    const { org_uid, is_home } = organization;
+  static async reconcileOrganization(organization, { skipOnUnsynced = false } = {}) {
+    const { org_uid, is_home, data_model_version_store_id } = organization;
 
     loggerV2.info(`[v2]: Reconciling organization ${org_uid}`);
 
@@ -1848,6 +1938,71 @@ class OrganizationsV2 extends Model {
         throw new Error(
           `orgUid store ${org_uid} is not owned by this chia wallet. cannot reconcile home organization`,
         );
+      }
+    }
+
+    // Skip-or-throw helper: for transient "not ready" conditions, background
+    // tasks want a silent skip, request-paths want a hard failure so their
+    // downstream destructive writes don't run.
+    const skipOrThrow = (message) => {
+      if (skipOnUnsynced) {
+        loggerV2.info(`[v2]: reconcileOrganization: ${message}. Will retry on next task run.`);
+        return;
+      }
+      throw new Error(`reconcileOrganization: ${message}`);
+    };
+
+    // Subscribe to org store first so it begins syncing, then check sync status
+    // before entering the blocking subscription flow.
+    //
+    // subscribeToStoreOnDataLayer returns falsy on the common failure paths
+    // (no storeId, getSubscriptions RPC failure) and also throws on unexpected
+    // errors, so guard on both.  Without the falsy-return check, the dominant
+    // datalayer-unreachable failure would slip past the try/catch and the
+    // subsequent "not yet synced" skip log would be misleading.
+    if (!USE_SIMULATOR) {
+      let subscribeErr;
+      try {
+        const subscribed = await datalayer.subscribeToStoreOnDataLayer(org_uid);
+        if (!subscribed) {
+          subscribeErr = `could not subscribe to org store ${org_uid}`;
+        }
+      } catch (error) {
+        subscribeErr = `could not subscribe to org store ${org_uid}: ${error.message}`;
+      }
+      if (subscribeErr) {
+        skipOrThrow(subscribeErr);
+        return;
+      }
+
+      let orgStatusErr;
+      try {
+        const orgSyncStatus = await datalayer.getDataLayerStoreSyncStatus(org_uid);
+        if (!isDlStoreSynced(orgSyncStatus?.sync_status)) {
+          orgStatusErr = `org store ${org_uid} not yet synced`;
+        }
+      } catch (error) {
+        orgStatusErr = `could not check sync status for org store ${org_uid}: ${error.message}`;
+      }
+      if (orgStatusErr) {
+        skipOrThrow(orgStatusErr);
+        return;
+      }
+
+      if (data_model_version_store_id) {
+        let singletonStatusErr;
+        try {
+          const singletonSyncStatus = await datalayer.getDataLayerStoreSyncStatus(data_model_version_store_id);
+          if (!isDlStoreSynced(singletonSyncStatus?.sync_status)) {
+            singletonStatusErr = `singleton store ${data_model_version_store_id} for org ${org_uid} not yet synced`;
+          }
+        } catch (error) {
+          singletonStatusErr = `could not check sync status for singleton store ${data_model_version_store_id}: ${error.message}`;
+        }
+        if (singletonStatusErr) {
+          skipOrThrow(singletonStatusErr);
+          return;
+        }
       }
     }
 
@@ -2067,7 +2222,14 @@ class OrganizationsV2 extends Model {
   }
 
   /**
-   * Synchronizes metadata for all subscribed organizations
+   * Synchronizes metadata for all subscribed organizations.
+   *
+   * Skips orgs whose orgUid store is not yet fully synced on the datalayer.
+   * Without the pre-check, `datalayer.getStoreIfUpdated` can descend into
+   * `syncService.getStoreData`'s retry loop (20 × 10 s) for any org whose
+   * root hash has changed but data has not yet propagated, which serializes
+   * into minutes-per-org of scheduler blocking when multiple orgs update.
+   *
    * @returns {Promise<void>}
    */
   static async syncOrganizationMeta() {
@@ -2078,6 +2240,48 @@ class OrganizationsV2 extends Model {
       });
 
       for (const organization of allSubscribedOrganizations) {
+        if (!USE_SIMULATOR) {
+          // Subscribe-first, then check sync status.  Without subscribing,
+          // getDataLayerStoreSyncStatus errors/returns falsy for any store
+          // the DL node has no record of (e.g. after a datalayer DB reset),
+          // we skip, and no subsequent run ever subscribes — a permanent
+          // skip loop.  subscribeToStoreOnDataLayer returns falsy on the
+          // common failure paths (datalayer unreachable, getSubscriptions
+          // RPC failure) and also throws on unexpected errors, so guard on
+          // both.  Same pattern as GovernanceV2.sync and reconcileOrganization.
+          try {
+            const subscribed = await datalayer.subscribeToStoreOnDataLayer(
+              organization.org_uid,
+            );
+            if (!subscribed) {
+              loggerV2.warn(
+                `[v2]: syncOrganizationMeta: could not subscribe to org store ${organization.org_uid}. Skipping this run.`,
+              );
+              continue;
+            }
+          } catch (error) {
+            loggerV2.warn(
+              `[v2]: syncOrganizationMeta: could not subscribe to org store ${organization.org_uid}: ${error.message}. Skipping this run.`,
+            );
+            continue;
+          }
+
+          try {
+            const syncStatus = await datalayer.getDataLayerStoreSyncStatus(organization.org_uid);
+            if (!isDlStoreSynced(syncStatus?.sync_status)) {
+              loggerV2.info(
+                `[v2]: syncOrganizationMeta: org store ${organization.org_uid} not yet synced, skipping this run.`,
+              );
+              continue;
+            }
+          } catch (error) {
+            loggerV2.warn(
+              `[v2]: syncOrganizationMeta: could not check sync status for org store ${organization.org_uid}, skipping this run: ${error.message}`,
+            );
+            continue;
+          }
+        }
+
         const processData = (data, keyFilter) =>
           data
             .filter(({ key }) => keyFilter(key))

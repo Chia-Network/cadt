@@ -29,6 +29,8 @@
     "test:v2:live:organization:delete": "npx cross-env NODE_ENV=production mocha --loader node_modules/extensionless/src/register.js 'tests/v2/live-api/organization/organization-delete.live.spec.js' --reporter spec --exit --timeout 600000",
     "test:locks": "node --import=extensionless/register tests/helpers/show-test-locks.js",
     "test:v1:live:data:short": "node --import=extensionless/register tests/v1/live-api/data-short.js",
+    "test:v1:live:staging:perf": "npx cross-env NODE_ENV=production mocha --loader node_modules/extensionless/src/register.js 'tests/v1/live-api/staging-perf.live.spec.js' --reporter spec --exit --timeout 4800000",
+    "test:v2:live:staging:perf": "npx cross-env NODE_ENV=production mocha --loader node_modules/extensionless/src/register.js 'tests/v2/live-api/staging-perf.live.spec.js' --reporter spec --exit --timeout 4800000",
     "test:v1:delete-test-data": "npx cross-env NODE_ENV=production mocha --loader node_modules/extensionless/src/register.js 'tests/v1/live-api/utilities/delete-all-data.live.spec.js' --reporter spec --exit --timeout 600000",
     "test:v2:delete-test-data": "npx cross-env NODE_ENV=production mocha --loader node_modules/extensionless/src/register.js 'tests/v2/live-api/utilities/delete-all-data.live.spec.js' --reporter spec --exit --timeout 600000",
     "test:v2:debug-delete-keys": "npx cross-env NODE_ENV=production mocha --loader node_modules/extensionless/src/register.js 'tests/v2/utilities/debug-delete-keys.spec.js' --reporter spec --exit --timeout 300000",

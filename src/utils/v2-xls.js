@@ -167,6 +167,63 @@ function parseArrayFields(row) {
 }
 
 /**
+ * Build a reverse lookup from snake_case DB field names to camelCase Sequelize
+ * attribute names for a model.  Used to normalize CSV headers that may arrive
+ * in either convention.
+ *
+ * @param {import('sequelize').Model} modelClass
+ * @returns {Map<string, string>} snake_case field -> camelCase attribute
+ */
+function buildSnakeToCamelMap(modelClass) {
+  const map = new Map();
+  for (const [attrName, meta] of Object.entries(modelClass.rawAttributes)) {
+    const dbField = meta.field || attrName;
+    if (dbField !== attrName) {
+      map.set(dbField, attrName);
+    }
+  }
+  return map;
+}
+
+/**
+ * Normalize a CSV row so that every key is a camelCase Sequelize attribute
+ * name.  Accepts headers in either camelCase or snake_case.  Keys that don't
+ * map to any known attribute are left as-is so they can be stripped later.
+ *
+ * @param {Object} row
+ * @param {import('sequelize').Model} modelClass
+ * @returns {Object} row with normalized keys
+ */
+export function normalizeCsvHeaders(row, modelClass) {
+  const snakeToCamel = buildSnakeToCamelMap(modelClass);
+  const result = {};
+  for (const [key, value] of Object.entries(row)) {
+    const normalized = snakeToCamel.get(key) || key;
+    result[normalized] = value;
+  }
+  return result;
+}
+
+/**
+ * Convert a DB-field row (snake_case) back to Sequelize attribute names
+ * (camelCase). This is used when reconciling pending staging rows with a new
+ * CSV batch row so we can merge everything in one consistent key space before
+ * converting back to DB field names for staging.
+ *
+ * @param {Object} row
+ * @param {import('sequelize').Model} modelClass
+ * @returns {Object} row with attribute-style keys where possible
+ */
+export function toAttributeNames(row, modelClass) {
+  const snakeToCamel = buildSnakeToCamelMap(modelClass);
+  const result = {};
+  for (const [key, value] of Object.entries(row)) {
+    result[snakeToCamel.get(key) || key] = value;
+  }
+  return result;
+}
+
+/**
  * Convert a row object from camelCase attribute names to snake_case DB field
  * names using the model's rawAttributes metadata. Keys not present in
  * rawAttributes are kept as-is (they may already be snake_case or custom).
@@ -178,7 +235,7 @@ function parseArrayFields(row) {
  * staging data to use snake_case field names, matching what the normal API
  * controllers produce.
  */
-function toDbFieldNames(row, modelClass) {
+export function toDbFieldNames(row, modelClass) {
   const attrs = modelClass.rawAttributes;
   const result = {};
   for (const [key, value] of Object.entries(row)) {
@@ -186,6 +243,284 @@ function toDbFieldNames(row, modelClass) {
     result[attr && attr.field ? attr.field : key] = value;
   }
   return result;
+}
+
+/**
+ * Strip keys from a snake_case DB-field row that are not valid DB column names
+ * for the given model.  Returns a new object containing only recognized fields.
+ * Logs a warning for every stripped key so users can catch CSV header mistakes.
+ *
+ * @param {Object} dbRow - Row already converted to snake_case via toDbFieldNames
+ * @param {import('sequelize').Model} modelClass
+ * @param {import('../config/logger.js').loggerV2} [logger] - optional logger
+ * @returns {Object} cleaned row
+ */
+export function stripUnknownDbFields(dbRow, modelClass, logger = null) {
+  const validFields = new Set();
+  for (const meta of Object.values(modelClass.rawAttributes)) {
+    validFields.add(meta.field || meta.fieldName);
+  }
+  // Also accept Sequelize-managed timestamp fields
+  validFields.add('created_at');
+  validFields.add('updated_at');
+
+  const cleaned = {};
+  for (const [key, value] of Object.entries(dbRow)) {
+    if (validFields.has(key)) {
+      cleaned[key] = value;
+    } else if (logger) {
+      logger.warn(`[v2]: Stripping unknown CSV column '${key}' — not a valid DB field`);
+    }
+  }
+  return cleaned;
+}
+
+/**
+ * Validate that a camelCase row destined for INSERT contains all fields
+ * marked `allowNull: false` in the model definition.  Skips fields that
+ * are auto-managed (primary key, orgUid, timestamps) and any fields listed
+ * in the optional `skipFields` set (e.g. `unitSerialId` when it can be
+ * derived from other fields).
+ *
+ * @param {Object} row - camelCase row to validate
+ * @param {import('sequelize').Model} modelClass
+ * @param {Set<string>} [skipFields] - attribute names to skip
+ * @returns {string[]} array of missing field names (empty if valid)
+ */
+export function validateRequiredFields(row, modelClass, skipFields = new Set()) {
+  const autoManaged = new Set([
+    modelClass.primaryKeyAttribute,
+    'orgUid',
+    'createdAt',
+    'updatedAt',
+    // Models with underscored:true and custom timestamp mappings use
+    // snake_case attribute names in rawAttributes
+    'created_at',
+    'updated_at',
+  ]);
+
+  const missing = [];
+  for (const [attrName, meta] of Object.entries(modelClass.rawAttributes)) {
+    if (meta.allowNull === false && !autoManaged.has(attrName) && !skipFields.has(attrName)) {
+      const val = row[attrName];
+      if (val === undefined || val === null || val === '') {
+        missing.push(attrName);
+      }
+    }
+  }
+  return missing;
+}
+
+function getPrimaryKeyDbField(modelClass) {
+  const pkAttr = modelClass.primaryKeyAttribute;
+  return modelClass.rawAttributes[pkAttr]?.field || pkAttr;
+}
+
+function extractMatchingStagedRecord(stagingRecord, pk, modelClass, primaryKeyDbField) {
+  try {
+    const parsedData = JSON.parse(stagingRecord.data);
+    const records = Array.isArray(parsedData) ? parsedData : [parsedData];
+    const primaryKeyAttr = modelClass.primaryKeyAttribute;
+    const matchedIndex = records.findIndex(
+      (record) =>
+        record && (record[primaryKeyDbField] === pk || record[primaryKeyAttr] === pk),
+    );
+    if (matchedIndex === -1) {
+      return null;
+    }
+
+    return {
+      stagingRecord,
+      recordData: records[matchedIndex],
+      recordCount: records.length,
+    };
+  } catch (error) {
+    loggerV2.warn('[v2]: Failed to parse pending staging row during CSV merge', {
+      stagingId: stagingRecord.id,
+      uuid: stagingRecord.uuid,
+      table: stagingRecord.table,
+      error: error.message,
+    });
+    return null;
+  }
+}
+
+/**
+ * Return pending staging rows for a specific model primary key. Results are
+ * sorted oldest to newest so callers can replay staged edits in order.
+ *
+ * @param {import('sequelize').Model} modelClass
+ * @param {string} pk
+ * @param {{ transaction?: import('sequelize').Transaction, actions?: string[] }} [options]
+ * @returns {Promise<Array<{ stagingRecord: Object, recordData: Object }>>}
+ */
+export async function getPendingStagedRowsForPk(
+  modelClass,
+  pk,
+  { transaction, actions = ['INSERT', 'UPDATE'] } = {},
+) {
+  const primaryKeyDbField = getPrimaryKeyDbField(modelClass);
+  const stagedRows = await StagingV2.findAll({
+    where: {
+      table: modelClass.getTableName(),
+      committed: false,
+      failed_commit: false,
+      is_transfer: false,
+      action: actions,
+    },
+    order: [['id', 'ASC']],
+    transaction,
+  });
+
+  return stagedRows
+    .map((stagingRecord) =>
+      extractMatchingStagedRecord(stagingRecord, pk, modelClass, primaryKeyDbField))
+    .filter(Boolean);
+}
+
+/**
+ * Build the latest logical row for a record by replaying any pending staging
+ * rows on top of the committed DB row. This lets CSV batch uploads reconcile
+ * with already-staged edits instead of clobbering them.
+ *
+ * Performs a single staging table scan and buckets results by action client
+ * side, then returns the INSERT/UPDATE pending rows so the caller can hand
+ * them to stageConsolidatedCsvRecord without scanning the staging table a
+ * second time.
+ *
+ * @param {import('sequelize').Model} modelClass
+ * @param {string} pk
+ * @param {Object|null} persistedRecord - Sequelize instance or null
+ * @param {{ transaction?: import('sequelize').Transaction }} [options]
+ * @returns {Promise<{ mergedBase: Object, pendingRows: Array, hasPendingDelete: boolean, hasMultiRecordPendingRow: boolean }>}
+ */
+export async function buildPendingCsvMergeBase(
+  modelClass,
+  pk,
+  persistedRecord,
+  { transaction } = {},
+) {
+  const allPendingRows = await getPendingStagedRowsForPk(modelClass, pk, {
+    transaction,
+    actions: ['DELETE', 'INSERT', 'UPDATE'],
+  });
+
+  const pendingRows = [];
+  let hasPendingDelete = false;
+  for (const entry of allPendingRows) {
+    if (entry.stagingRecord.action === 'DELETE') {
+      hasPendingDelete = true;
+    } else {
+      pendingRows.push(entry);
+    }
+  }
+
+  let mergedBase = persistedRecord ? persistedRecord.toJSON() : {};
+  const hasMultiRecordPendingRow = pendingRows.some(
+    ({ recordCount }) => recordCount > 1,
+  );
+  for (const { recordData } of pendingRows) {
+    mergedBase = {
+      ...mergedBase,
+      ...toAttributeNames(recordData, modelClass),
+    };
+  }
+
+  return {
+    mergedBase,
+    pendingRows,
+    hasPendingDelete,
+    hasMultiRecordPendingRow,
+  };
+}
+
+/**
+ * Write a single consolidated pending staging row for the given record. If
+ * prior pending INSERT/UPDATE rows exist for the same PK, update the newest
+ * one in place and delete older duplicates so the changelist sees one final
+ * staged row.
+ *
+ * If any existing pending row is an INSERT, the consolidated row remains an
+ * INSERT because the record has not been committed yet.
+ *
+ * Callers that already have the pending INSERT/UPDATE rows in hand (e.g. from
+ * buildPendingCsvMergeBase during the same row of a CSV batch) may pass them
+ * via options.pendingRows to avoid re-scanning the staging table.
+ *
+ * @param {import('sequelize').Model} modelClass
+ * @param {string} pk
+ * @param {'INSERT'|'UPDATE'} action
+ * @param {Object} cleanedRecord - DB-field (snake_case) row
+ * @param {import('sequelize').Transaction} transaction
+ * @param {{ pendingRows?: Array<{ stagingRecord: Object }> }} [options]
+ * @returns {Promise<void>}
+ */
+export async function stageConsolidatedCsvRecord(
+  modelClass,
+  pk,
+  action,
+  cleanedRecord,
+  transaction,
+  { pendingRows } = {},
+) {
+  // Callers pass an Array (possibly empty) when they already know the
+  // pending INSERT/UPDATE rows. Anything else — undefined/null — means
+  // "unknown, please scan". Guarding on Array.isArray avoids accidentally
+  // re-scanning when a caller explicitly passes `[]` (known-empty).
+  const resolvedPendingRows = Array.isArray(pendingRows)
+    ? pendingRows
+    : await getPendingStagedRowsForPk(modelClass, pk, {
+        transaction,
+        actions: ['INSERT', 'UPDATE'],
+      });
+
+  const effectiveAction = resolvedPendingRows.some(
+    ({ stagingRecord }) => stagingRecord.action === 'INSERT',
+  )
+    ? 'INSERT'
+    : action;
+
+  if (resolvedPendingRows.length > 0) {
+    const targetRow = resolvedPendingRows[resolvedPendingRows.length - 1].stagingRecord;
+    const duplicateIds = resolvedPendingRows
+      .slice(0, -1)
+      .map(({ stagingRecord }) => stagingRecord.id);
+
+    // Keep the staging row's uuid column in sync with the entity PK. The
+    // staging table convention is that uuid === entity primary key, and
+    // downstream commit logic uses it as the datalayer changelist key; a
+    // stale uuid from a prior staging row would produce the wrong changelist
+    // entry.
+    await StagingV2.update(
+      {
+        uuid: pk,
+        action: effectiveAction,
+        data: JSON.stringify([cleanedRecord]),
+      },
+      {
+        where: { id: targetRow.id },
+        transaction,
+      },
+    );
+
+    if (duplicateIds.length > 0) {
+      await StagingV2.destroy({
+        where: { id: duplicateIds },
+        transaction,
+      });
+    }
+    return;
+  }
+
+  await StagingV2.upsert(
+    {
+      uuid: pk,
+      action: effectiveAction,
+      table: modelClass.getTableName(),
+      data: JSON.stringify([cleanedRecord]),
+    },
+    { transaction },
+  );
 }
 
 /**

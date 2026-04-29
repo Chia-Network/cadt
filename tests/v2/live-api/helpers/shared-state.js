@@ -211,7 +211,9 @@ const PRIMARY_KEY_FIELDS = {
  */
 export const getFirstRecordIdFromDatabase = async (request, type) => {
   try {
-    const response = await request.get(`/v2/${type}`);
+    const response = await request
+      .get(`/v2/${type}`)
+      .query({ page: 1, limit: 1 });
     const data = Array.isArray(response.body)
       ? response.body
       : (response.body?.data || []);
@@ -303,8 +305,9 @@ export const getAllCreatedIds = () => {
   ];
 
   for (const type of deleteOrder) {
-    if (createdIds[type] && createdIds[type].length > 0) {
-      for (const id of createdIds[type]) {
+    const ids = getCreatedIds(type);
+    if (ids && ids.length > 0) {
+      for (const id of ids) {
         all.push({ type, id });
       }
     }

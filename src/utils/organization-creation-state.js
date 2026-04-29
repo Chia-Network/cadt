@@ -41,6 +41,23 @@ export const ORG_CREATION_CONFIG = {
   STORE_CONFIRMATION_TIMEOUT_MS: 30 * 60 * 1000, // 30 minutes
   CONFIRMATION_POLL_INTERVAL_MS: 30 * 1000, // 30 seconds
   META_KEY: 'pendingOrgCreation',
+
+  // Wallet-readiness gate for the V1 data-push phase. After store creation
+  // the wallet temporarily desyncs while processing confirmations;
+  // batch_update RPCs made during that window fail with "Wallet needs to be
+  // fully synced". _waitForWalletReadyForPush polls walletIsSynced +
+  // hasAnyUnconfirmedTransactions + spendable coins for up to
+  // DATA_PUSH_WALLET_SYNC_WAIT_MS before each push, and _pushWithSyncRetry
+  // retries a returns-false push up to MAX_DATA_PUSH_SYNC_RETRIES times, so
+  // a single transient desync no longer fails the entire creation pipeline.
+  //
+  // Worst-case budget per push is MAX_DATA_PUSH_SYNC_RETRIES *
+  // DATA_PUSH_WALLET_SYNC_WAIT_MS = 6 min. With up to 4 stores pushed
+  // sequentially that's ~24 min, which stays under
+  // STORE_CONFIRMATION_TIMEOUT_MS. Keep these values in sync if either
+  // bound changes.
+  DATA_PUSH_WALLET_SYNC_WAIT_MS: 2 * 60 * 1000, // 2 minutes
+  MAX_DATA_PUSH_SYNC_RETRIES: 3,
 };
 
 /**

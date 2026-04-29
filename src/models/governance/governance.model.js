@@ -4,7 +4,7 @@ import { Sequelize, Model } from 'sequelize';
 import { sequelize } from '../../database';
 import { Meta } from '../../models';
 import datalayer from '../../datalayer';
-import { keyValueToChangeList } from '../../utils/datalayer-utils';
+import { keyValueToChangeList, isDlStoreSynced } from '../../utils/datalayer-utils';
 import { getConfig } from '../../utils/config-loader';
 import { logger } from '../../config/logger.js';
 import {
@@ -155,83 +155,145 @@ class Governance extends Model {
     await Promise.all(updates.map(async (update) => Governance.upsert(update)));
   }
 
-  static async sync(retryCounter = 0) {
+  static async sync() {
+    logger.debug('[v1]: running governance model sync()');
+
+    // Check simulator/dev mode first to match V2 behavior and avoid errors
+    // in test/dev environments that may not have GOVERNANCE_BODY_ID configured.
+    if (USE_SIMULATOR || USE_DEVELOPMENT_MODE) {
+      logger.info('[v1]: SIMULATOR/TESTNET MODE: Using sample picklist');
+      await Governance.upsert({
+        metaKey: 'pickList',
+        metaValue: JSON.stringify(PickListStub),
+        confirmed: true,
+      });
+      return;
+    }
+
+    if (!GOVERNANCE_BODY_ID) {
+      logger.error('[v1]: Missing GOVERNANCE_BODY_ID in env, cannot sync governance data');
+      return;
+    }
+
+    // Subscribe to the governance body store first so it begins syncing on
+    // fresh deployments. Without this, an unsubscribed store would cause
+    // getDataLayerStoreSyncStatus to error (the DL node has no record of
+    // it), we'd skip, and no subsequent run would ever subscribe — a
+    // permanent skip loop.  subscribeToStoreOnDataLayer returns falsy on
+    // failure (datalayer unreachable, subscribe RPC failure) and also
+    // throws on unexpected errors, so we guard against both.
     try {
-      logger.debug('running governance model sync()');
-
-      if (!GOVERNANCE_BODY_ID) {
-        throw new Error('Missing information in env to sync Governance data');
-      }
-
-      // If on simulator or testnet, use the stubbed picklist data and return
-      if (USE_SIMULATOR || USE_DEVELOPMENT_MODE) {
-        logger.info('SIMULATOR/TESTNET MODE: Using sample picklist');
-        // Await the upsert to ensure transaction completes before returning
-        await Governance.upsert({
-          metaKey: 'pickList',
-          metaValue: JSON.stringify(PickListStub),
-          confirmed: true,
-        });
-
+      const subscribed = await datalayer.subscribeToStoreOnDataLayer(GOVERNANCE_BODY_ID);
+      if (!subscribed) {
+        logger.warn(
+          `[v1]: could not subscribe to governance body store ${GOVERNANCE_BODY_ID}. Skipping sync, will retry on next task run.`,
+        );
         return;
       }
+    } catch (error) {
+      logger.warn(
+        `[v1]: could not subscribe to governance body store ${GOVERNANCE_BODY_ID}: ${error.message}. Skipping sync, will retry on next task run.`,
+      );
+      return;
+    }
 
+    // Check governance body store sync status before any blocking fetch.
+    // If the store is not yet synced, return immediately so cached governance
+    // data remains usable and the next task run retries.
+    try {
+      const bodyStoreSyncStatus = await datalayer.getDataLayerStoreSyncStatus(GOVERNANCE_BODY_ID);
+      if (!isDlStoreSynced(bodyStoreSyncStatus?.sync_status)) {
+        logger.info(
+          `[v1]: governance body store ${GOVERNANCE_BODY_ID} not yet synced. Skipping sync, will retry on next task run.`,
+        );
+        return;
+      }
+    } catch (error) {
+      logger.warn(
+        `[v1]: could not check sync status for governance body store ${GOVERNANCE_BODY_ID}: ${error.message}. Skipping sync.`,
+      );
+      return;
+    }
+
+    // Single attempt.  On any failure, log and return — the scheduler will
+    // run the task again on its normal cadence.  No in-task retry loop so the
+    // coroutine never blocks its scheduler slot.
+    try {
       const governanceData = await datalayer.getSubscribedStoreData(
         GOVERNANCE_BODY_ID,
         undefined,
-        true,
+        false,
       );
 
-      // Check if there is v1, v2, v3 ..... and if not, then we assume this is a legacy governance table that isnt versioned
       const shouldSyncLegacy = !Object.keys(governanceData).some((key) =>
         /^v?[0-9]+$/.test(key),
       );
 
       if (shouldSyncLegacy) {
         logger.info(
-          `using legacy governance upsert method for governance store ${GOVERNANCE_BODY_ID}`,
+          `[v1]: using legacy governance upsert method for governance store ${GOVERNANCE_BODY_ID}`,
         );
-        await Governance.upsertGovernanceDownload(
-          GOVERNANCE_BODY_ID,
-          governanceData,
-        );
+        await Governance.upsertGovernanceDownload(GOVERNANCE_BODY_ID, governanceData);
+        return;
       }
 
-      // Check if the governance data for this version exists
       const dataModelVersion = 'v1';
       const versionedGovernanceStoreId = governanceData[dataModelVersion];
-      if (versionedGovernanceStoreId) {
-        logger.debug(
-          `getting ${dataModelVersion} governance data from store ${versionedGovernanceStoreId}`,
+      if (!versionedGovernanceStoreId) {
+        logger.error(
+          `[v1]: governance data is not available from store ${GOVERNANCE_BODY_ID} for ${dataModelVersion} data model. Skipping sync.`,
         );
-        const versionedGovernanceData = await datalayer.getSubscribedStoreData(
-          versionedGovernanceStoreId,
-          undefined,
-          true,
-        );
+        return;
+      }
 
-        await Governance.upsertGovernanceDownload(
-          GOVERNANCE_BODY_ID,
-          versionedGovernanceData,
+      // Subscribe to the versioned governance store first (its ID is only
+      // discovered by reading the body store above), then check sync status.
+      // Same reasoning as the body-store subscribe above.
+      try {
+        const versionedSubscribed = await datalayer.subscribeToStoreOnDataLayer(versionedGovernanceStoreId);
+        if (!versionedSubscribed) {
+          logger.warn(
+            `[v1]: could not subscribe to versioned governance store ${versionedGovernanceStoreId}. Skipping sync, will retry on next task run.`,
+          );
+          return;
+        }
+      } catch (error) {
+        logger.warn(
+          `[v1]: could not subscribe to versioned governance store ${versionedGovernanceStoreId}: ${error.message}. Skipping sync, will retry on next task run.`,
         );
-      } else {
-        throw new Error(
-          `Governance data is not available from store ${GOVERNANCE_BODY_ID} for ${dataModelVersion} data model.`,
-        );
+        return;
       }
+
+      // Check versioned governance store sync status before fetching
+      try {
+        const versionedSyncStatus = await datalayer.getDataLayerStoreSyncStatus(versionedGovernanceStoreId);
+        if (!isDlStoreSynced(versionedSyncStatus?.sync_status)) {
+          logger.info(
+            `[v1]: versioned governance store ${versionedGovernanceStoreId} not yet synced. Skipping sync, will retry on next task run.`,
+          );
+          return;
+        }
+      } catch (error) {
+        logger.warn(
+          `[v1]: could not check sync status for versioned governance store ${versionedGovernanceStoreId}: ${error.message}. Skipping sync.`,
+        );
+        return;
+      }
+
+      logger.debug(
+        `[v1]: getting ${dataModelVersion} governance data from store ${versionedGovernanceStoreId}`,
+      );
+      const versionedGovernanceData = await datalayer.getSubscribedStoreData(
+        versionedGovernanceStoreId,
+        undefined,
+        false,
+      );
+
+      await Governance.upsertGovernanceDownload(GOVERNANCE_BODY_ID, versionedGovernanceData);
     } catch (error) {
-      await new Promise((resolve) => setTimeout(() => resolve(), 5000));
-      const maxRetry = 50;
-      if (retryCounter < maxRetry) {
-        logger.error(
-          `Error Syncing Governance Data. Retry attempt #${retryCounter + 1}. Retrying. Error:, ${error}`,
-        );
-        await Governance.sync(retryCounter + 1);
-      } else {
-        logger.error(
-          `Error Syncing Governance Data. Retry attempts exceeded. This will not have the latest governance data and data sync may be impacted`,
-        );
-      }
+      logger.error(
+        `[v1]: Error syncing governance data: ${error.message}. Cached governance data will be used until next task run.`,
+      );
     }
   }
 
