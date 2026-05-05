@@ -33,6 +33,9 @@ const CONFIG = getConfig().APP;
 
 const mismatchBackoff = new SyncMismatchBackoff(logger, '[v1]');
 
+const hasUsableSyncStatus = (syncStatus) =>
+  syncStatus?.generation != null && syncStatus?.target_generation != null;
+
 const task = new Task('sync-registries', async () => {
   logger.debug('[v1]: sync registries task invoked');
   if (!syncRegistriesTaskMutex.isLocked()) {
@@ -154,7 +157,9 @@ async function createAndProcessTransaction(callback, afterCommitCallbacks) {
   let transaction;
   let mirrorTransaction;
 
-  logger.info('[v1]: Starting sequelize transaction and acquiring transaction mutex');
+  logger.info(
+    '[v1]: Starting sequelize transaction and acquiring transaction mutex',
+  );
   const releaseTransactionMutex =
     await processingSyncRegistriesTransactionMutex.acquire();
 
@@ -243,7 +248,9 @@ const truncateStaging = async () => {
         logger.info('[v1]: WAITING 1 SECOND BEFORE RETRYING...');
         await new Promise((resolve) => setTimeout(resolve, 1000));
       } else {
-        logger.error('[v1]: MAXIMUM STAGING CLEANUP ATTEMPTS REACHED, GIVING UP');
+        logger.error(
+          '[v1]: MAXIMUM STAGING CLEANUP ATTEMPTS REACHED, GIVING UP',
+        );
       }
     }
   }
@@ -256,9 +263,13 @@ const syncOrganizationAudit = async (organization) => {
 
     logger.debug(`[v1]: querying organization model for home org`);
     const homeOrg = await Organization.getHomeOrg();
-    logger.debug(`[v1]: querying datalayer for ${organization.name} root history`);
+    logger.debug(
+      `[v1]: querying datalayer for ${organization.name} root history`,
+    );
     const rootHistory = await datalayer.getRootHistory(organization.registryId);
-    logger.debug(`[v1]: querying datalayer for ${organization.name} sync status`);
+    logger.debug(
+      `[v1]: querying datalayer for ${organization.name} sync status`,
+    );
     const { sync_status } = await datalayer.getDataLayerStoreSyncStatus(
       organization.registryId,
     );
@@ -430,20 +441,36 @@ const syncOrganizationAudit = async (organization) => {
       `${organization.name} is ${syncRemaining} DataLayer generations away from being fully synced (orgUid ${organization.orgUid}, registryId ${organization.registryId}).`,
     );
 
-    if (!CONFIG.USE_SIMULATOR) {
-      await new Promise((resolve) => setTimeout(resolve, 30000));
+    logger.debug(
+      `5 Last processed index of ${organization.name}: ${auditTableHighestProcessedGenerationIndex}`,
+    );
+    const lastProcessedRoot = _.get(
+      rootHistory,
+      `[${auditTableHighestProcessedGenerationIndex}]`,
+    );
+    logger.debug(
+      `6 To be processed index of ${organization.name}: ${toBeProcessedDatalayerGenerationIndex}`,
+    );
+    const rootToBeProcessed = _.get(
+      rootHistory,
+      `[${toBeProcessedDatalayerGenerationIndex}]`,
+    );
 
+    logger.debug(
+      `last processed root of ${organization.name}: ${JSON.stringify(lastProcessedRoot)}`,
+    );
+    logger.debug(
+      `root to be processed of ${organization.name}: ${JSON.stringify(rootToBeProcessed)}`,
+    );
+
+    if (!CONFIG.USE_SIMULATOR) {
       // For home org, we can skip sync_status validation since we created the data locally
       // DataLayer may not have processed our own updates yet, which is fine
       if (isHomeOrg) {
         logger.debug(
           `[v1]: Home org sync_status check skipped - data is local (generation=${sync_status?.generation}, target_generation=${sync_status?.target_generation})`,
         );
-      } else if (
-        sync_status &&
-        sync_status?.generation &&
-        sync_status?.target_generation
-      ) {
+      } else if (hasUsableSyncStatus(sync_status)) {
         logger.debug(
           `store ${organization.registryId} (${organization.name}) is currently at generation ${sync_status.generation} with a target generation of ${sync_status.target_generation}`,
         );
@@ -474,10 +501,13 @@ const syncOrganizationAudit = async (organization) => {
       }
 
       // For home org, we don't need to check if DataLayer has caught up - we created the data
-      if (!isHomeOrg && toBeProcessedDatalayerGenerationIndex > sync_status.generation) {
+      if (
+        !isHomeOrg &&
+        toBeProcessedDatalayerGenerationIndex > sync_status.generation
+      ) {
         const warningMsg = [
-          `Generation ${toBeProcessedDatalayerGenerationIndex + 1} does not exist in ${organization.name} (registry store ${organization.registryId}) root history`,
-          `DataLayer not yet caught up to generation ${auditTableHighestProcessedGenerationIndex + 1}. The the highest generation datalayer has synced is ${sync_status.generation}.`,
+          `DataLayer has not locally synced generation index ${toBeProcessedDatalayerGenerationIndex} for ${organization.name} (registry store ${organization.registryId}).`,
+          `The highest generation DataLayer has synced is ${sync_status.generation}.`,
           `This issue is often temporary and could be due to a lag in data propagation.`,
           'Syncing for this organization will be paused until this is resolved.',
           'For ongoing issues, please contact the organization.',
@@ -488,27 +518,12 @@ const syncOrganizationAudit = async (organization) => {
       }
     }
 
-    logger.debug(
-      `5 Last processed index of ${organization.name}: ${auditTableHighestProcessedGenerationIndex}`,
-    );
-    const lastProcessedRoot = _.get(
-      rootHistory,
-      `[${auditTableHighestProcessedGenerationIndex}]`,
-    );
-    logger.debug(
-      `6 To be processed index of ${organization.name}: ${toBeProcessedDatalayerGenerationIndex}`,
-    );
-    const rootToBeProcessed = _.get(
-      rootHistory,
-      `[${toBeProcessedDatalayerGenerationIndex}]`,
-    );
-
-    logger.debug(
-      `last processed root of ${organization.name}: ${JSON.stringify(lastProcessedRoot)}`,
-    );
-    logger.debug(
-      `root to be processed of ${organization.name}: ${JSON.stringify(rootToBeProcessed)}`,
-    );
+    if (!rootToBeProcessed) {
+      logger.warn(
+        `Generation index ${toBeProcessedDatalayerGenerationIndex} does not exist in ${organization.name} (registry store ${organization.registryId}) root history. Syncing will retry on the next run.`,
+      );
+      return;
+    }
 
     if (!_.get(rootToBeProcessed, 'confirmed')) {
       logger.info(
@@ -524,11 +539,19 @@ const syncOrganizationAudit = async (organization) => {
       `8 To be processed index of ${organization.name}: ${toBeProcessedDatalayerGenerationIndex}`,
     );
 
-    const kvDiff = await datalayer.getRootDiff(
-      organization.registryId,
-      lastProcessedRoot.root_hash,
-      rootToBeProcessed.root_hash,
-    );
+    let kvDiff;
+    try {
+      kvDiff = await datalayer.getRootDiff(
+        organization.registryId,
+        lastProcessedRoot.root_hash,
+        rootToBeProcessed.root_hash,
+      );
+    } catch (error) {
+      logger.warn(
+        `DataLayer diff for ${organization.name} generation index ${toBeProcessedDatalayerGenerationIndex} is not ready. Syncing will retry on the next run. Error: ${error.message}`,
+      );
+      return;
+    }
 
     const comment = kvDiff.filter(
       (diff) =>
@@ -613,7 +636,9 @@ const syncOrganizationAudit = async (organization) => {
               record[ModelKeys[modelKey].primaryKeyAttributes[0]];
 
             if (diff.type === 'INSERT') {
-              logger.verbose(`[v1]: UPSERTING: ${modelKey} - ${primaryKeyValue}`);
+              logger.verbose(
+                `[v1]: UPSERTING: ${modelKey} - ${primaryKeyValue}`,
+              );
 
               // Remove updatedAt fields if they exist
               // This is because the db will update this field automatically and its not allowed to be null
@@ -631,7 +656,9 @@ const syncOrganizationAudit = async (organization) => {
                 mirrorTransaction,
               });
             } else if (diff.type === 'DELETE') {
-              logger.verbose(`[v1]: DELETING: ${modelKey} - ${primaryKeyValue}`);
+              logger.verbose(
+                `[v1]: DELETING: ${modelKey} - ${primaryKeyValue}`,
+              );
               await ModelKeys[modelKey].destroy({
                 where: {
                   [ModelKeys[modelKey].primaryKeyAttributes[0]]:

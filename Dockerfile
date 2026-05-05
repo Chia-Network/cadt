@@ -15,7 +15,7 @@ COPY src /app/src/
 COPY tests /app/tests/
 WORKDIR /app
 
-RUN npm install && npm rebuild sqlite3 --build-from-source
+RUN npm install
 
 RUN mkdir -p /root/.chia/mainnet/config/ssl && mkdir -p /root/.chia/mainnet/cadt/v1
 
