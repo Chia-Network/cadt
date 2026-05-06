@@ -1,6 +1,7 @@
 import { logger } from '../config/logger.js';
 
 const SQLITE_PRAGMAS = [
+  'PRAGMA journal_mode = WAL',
   'PRAGMA synchronous = NORMAL',
   'PRAGMA cache_size = -65536',
   'PRAGMA temp_store = MEMORY',
