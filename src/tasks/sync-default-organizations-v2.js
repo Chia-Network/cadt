@@ -84,13 +84,13 @@ const task = new Task('sync-default-organizations-v2', async () => {
         }),
       );
 
-      for (const result of results) {
+      results.forEach((result, i) => {
         if (result.status === 'rejected') {
           loggerV2.warn(
-            `[v2]: Failed to import a default organization: ${result.reason?.message || result.reason}. Will retry on next task run.`,
+            `[v2]: Failed to import default organization ${pending[i]}: ${result.reason?.message || result.reason}. Will retry on next task run.`,
           );
         }
-      }
+      });
     }
   } catch (error) {
     loggerV2.error(
