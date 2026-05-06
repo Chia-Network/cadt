@@ -27,6 +27,10 @@ import {
   syncRegistriesTaskMutex,
 } from '../utils/model-utils.js';
 import { SyncMismatchBackoff } from '../utils/sync-mismatch-backoff.js';
+import {
+  ensureV1FtsTriggersDeferred,
+  restoreV1FtsTriggersAndRebuildIfDeferred,
+} from '../utils/fts5-deferral.js';
 
 dotenv.config({ quiet: true });
 const CONFIG = getConfig().APP;
@@ -99,55 +103,115 @@ const processJob = async () => {
     raw: true,
   });
 
-  for (const organization of organizations) {
-    if (CONFIG.USE_SIMULATOR || process.env.NODE_ENV === 'test') {
-      await syncOrganizationAudit(organization);
-    } else {
-      const mostRecentOrgAuditRecord = await Audit.findOne({
-        where: {
-          orgUid: organization.orgUid,
-        },
-        order: [['createdAt', 'DESC']],
-        limit: 1,
-        raw: true,
-      });
+  // FTS5 deferral: when at least one subscribed org has not yet caught up,
+  // drop the project/unit FTS triggers so the upserts in syncOrganizationAudit
+  // don't pay the per-row tokenisation cost. The restore + rebuild runs
+  // after this loop when no orgs need catch-up. The Organization.synced
+  // flag is set by the sync loop itself, so on the very first tick after
+  // a fresh boot all subscribed orgs may show synced=false until the loop
+  // determines they're actually caught up. That's fine - the worst case
+  // is that triggers are dropped one tick early and restored one tick
+  // later than strictly necessary, neither of which is a correctness
+  // problem because the rebuild reconciles regardless.
+  //
+  // Skip the global drop in NODE_ENV=test: the integration test suite
+  // creates many `subscribed: true, synced: false` org fixtures while
+  // the V1 background sync interval is live, and FTS-dependent specs
+  // assume the project/unit triggers stay installed. The deferral
+  // behaviour itself is exercised by tests/integration/sync-write-perf.spec.js
+  // (which calls the helpers directly and isolates them from sync).
+  const skipFtsDeferralForTests = process.env.NODE_ENV === 'test';
 
-      // verify that the latest organization root hash is up to date with the audit records. attempt correction.
-      if (
-        mostRecentOrgAuditRecord &&
-        mostRecentOrgAuditRecord?.rootHash !== organization?.registryHash
-      ) {
-        logger.warn(
-          `latest root hash in org table for organization ${organization.name} (orgUid ${organization.orgUid}) does not match the audit records. attempting to correct`,
-        );
-        try {
-          const result = await Organization.update(
-            { registryHash: mostRecentOrgAuditRecord.rootHash },
-            {
-              where: { orgUid: organization.orgUid },
-            },
-          );
+  const anyOrgNeedsCatchup = organizations.some(
+    (organization) => !organization.synced,
+  );
+  if (anyOrgNeedsCatchup && !skipFtsDeferralForTests) {
+    await ensureV1FtsTriggersDeferred();
+  }
 
-          if (result?.length) {
-            logger.info(
-              `registry hash record corrected for ${organization.name} (orgUid ${organization.orgUid}). proceeding with audit sync`,
-            );
-            const correctedOrganizationRecord = await Organization.findOne({
-              where: { orgUid: organization.orgUid },
-            });
-
-            await syncOrganizationAudit(correctedOrganizationRecord);
-          } else {
-            throw new Error('organizations update query affected 0 records');
-          }
-        } catch (error) {
-          logger.error(
-            `failed to update organization table record for ${organization.name} (orgUid ${organization.orgUid}) with correct root hash. Something is wrong. Skipping audit sync and trying again shortly. Error: ${error}`,
-          );
-        }
-      } else {
-        // normal state, proceed with audit sync
+  try {
+    for (const organization of organizations) {
+      if (CONFIG.USE_SIMULATOR || process.env.NODE_ENV === 'test') {
         await syncOrganizationAudit(organization);
+      } else {
+        // Order by generation (not createdAt) so this lookup is served
+        // by the audit_org_uid_generation composite index. Generation
+        // is monotonic per orgUid in the sync forward path, so the two
+        // orderings agree on the rootHash returned; ordering by
+        // generation is also semantically what we want here ("the most
+        // recently ingested generation for this org").
+        const mostRecentOrgAuditRecord = await Audit.findOne({
+          where: {
+            orgUid: organization.orgUid,
+          },
+          order: [['generation', 'DESC']],
+          limit: 1,
+          raw: true,
+        });
+
+        // verify that the latest organization root hash is up to date with the audit records. attempt correction.
+        if (
+          mostRecentOrgAuditRecord &&
+          mostRecentOrgAuditRecord?.rootHash !== organization?.registryHash
+        ) {
+          logger.warn(
+            `latest root hash in org table for organization ${organization.name} (orgUid ${organization.orgUid}) does not match the audit records. attempting to correct`,
+          );
+          try {
+            const result = await Organization.update(
+              { registryHash: mostRecentOrgAuditRecord.rootHash },
+              {
+                where: { orgUid: organization.orgUid },
+              },
+            );
+
+            if (result?.length) {
+              logger.info(
+                `registry hash record corrected for ${organization.name} (orgUid ${organization.orgUid}). proceeding with audit sync`,
+              );
+              const correctedOrganizationRecord = await Organization.findOne({
+                where: { orgUid: organization.orgUid },
+              });
+
+              await syncOrganizationAudit(correctedOrganizationRecord);
+            } else {
+              throw new Error('organizations update query affected 0 records');
+            }
+          } catch (error) {
+            logger.error(
+              `failed to update organization table record for ${organization.name} (orgUid ${organization.orgUid}) with correct root hash. Something is wrong. Skipping audit sync and trying again shortly. Error: ${error}`,
+            );
+          }
+        } else {
+          // normal state, proceed with audit sync
+          await syncOrganizationAudit(organization);
+        }
+      }
+    }
+  } finally {
+    // After processing all orgs (or after an exception bubbles out of the
+    // loop above), re-read the org table to see whether anyone is still
+    // in catch-up. If everyone is caught up and triggers are currently
+    // deferred, restore them + rebuild FTS in a single transaction. Run
+    // in `finally` so a thrown sync error doesn't leave FTS triggers
+    // permanently dropped until the next process restart.
+    if (!skipFtsDeferralForTests) {
+      try {
+        const orgsAfter = await Organization.findAll({
+          where: { subscribed: true },
+          attributes: ['orgUid', 'synced'],
+          raw: true,
+        });
+        const anyOrgStillCatchingUp = orgsAfter.some((o) => !o.synced);
+        if (!anyOrgStillCatchingUp) {
+          await restoreV1FtsTriggersAndRebuildIfDeferred();
+        }
+      } catch (restoreError) {
+        // Don't shadow the original loop error if there was one. The next
+        // tick will retry restore via the same finally block.
+        logger.error(
+          `[v1]: FTS5 restore decision failed at tick end: ${restoreError?.message || restoreError}`,
+        );
       }
     }
   }
@@ -259,7 +323,7 @@ const truncateStaging = async () => {
 const syncOrganizationAudit = async (organization) => {
   logger.debug(`[v1]: syncing organization audit for ${organization.name}`);
   try {
-    let afterCommitCallbacks = [];
+    const afterCommitCallbacks = [];
 
     logger.debug(`[v1]: querying organization model for home org`);
     const homeOrg = await Organization.getHomeOrg();
@@ -598,6 +662,26 @@ const syncOrganizationAudit = async (organization) => {
         logger.debug(`[v1]: processing optimized kv diff for ${organization.name} generation indices ${auditTableHighestProcessedGenerationIndex} and ${toBeProcessedDatalayerGenerationIndex}
         (roots [generation ${lastRootSavedToAuditTable.generation}] ${lastProcessedRoot.root_hash} and [generation ${lastRootSavedToAuditTable.generation + 1}] ${rootToBeProcessed.root_hash})`);
 
+        // Hoist comment / author parsing out of the per-row diff loop. The
+        // comment and author kv-diff entries are shared across every row in
+        // the same generation, so re-running tryParseJSON(decodeHex(...)) per
+        // row is wasted work proportional to diff length.
+        const generationComment = _.get(
+          tryParseJSON(decodeHex(_.get(comment, '[0].value', encodeHex('{}')))),
+          'comment',
+          '',
+        );
+        const generationAuthor = _.get(
+          tryParseJSON(decodeHex(_.get(author, '[0].value', encodeHex('{}')))),
+          'author',
+          '',
+        );
+
+        // Buffer audit rows for a single per-generation bulkCreate at the
+        // end of the loop. One INSERT per kv-diff row was the dominant
+        // write cost on Pi-class hardware during catch-up.
+        const auditRowsForGeneration = [];
+
         for (const diff of optimizedKvDiff) {
           const key = decodeHex(diff.key);
           const modelKey = key.split('|')[0];
@@ -614,20 +698,8 @@ const syncOrganizationAudit = async (organization) => {
             change: decodeHex(diff.value),
             onchainConfirmationTimeStamp: rootToBeProcessed.timestamp,
             generation: toBeProcessedDatalayerGenerationIndex,
-            comment: _.get(
-              tryParseJSON(
-                decodeHex(_.get(comment, '[0].value', encodeHex('{}'))),
-              ),
-              'comment',
-              '',
-            ),
-            author: _.get(
-              tryParseJSON(
-                decodeHex(_.get(author, '[0].value', encodeHex('{}'))),
-              ),
-              'author',
-              '',
-            ),
+            comment: generationComment,
+            author: generationAuthor,
           };
 
           if (modelKey && Object.keys(ModelKeys).includes(modelKey)) {
@@ -670,9 +742,23 @@ const syncOrganizationAudit = async (organization) => {
             }
           }
 
-          // Create the Audit record
-          logger.debug(`[v1]: writing change record `);
-          await Audit.create(auditData, { transaction, mirrorTransaction });
+          auditRowsForGeneration.push(auditData);
+        }
+
+        if (auditRowsForGeneration.length > 0) {
+          logger.debug(
+            `[v1]: bulk-writing ${auditRowsForGeneration.length} audit row(s) for generation ${toBeProcessedDatalayerGenerationIndex}`,
+          );
+          // batchSize caps Sequelize's multi-row INSERT size so a very
+          // large generation (rare but possible) does not blow past
+          // SQLite's SQLITE_MAX_VARIABLE_NUMBER limit. With ~10 columns
+          // per row, 500 rows/batch leaves headroom under the default
+          // 32766-variable cap.
+          await Audit.bulkCreate(auditRowsForGeneration, {
+            transaction,
+            mirrorTransaction,
+            batchSize: 500,
+          });
         }
       }
     };

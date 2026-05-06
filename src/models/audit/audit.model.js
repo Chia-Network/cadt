@@ -20,6 +20,17 @@ class Audit extends Model {
     return super.create(values, options);
   }
 
+  static async bulkCreate(values, options) {
+    safeMirrorDbHandler(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await AuditMirror.bulkCreate(values, mirrorOptions);
+    });
+    return super.bulkCreate(values, options);
+  }
+
   static async destroy(options) {
     safeMirrorDbHandler(async () => {
       const mirrorOptions = {
