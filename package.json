@@ -123,7 +123,10 @@
   "overrides": {
     "diff": "8.0.3",
     "esbuild": "0.27.3",
-    "tar": "7.5.13"
+    "tar": "7.5.13",
+    "mocha": {
+      "serialize-javascript": "7.0.5"
+    }
   },
   "contributors": [
     "Michael Taylor <5665004+MichaelTaylor3D@users.noreply.github.com>",
