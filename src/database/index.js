@@ -21,13 +21,20 @@ const dbConfigKey = nodeEnv;
 // Safety check: In test mode, ensure we're using test database configuration
 if (nodeEnv === 'test') {
   const testConfig = config[dbConfigKey];
-  if (!testConfig || !testConfig.storage || !testConfig.storage.includes('test')) {
+  if (
+    !testConfig ||
+    !testConfig.storage ||
+    !testConfig.storage.includes('test')
+  ) {
     const errorMsg = `SAFETY CHECK FAILED: Test mode detected but database config '${dbConfigKey}' does not appear to be a test database. Storage: ${testConfig?.storage || 'undefined'}. This prevents accidental production database access.`;
     console.error(errorMsg);
     throw new Error(errorMsg);
   }
   // Additional check: test database should be under tests/test-dbs/, not in home directory
-  if (testConfig.storage.includes('~') || testConfig.storage.includes(os.homedir())) {
+  if (
+    testConfig.storage.includes('~') ||
+    testConfig.storage.includes(os.homedir())
+  ) {
     const errorMsg = `SAFETY CHECK FAILED: Test database path appears to be in home directory: ${testConfig.storage}. Test databases must be under tests/test-dbs/.`;
     console.error(errorMsg);
     throw new Error(errorMsg);
@@ -206,9 +213,7 @@ export const prepareMysqlMirror = async () => {
       mirrorSetupSucceeded = true;
       return true;
     } catch (error) {
-      logger.error(
-        `Error setting up MySQL mirror database: ${error.message}`,
-      );
+      logger.error(`Error setting up MySQL mirror database: ${error.message}`);
       return false;
     }
   })().finally(() => {
@@ -318,10 +323,7 @@ export const safeMirrorDbHandler = (callback) => {
           // below. Skip quietly - the next authenticate success will
           // re-enter startReconnectBackfill and retry setup. Symmetric
           // with safeMirrorDbHandlerV2.
-          if (
-            isMysqlMirrorConfiguredForReconnect() &&
-            !mirrorSetupSucceeded
-          ) {
+          if (isMysqlMirrorConfiguredForReconnect() && !mirrorSetupSucceeded) {
             return;
           }
 
@@ -523,13 +525,25 @@ export const backfillMirror = async () => {
     const mirrorPairs = [
       { source: models.Project, mirror: ProjectMirror, name: 'project' },
       { source: models.CoBenefit, mirror: CoBenefitMirror, name: 'co_benefit' },
-      { source: models.ProjectLocation, mirror: ProjectLocationMirror, name: 'location' },
+      {
+        source: models.ProjectLocation,
+        mirror: ProjectLocationMirror,
+        name: 'location',
+      },
       { source: models.Label, mirror: LabelMirror, name: 'label' },
       { source: models.Rating, mirror: RatingMirror, name: 'rating' },
-      { source: models.RelatedProject, mirror: RelatedProjectMirror, name: 'related_project' },
+      {
+        source: models.RelatedProject,
+        mirror: RelatedProjectMirror,
+        name: 'related_project',
+      },
       { source: models.Unit, mirror: UnitMirror, name: 'unit' },
       { source: models.Issuance, mirror: IssuanceMirror, name: 'issuance' },
-      { source: models.Estimation, mirror: EstimationMirror, name: 'estimation' },
+      {
+        source: models.Estimation,
+        mirror: EstimationMirror,
+        name: 'estimation',
+      },
       { source: models.LabelUnit, mirror: LabelUnitMirror, name: 'label_unit' },
       { source: models.Audit, mirror: AuditMirror, name: 'audit' },
     ];
@@ -539,8 +553,13 @@ export const backfillMirror = async () => {
 
     for (const { source, mirror, name } of mirrorPairs) {
       try {
-        if (!mirror.rawAttributes || Object.keys(mirror.rawAttributes).length === 0) {
-          logger.warn(`Mirror backfill: ${name} - mirror model not initialized, skipping`);
+        if (
+          !mirror.rawAttributes ||
+          Object.keys(mirror.rawAttributes).length === 0
+        ) {
+          logger.warn(
+            `Mirror backfill: ${name} - mirror model not initialized, skipping`,
+          );
           continue;
         }
 
@@ -581,7 +600,9 @@ export const backfillMirror = async () => {
           // eslint-disable-next-line no-constant-condition
           while (true) {
             const where =
-              lastPk === null ? undefined : { [pk]: { [Sequelize.Op.gt]: lastPk } };
+              lastPk === null
+                ? undefined
+                : { [pk]: { [Sequelize.Op.gt]: lastPk } };
             // NOTE: Do NOT pass `raw: true` to findAll. With raw:true
             // Sequelize returns SQLite values as-stored (strings),
             // including DATE columns as "YYYY-MM-DD HH:mm:ss.SSS +00:00".
@@ -745,6 +766,31 @@ export const prepareDb = async () => {
   }
 
   await checkForMigrations(sequelize);
+
+  // FTS5 deferral crash-recovery (SQLite only). If the previous run
+  // crashed mid-catch-up while the project/unit FTS triggers were
+  // dropped, the deferral flag in `meta` is still set and the FTS tables
+  // are stale. Restore the triggers + rebuild FTS content from
+  // projects/units before any reads can observe stale data.
+  //
+  // Failure here is logged and swallowed: stale FTS reads are vastly
+  // preferable to a dead app on boot, and the next sync tick re-tries the
+  // restore via the same helper once all subscribed orgs are caught up.
+  //
+  // Lazy import so this file doesn't pull in src/models/index.js (which
+  // imports from this file) at module load.
+  if (sequelize.getDialect() === 'sqlite') {
+    try {
+      const { restoreV1FtsTriggersAndRebuildIfDeferred } =
+        // eslint-disable-next-line no-restricted-syntax -- circular dep guard
+        await import('../utils/fts5-deferral.js');
+      await restoreV1FtsTriggersAndRebuildIfDeferred();
+    } catch (error) {
+      logger.error(
+        `[v1]: FTS5 deferral recovery on boot failed; FTS reads may be stale until the next caught-up sync tick re-runs the restore: ${error?.message || error}`,
+      );
+    }
+  }
 
   // Run the mirror backfill after main migrations so all source and
   // mirror tables exist. This catches up rows that were inserted/

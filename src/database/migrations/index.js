@@ -34,6 +34,7 @@ import OrgSyncStatus from './20231020201652-OrgSyncStatus';
 import OrgSyncRemaining from './20231020214357-OrgSyncRemainingCount';
 import AddGenerationIndexToAudit from './20231207142225-AddGenerationIndexToAudit';
 import AddDataModelVersionStoreToOrganizationTable from './20241211153456-add-data-model-version-store-to-organization-table.js';
+import AddAuditSyncIndexes from './20260301120000-add-audit-sync-indexes.js';
 
 export const migrations = [
   {
@@ -183,5 +184,9 @@ export const migrations = [
   {
     migration: AddDataModelVersionStoreToOrganizationTable,
     name: '20241211153456-add-data-model-version-store-to-organization-table',
+  },
+  {
+    migration: AddAuditSyncIndexes,
+    name: '20260301120000-add-audit-sync-indexes',
   },
 ];
