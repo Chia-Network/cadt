@@ -1,3 +1,5 @@
+import { logger } from '../config/logger.js';
+
 const SQLITE_PRAGMAS = [
   'PRAGMA synchronous = NORMAL',
   'PRAGMA cache_size = -65536',
@@ -34,8 +36,13 @@ export const installSqlitePragmas = (sequelize) => {
     const connection = await getConnection(...args);
 
     if (!configuredConnections.has(connection)) {
-      await applySqlitePragmas(connection);
-      configuredConnections.add(connection);
+      try {
+        await applySqlitePragmas(connection);
+        configuredConnections.add(connection);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.warn(`Could not apply SQLite PRAGMAs: ${message}`);
+      }
     }
 
     return connection;
