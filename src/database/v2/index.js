@@ -11,6 +11,7 @@ import { migrations } from './migrations';
 import { seeders } from './seeders';
 
 import dotenv from 'dotenv';
+import { installSqlitePragmas } from '../sqlite-pragmas.js';
 dotenv.config({ quiet: true });
 
 // possible values: local, test
@@ -48,6 +49,7 @@ if (nodeEnv === 'test') {
 }
 
 export const sequelizeV2 = new Sequelize(config[dbConfigKey]);
+installSqlitePragmas(sequelizeV2, loggerV2);
 
 // Determine if MySQL mirror is configured by checking the actual config values
 // This allows MySQL mirror to work in any environment (local, test, production)
@@ -91,6 +93,7 @@ const isMysqlMirrorConfiguredForReconnectV2 = () => {
 };
 
 export const sequelizeV2Mirror = new Sequelize(config[mirrorConfig]);
+installSqlitePragmas(sequelizeV2Mirror, loggerV2);
 
 // Snapshot of "is the mirror Sequelize instance actually pointing at MySQL"
 // taken at module-load time, alongside sequelizeV2Mirror construction.
