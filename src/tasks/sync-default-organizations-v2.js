@@ -10,6 +10,8 @@ import { getConfig } from '../utils/config-loader.js';
 
 const CONFIG = getConfig().APP;
 
+let lastHeartbeat = 0;
+
 const task = new Task('sync-default-organizations-v2', async () => {
   try {
     await assertDataLayerAvailable();
@@ -25,6 +27,9 @@ const task = new Task('sync-default-organizations-v2', async () => {
       const defaultOrgList = await getDefaultOrganizationListV2();
       const userDeletedOrgs = await MetaV2.getUserDeletedOrgUids();
 
+      const pending = [];
+      const imported = [];
+
       for (const { orgUid } of defaultOrgList) {
         if (userDeletedOrgs?.includes(orgUid)) {
           loggerV2.verbose(
@@ -39,37 +44,50 @@ const task = new Task('sync-default-organizations-v2', async () => {
         });
 
         if (!organization) {
+          pending.push(orgUid);
+        } else {
+          imported.push(orgUid);
+        }
+      }
+
+      // Emit rate-limited heartbeat while orgs are still waiting
+      if (pending.length > 0) {
+        const now = Date.now();
+        if (now - lastHeartbeat >= 60_000) {
+          lastHeartbeat = now;
+          const sample = pending.slice(0, 5).map((id) => `${id.slice(0, 8)}...`);
+          const extra = pending.length > 5 ? `, ... +${pending.length - 5} more` : '';
+          loggerV2.info(
+            `[v2]: CADT is waiting for DataLayer to sync default organization stores: ${imported.length} imported, ${pending.length} waiting [${sample.join(', ')}${extra}]. Next check within 30s.`,
+          );
+        }
+      }
+
+      // Fan out imports in parallel
+      const results = await Promise.allSettled(
+        pending.map(async (orgUid) => {
           loggerV2.debug(
             `[v2]: default organization ${orgUid} was NOT found in the organizations table. running the import process to correct`,
           );
-          try {
-            await OrganizationsV2.importOrganization(orgUid);
-            // Verify the org was actually created (importOrganization may return early
-            // if store is not synced yet, without throwing an error)
-            const imported = await OrganizationsV2.findOne({
-              where: { org_uid: orgUid },
-              raw: true,
-            });
-            if (imported) {
-              loggerV2.info(`[v2]: Successfully imported default organization ${orgUid}`);
-            } else {
-              loggerV2.debug(
-                `[v2]: Import of default organization ${orgUid} deferred - store may still be syncing. Will retry on next task run.`,
-              );
-            }
-          } catch (importError) {
-            // Log error but continue to next org - this org will be retried on next task run
-            // This prevents one slow/failed import from blocking all other orgs
-            loggerV2.warn(
-              `[v2]: Failed to import default organization ${orgUid}: ${importError.message}. Will retry on next task run.`,
+          await OrganizationsV2.importOrganization(orgUid);
+          const importedOrg = await OrganizationsV2.findOne({
+            where: { org_uid: orgUid },
+            raw: true,
+          });
+          if (importedOrg) {
+            loggerV2.info(`[v2]: Successfully imported default organization ${orgUid}`);
+          } else {
+            loggerV2.debug(
+              `[v2]: Import of default organization ${orgUid} deferred - store may still be syncing. Will retry on next task run.`,
             );
           }
-        } else {
-          const orgReduced = { ...organization };
-          delete orgReduced.icon;
-          delete orgReduced.metadata;
-          loggerV2.debug(
-            `sync default orgs task found the following organization data associated with default org (icon and meta removed for compactness) ${orgUid}:\n${JSON.stringify(orgReduced)}`,
+        }),
+      );
+
+      for (const result of results) {
+        if (result.status === 'rejected') {
+          loggerV2.warn(
+            `[v2]: Failed to import a default organization: ${result.reason?.message || result.reason}. Will retry on next task run.`,
           );
         }
       }
@@ -77,14 +95,14 @@ const task = new Task('sync-default-organizations-v2', async () => {
   } catch (error) {
     loggerV2.error(
       `[v2]: failed to validate default organization records and subscriptions. Error ${error.message}. ` +
-        `Retrying in ${CONFIG?.TASKS?.ORGANIZATION_META_SYNC_TASK_INTERVAL || 300} seconds`,
+        `Retrying in ${CONFIG?.TASKS?.DEFAULT_ORGANIZATIONS_SYNC_TASK_INTERVAL || 30} seconds`,
     );
   }
 });
 
 const job = new SimpleIntervalJob(
   {
-    seconds: CONFIG?.TASKS?.ORGANIZATION_META_SYNC_TASK_INTERVAL || 300,
+    seconds: CONFIG?.TASKS?.DEFAULT_ORGANIZATIONS_SYNC_TASK_INTERVAL || 30,
     runImmediately: true,
   },
   task,
