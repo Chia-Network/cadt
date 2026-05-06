@@ -324,6 +324,21 @@ export const safeMirrorDbHandlerV2 = (callback) => {
   });
 };
 
+// Synchronous mirror write when a mirrorTransaction is provided; fire-and-
+// forget via safeMirrorDbHandlerV2 otherwise.  See mirrorWrite in the V1
+// database module for full rationale.
+export const mirrorWriteV2 = async (callback, mirrorTransaction) => {
+  if (mirrorTransaction) {
+    try {
+      await callback();
+    } catch (e) {
+      loggerV2.error(`v2_mirror_error:${e.message}`);
+    }
+  } else {
+    safeMirrorDbHandlerV2(callback);
+  }
+};
+
 // Initialize a V2 mirror Sequelize Model synchronously at module-load time.
 //
 // Model.init() only registers schema metadata on the Sequelize instance; it

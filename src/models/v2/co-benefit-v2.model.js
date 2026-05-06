@@ -2,7 +2,7 @@
 
 import _ from 'lodash';
 import { Sequelize, Model } from 'sequelize';
-import { sequelizeV2, safeMirrorDbHandlerV2 } from '../../database/v2/index.js';
+import { sequelizeV2, mirrorWriteV2 } from '../../database/v2/index.js';
 import { CoBenefitV2Mirror } from './co-benefit-v2.model.mirror.js';
 import StagingV2 from './staging-v2.model.js';
 import {
@@ -15,65 +15,65 @@ import { loggerV2 } from '../../config/logger.js';
 
 class CoBenefitV2 extends Model {
   static async create(values, options) {
-    safeMirrorDbHandlerV2(async () => {
+    await mirrorWriteV2(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await CoBenefitV2Mirror.create(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
     const result = await super.create(values, options);
     if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
 
   static async bulkCreate(values, options) {
-    safeMirrorDbHandlerV2(async () => {
+    await mirrorWriteV2(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await CoBenefitV2Mirror.bulkCreate(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
     const result = await super.bulkCreate(values, options);
     if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
 
   static async update(values, options) {
-    safeMirrorDbHandlerV2(async () => {
+    await mirrorWriteV2(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await CoBenefitV2Mirror.update(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
     const result = await super.update(values, options);
     if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
 
   static async upsert(values, options) {
-    safeMirrorDbHandlerV2(async () => {
+    await mirrorWriteV2(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await CoBenefitV2Mirror.upsert(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
     const result = await super.upsert(values, options);
     if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
 
   static async destroy(options) {
-    safeMirrorDbHandlerV2(async () => {
+    await mirrorWriteV2(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await CoBenefitV2Mirror.destroy(mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
     const result = await super.destroy(options);
     if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
     return result;

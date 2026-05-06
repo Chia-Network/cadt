@@ -351,6 +351,25 @@ export const safeMirrorDbHandler = (callback) => {
   });
 };
 
+// When a mirrorTransaction is provided the caller already authenticated and
+// started the transaction (see createAndProcessTransaction in
+// sync-registries), so we can run the callback directly and synchronously.
+// This avoids the fire-and-forget race in safeMirrorDbHandler where the
+// transaction is committed before detached writes complete.  When no
+// mirrorTransaction is present we fall back to the existing best-effort
+// fire-and-forget path so non-transactional API writes are unaffected.
+export const mirrorWrite = async (callback, mirrorTransaction) => {
+  if (mirrorTransaction) {
+    try {
+      await callback();
+    } catch (e) {
+      logger.error(`mirror_error:${e.message}`);
+    }
+  } else {
+    safeMirrorDbHandler(callback);
+  }
+};
+
 // Initialize a V1 mirror Sequelize Model synchronously at module-load time.
 //
 // Model.init() only registers schema metadata on the Sequelize instance; it
