@@ -41,12 +41,12 @@ if (nodeEnv === 'test') {
 }
 
 export const sequelize = new Sequelize(config[dbConfigKey]);
-installSqlitePragmas(sequelize);
+installSqlitePragmas(sequelize, logger);
 
 const mirrorConfig =
   (process.env.NODE_ENV || 'local') === 'local' ? 'mirror' : 'mirrorTest';
 export const sequelizeMirror = new Sequelize(config[mirrorConfig]);
-installSqlitePragmas(sequelizeMirror);
+installSqlitePragmas(sequelizeMirror, logger);
 
 // Snapshot of whether V1 MIRROR_DB was fully configured at module-load time.
 // Captured alongside sequelizeMirror construction so mirrorDBEnabled() stays

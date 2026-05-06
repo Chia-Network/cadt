@@ -1,5 +1,3 @@
-import { logger } from '../config/logger.js';
-
 const SQLITE_PRAGMAS = [
   'PRAGMA journal_mode = WAL',
   'PRAGMA synchronous = NORMAL',
@@ -24,7 +22,7 @@ const applySqlitePragmas = async (connection) => {
   });
 };
 
-export const installSqlitePragmas = (sequelize) => {
+export const installSqlitePragmas = (sequelize, pragmaLogger = console) => {
   if (sequelize.getDialect() !== 'sqlite') {
     return;
   }
@@ -42,7 +40,7 @@ export const installSqlitePragmas = (sequelize) => {
         configuredConnections.add(connection);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        logger.warn(`Could not apply SQLite PRAGMAs: ${message}`);
+        pragmaLogger.warn(`Could not apply SQLite PRAGMAs: ${message}`);
       }
     }
 
