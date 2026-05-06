@@ -12,6 +12,7 @@ import { migrations } from './migrations';
 import { seeders } from './seeders';
 
 import dotenv from 'dotenv';
+import { installSqlitePragmas } from './sqlite-pragmas.js';
 dotenv.config({ quiet: true });
 
 // possible values: local, test
@@ -40,10 +41,12 @@ if (nodeEnv === 'test') {
 }
 
 export const sequelize = new Sequelize(config[dbConfigKey]);
+installSqlitePragmas(sequelize);
 
 const mirrorConfig =
   (process.env.NODE_ENV || 'local') === 'local' ? 'mirror' : 'mirrorTest';
 export const sequelizeMirror = new Sequelize(config[mirrorConfig]);
+installSqlitePragmas(sequelizeMirror);
 
 // Snapshot of whether V1 MIRROR_DB was fully configured at module-load time.
 // Captured alongside sequelizeMirror construction so mirrorDBEnabled() stays
