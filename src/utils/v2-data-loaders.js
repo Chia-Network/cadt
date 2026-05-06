@@ -23,7 +23,7 @@ export const pullPickListValuesV2 = async () => {
         downloadedPickListV2 = JSON.parse(governanceData.meta_value);
       } else {
         // Fallback to hardcoded picklist if governance node doesn't provide one
-        loggerV2.info('[v2]: Picklist not found in governance data, using hardcoded fallback picklist');
+        loggerV2.debug('[v2]: Picklist not found in governance data, using hardcoded fallback picklist');
         downloadedPickListV2 = PickListStub;
       }
     } catch (error) {

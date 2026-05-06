@@ -1627,7 +1627,7 @@ class OrganizationsV2 extends Model {
       try {
         const syncStatus = await datalayer.getDataLayerStoreSyncStatus(orgUid);
         if (!isDlStoreSynced(syncStatus?.sync_status)) {
-          loggerV2.info(
+          loggerV2.debug(
             `[v2]: Skipping import of organization ${orgUid} - store not yet synced. Will retry on next task run.`,
           );
           return;
@@ -1689,7 +1689,7 @@ class OrganizationsV2 extends Model {
           singletonStoreId,
         );
         if (!isDlStoreSynced(singletonSyncStatus?.sync_status)) {
-          loggerV2.info(
+          loggerV2.debug(
             `[v2]: Skipping import of organization ${orgUid} - singleton store ${singletonStoreId} not yet synced. Will retry on next task run.`,
           );
           return;

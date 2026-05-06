@@ -619,6 +619,9 @@ export const withConfigOverride = async (testFn, configOverrides) => {
         // Legacy support: if override keys don't match sections, merge into V1
         // This handles old-style overrides like { GOVERNANCE: { ... }, MIRROR_DB: { ... } }
         // These are V1-specific sections
+        if (!currentConfig.V1) {
+          currentConfig.V1 = {};
+        }
         if (!currentConfig.V1[section]) {
           currentConfig.V1[section] = {};
         }

@@ -967,7 +967,7 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
   }
 
   if (subscriptions.includes(storeId)) {
-    logger.info(`Already subscribed to: ${storeId}`);
+    logger.debug(`Already subscribed to: ${storeId}`);
     return true;
   }
 

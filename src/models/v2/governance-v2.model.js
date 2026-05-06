@@ -113,8 +113,36 @@ class GovernanceV2 extends Model {
       );
     }
 
+    // Compare incoming values against existing rows to detect actual changes
+    let changed = false;
+    for (const update of updates) {
+      const existing = await GovernanceV2.findOne({
+        where: { meta_key: update.meta_key },
+        raw: true,
+      });
+      if (!existing || existing.meta_value !== update.meta_value) {
+        changed = true;
+        break;
+      }
+    }
+
     loggerV2.debug('[v2]: upserting governance data from governance body store');
     await Promise.all(updates.map(async (update) => GovernanceV2.upsert(update)));
+    return { changed };
+  }
+
+  static _lastHeartbeat = 0;
+
+  static _emitHeartbeat(stage, storeId, syncStatus) {
+    const now = Date.now();
+    if (now - GovernanceV2._lastHeartbeat < 60_000) return;
+    GovernanceV2._lastHeartbeat = now;
+    const statusStr = syncStatus
+      ? ` (generation ${syncStatus.generation ?? '?'}/${syncStatus.target_generation ?? '?'})`
+      : '';
+    loggerV2.info(
+      `[v2]: CADT is waiting for DataLayer to sync governance data: ${stage} store ${storeId}${statusStr}. Next check within 30s.`,
+    );
   }
 
   /**
@@ -482,9 +510,10 @@ class GovernanceV2 extends Model {
     try {
       const bodyStoreSyncStatus = await datalayer.getDataLayerStoreSyncStatus(GOVERNANCE_BODY_ID);
       if (!isDlStoreSynced(bodyStoreSyncStatus?.sync_status)) {
-        loggerV2.info(
+        loggerV2.debug(
           `[v2]: governance body store ${GOVERNANCE_BODY_ID} not yet synced. Skipping sync, will retry on next task run.`,
         );
+        GovernanceV2._emitHeartbeat('body', GOVERNANCE_BODY_ID, bodyStoreSyncStatus?.sync_status);
         return;
       }
     } catch (error) {
@@ -512,8 +541,12 @@ class GovernanceV2 extends Model {
         loggerV2.info(
           `[v2]: using legacy governance upsert method for governance store ${GOVERNANCE_BODY_ID}`,
         );
-        await GovernanceV2.upsertGovernanceDownload(GOVERNANCE_BODY_ID, governanceData);
-        loggerV2.info('[v2]: Successfully synced legacy governance data');
+        const { changed } = await GovernanceV2.upsertGovernanceDownload(GOVERNANCE_BODY_ID, governanceData);
+        if (changed) {
+          loggerV2.info('[v2]: Successfully synced legacy governance data');
+        } else {
+          loggerV2.debug('[v2]: Legacy governance data unchanged, no update needed');
+        }
         return;
       }
 
@@ -549,9 +582,10 @@ class GovernanceV2 extends Model {
       try {
         const versionedSyncStatus = await datalayer.getDataLayerStoreSyncStatus(versionedGovernanceStoreId);
         if (!isDlStoreSynced(versionedSyncStatus?.sync_status)) {
-          loggerV2.info(
+          loggerV2.debug(
             `[v2]: versioned governance store ${versionedGovernanceStoreId} not yet synced. Skipping sync, will retry on next task run.`,
           );
+          GovernanceV2._emitHeartbeat('versioned', versionedGovernanceStoreId, versionedSyncStatus?.sync_status);
           return;
         }
       } catch (error) {
@@ -570,8 +604,12 @@ class GovernanceV2 extends Model {
         false,
       );
 
-      await GovernanceV2.upsertGovernanceDownload(GOVERNANCE_BODY_ID, versionedGovernanceData);
-      loggerV2.info('[v2]: Successfully synced versioned governance data');
+      const { changed } = await GovernanceV2.upsertGovernanceDownload(GOVERNANCE_BODY_ID, versionedGovernanceData);
+      if (changed) {
+        loggerV2.info('[v2]: Successfully synced versioned governance data');
+      } else {
+        loggerV2.debug('[v2]: Versioned governance data unchanged, no update needed');
+      }
     } catch (error) {
       loggerV2.error(
         `[v2]: Error syncing governance data: ${error.message}. Cached governance data will be used until next task run.`,

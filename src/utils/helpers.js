@@ -162,6 +162,9 @@ export const updateNilVerificationBodyAsEmptyString = (stagedItem) => {
  * @returns {void}
  */
 export function mergeObjects(target, source) {
+  if (typeof target !== 'object' || target === null) {
+    return;
+  }
   if (typeof source !== 'object' || source === null) {
     return;
   }
