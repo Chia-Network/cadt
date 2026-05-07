@@ -1,6 +1,6 @@
 'use strict';
 import { Model } from 'sequelize';
-import { sequelize, safeMirrorDbHandler } from '../../database';
+import { sequelize, safeMirrorDbHandler, mirrorWrite } from '../../database';
 
 import ModelTypes from './related-projects.modeltypes.js';
 import { RelatedProjectMirror } from './related-projects.model.mirror';
@@ -25,35 +25,35 @@ class RelatedProject extends Model {
   }
 
   static async create(values, options) {
-    safeMirrorDbHandler(async () => {
+    await mirrorWrite(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await RelatedProjectMirror.create(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
     return super.create(values, options);
   }
 
   static async destroy(options) {
-    safeMirrorDbHandler(async () => {
+    await mirrorWrite(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await RelatedProjectMirror.destroy(mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
     return super.destroy(options);
   }
 
   static async upsert(values, options) {
-    safeMirrorDbHandler(async () => {
+    await mirrorWrite(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await RelatedProjectMirror.upsert(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
     return super.upsert(values, options);
   }
 }

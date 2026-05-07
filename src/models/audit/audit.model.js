@@ -1,7 +1,7 @@
 'use strict';
 
 import { Sequelize, Model } from 'sequelize';
-import { sequelize, safeMirrorDbHandler } from '../../database';
+import { sequelize, mirrorWrite } from '../../database';
 import { AuditMirror } from './audit.model.mirror';
 import ModelTypes from './audit.modeltypes.js';
 import findDuplicateIssuancesSql from './sql/find-duplicate-issuances.sql.js';
@@ -10,46 +10,46 @@ import { waitForSyncRegistriesTransaction } from '../../utils/model-utils.js';
 
 class Audit extends Model {
   static async create(values, options) {
-    safeMirrorDbHandler(async () => {
+    await mirrorWrite(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await AuditMirror.create(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
     return super.create(values, options);
   }
 
   static async bulkCreate(values, options) {
-    safeMirrorDbHandler(async () => {
+    await mirrorWrite(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await AuditMirror.bulkCreate(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
     return super.bulkCreate(values, options);
   }
 
   static async destroy(options) {
-    safeMirrorDbHandler(async () => {
+    await mirrorWrite(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await AuditMirror.destroy(mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
     return super.destroy(options);
   }
 
   static async upsert(values, options) {
-    safeMirrorDbHandler(async () => {
+    await mirrorWrite(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await AuditMirror.upsert(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
     return super.upsert(values, options);
   }
 

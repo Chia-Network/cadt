@@ -253,14 +253,24 @@ async function createAndProcessTransaction(callback, afterCommitCallbacks) {
 
     return true;
   } catch (error) {
-    // Roll back the transaction if an error occurs
+    logger.error(
+      `encountered error syncing organization audit. Rolling back transaction. Error: ${error}`,
+    );
     if (transaction) {
-      logger.error(
-        `encountered error syncing organization audit. Rolling back transaction. Error: ${error}`,
-      );
-      await transaction.rollback();
-      return false;
+      try {
+        await transaction.rollback();
+      } catch (rollbackErr) {
+        logger.error(`transaction rollback failed: ${rollbackErr.message}`);
+      }
     }
+    if (mirrorTransaction) {
+      try {
+        await mirrorTransaction.rollback();
+      } catch (rollbackErr) {
+        logger.error(`mirror transaction rollback failed: ${rollbackErr.message}`);
+      }
+    }
+    return false;
   } finally {
     releaseTransactionMutex();
   }

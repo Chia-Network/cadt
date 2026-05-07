@@ -1,7 +1,7 @@
 'use strict';
 
 import { Model } from 'sequelize';
-import { sequelize, safeMirrorDbHandler } from '../../database';
+import { sequelize, safeMirrorDbHandler, mirrorWrite } from '../../database';
 import { Project } from '../projects';
 import { Unit } from '../units';
 
@@ -37,35 +37,35 @@ class Label extends Model {
   }
 
   static async create(values, options) {
-    safeMirrorDbHandler(async () => {
+    await mirrorWrite(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await LabelMirror.create(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
     return super.create(values, options);
   }
 
   static async destroy(options) {
-    safeMirrorDbHandler(async () => {
+    await mirrorWrite(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await LabelMirror.destroy(mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
     return super.destroy(options);
   }
 
   static async upsert(values, options) {
-    safeMirrorDbHandler(async () => {
+    await mirrorWrite(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await LabelMirror.upsert(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
     return super.upsert(values, options);
   }
 }

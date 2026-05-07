@@ -2,7 +2,7 @@
 import { Model } from 'sequelize';
 
 import { CoBenefitMirror } from './co-benefits.model.mirror';
-import { sequelize, safeMirrorDbHandler } from '../../database';
+import { sequelize, safeMirrorDbHandler, mirrorWrite } from '../../database';
 import { Project } from '../projects';
 import ModelTypes from './co-benefits.modeltypes.js';
 
@@ -24,35 +24,35 @@ class CoBenefit extends Model {
   }
 
   static async create(values, options) {
-    safeMirrorDbHandler(async () => {
+    await mirrorWrite(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await CoBenefitMirror.create(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
     return super.create(values, options);
   }
 
   static async upsert(values, options) {
-    safeMirrorDbHandler(async () => {
+    await mirrorWrite(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await CoBenefitMirror.upsert(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
     return super.upsert(values, options);
   }
 
   static async destroy(options) {
-    safeMirrorDbHandler(async () => {
+    await mirrorWrite(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await CoBenefitMirror.destroy(mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
     return super.destroy(options);
   }
 }
