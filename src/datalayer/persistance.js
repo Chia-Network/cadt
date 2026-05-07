@@ -311,7 +311,7 @@ const addMirrorInner = async (storeId, url, forceAddMirror) => {
   );
 
   if (mirror) {
-    logger.info(`Mirror already available for ${storeId} at ${url}`);
+    logger.verbose(`Mirror already available for ${storeId} at ${url}`);
     logger.silly('[MIRROR_DEBUG] Mirror already exists, returning true');
     return true;
   }
