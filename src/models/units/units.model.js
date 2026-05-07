@@ -6,6 +6,7 @@ import * as rxjs from 'rxjs';
 import {
   sequelize,
   safeMirrorDbHandler,
+  mirrorWrite,
   sanitizeSqliteFtsQuery,
 } from '../../database';
 import { Label, Issuance, Staging, Organization } from '../../models';
@@ -68,13 +69,13 @@ class Unit extends Model {
   }
 
   static async create(values, options) {
-    safeMirrorDbHandler(async () => {
+    await mirrorWrite(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await UnitMirror.create(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
 
     const createResult = await super.create(values, options);
     const { orgUid } = createResult;
@@ -85,13 +86,13 @@ class Unit extends Model {
   }
 
   static async upsert(values, options) {
-    safeMirrorDbHandler(async () => {
+    await mirrorWrite(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await UnitMirror.upsert(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
 
     const upsertResult = await super.upsert(values, options);
 
@@ -103,13 +104,13 @@ class Unit extends Model {
   }
 
   static async destroy(options) {
-    safeMirrorDbHandler(async () => {
+    await mirrorWrite(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await UnitMirror.destroy(mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
 
     Unit.changes.next(['units']);
     return super.destroy(options);

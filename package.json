@@ -40,6 +40,7 @@
     "test:v2:live:all": "npm run test:v2:live:organization:create && npm run test:v2:live:data && npm run test:v2:live:organization:delete",
     "resetTestDb": "rm -rf ./tests/test-dbs && mkdir -p ./tests/test-dbs",
     "resetMirrorDb": "npx sequelize-cli db:drop --env mirror",
+    "postinstall": "cd node_modules/sqlite3 && node-gyp rebuild --napi_build_version=6",
     "prepare": "husky",
     "build": "babel src --keep-file-extension --out-dir build --copy-files && cp package.json ./build && node change-build-package-type-commonjs.cjs",
     "build-migrations": "babel migrations --keep-file-extension --out-dir dist/migrations --copy-files",
@@ -77,7 +78,7 @@
     "express-rate-limit": "^8.2.1",
     "joi": "^17.13.3",
     "js-yaml": "^4.1.1",
-    "lodash": "^4.17.23",
+    "lodash": "^4.18.1",
     "log-update": "^7.0.2",
     "multer": "^2.0.2",
     "mysql2": "^3.16.3",
@@ -122,7 +123,10 @@
   "overrides": {
     "diff": "8.0.3",
     "esbuild": "0.27.3",
-    "tar": "7.5.13"
+    "tar": "7.5.13",
+    "mocha": {
+      "serialize-javascript": "7.0.5"
+    }
   },
   "contributors": [
     "Michael Taylor <5665004+MichaelTaylor3D@users.noreply.github.com>",

@@ -128,7 +128,24 @@ You'll need:
 ​
 - Git
 - [nvm](https://github.com/nvm-sh/nvm) - This app uses `nvm` to align node versions across development, CI and production. If you're working on Windows, you should consider [nvm-windows](https://github.com/coreybutler/nvm-windows)
+- C/C++ build tools for compiling the SQLite native module (see below)
 - A working [Chia installation](https://docs.chia.net/installation/#using-the-cli) running wallet and datalayer (full node recommended)
+
+##### Build Prerequisites
+
+The `sqlite3` npm package is compiled from source during `npm install` to ensure compatibility across platforms. This requires a C/C++ toolchain and Python 3:
+
+**Debian / Ubuntu:**
+
+```
+sudo apt-get install -y build-essential python3
+```
+
+**macOS:**
+
+```
+xcode-select --install
+```
 
 To install from source:
 
@@ -137,6 +154,7 @@ git clone git@github.com:Chia-Network/cadt.git
 cd cadt
 nvm install
 nvm use
+npm install
 npm run start
 ```
 
@@ -251,9 +269,10 @@ In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), CADT will add
   * **AUTO_MIRROR_EXTERNAL_STORES**: When set to true (the default), CADT will automatically create mirrors for each store you are subscribed to. Mirroring all subscriptions using the `DATALAYER_FILE_SERVER_URL` will make the entire CADT network more resilient and distributed. Note: `DATALAYER_FILE_SERVER_URL` must also be set to a valid URL or IP address for mirrors to be created. Both settings are required for external store mirroring to function.
   * **LOG_LEVEL**: Controls verbosity of logging. Common settings are `info` and `debug`. Setting to `silly` will log all queries.
   * **TASKS**: Section for configuring sync intervals.
-    * **GOVERNANCE_SYNC_TASK_INTERVAL**: Syncs new organizations from the governance node. Default 86400 seconds.
-    * **ORGANIZATION_META_SYNC_TASK_INTERVAL**: Syncs organization data from the blockchain. Default 300 seconds.
-    * **PICKLIST_SYNC_TASK_INTERVAL**: Syncs picklist from the governance node. Default 60 seconds.
+    * **GOVERNANCE_SYNC_TASK_INTERVAL**: Syncs picklist, orgList, and glossary from the governance node. Default 30 seconds.
+    * **DEFAULT_ORGANIZATIONS_SYNC_TASK_INTERVAL**: Subscribes to and imports default organizations published by the governance node. Default 30 seconds.
+    * **ORGANIZATION_META_SYNC_TASK_INTERVAL**: Refreshes metadata for already-imported organizations. Default 300 seconds.
+    * **PICKLIST_SYNC_TASK_INTERVAL**: Syncs picklist from the governance node. Default 30 seconds.
     * **MIRROR_CHECK_TASK_INTERVAL**: Checks if our DataLayer is advertising our `DATALAYER_FILE_SERVER_URL` as a mirror for all subscriptions when `AUTO_MIRROR_EXTERNAL_STORES` is true. Default 86460 seconds.
     * **VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL**: Validates the organization table periodically. Default 1800 seconds.
   * **REQUEST_CONTENT_LIMITS**: Section for configuring request size limits to prevent denial-of-service attacks. These limits control the maximum array lengths in API requests.
