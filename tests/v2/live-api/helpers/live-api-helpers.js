@@ -1307,8 +1307,17 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
           }
         }
       } catch (statusError) {
-        // Re-throw stuck state errors
-        if (statusError.message?.includes('appears stuck')) {
+        // Re-throw terminal errors we explicitly threw above (FAILED
+        // state, stuck-state) so the outer org-list catch can decide
+        // what to do with them. HTTP-level errors from the status
+        // endpoint (e.g. 404 on older builds, transient 5xx) fall
+        // through and are silently logged so the loop can keep
+        // polling the org list.
+        if (
+          statusError.message?.includes('Organization creation failed') ||
+          statusError.message?.includes('appears stuck') ||
+          statusError.message?.includes('creation FAILED')
+        ) {
           throw statusError;
         }
         // Status endpoint might not exist or may fail - that's okay
@@ -1606,8 +1615,17 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
           }
         }
       } catch (statusError) {
-        // Re-throw stuck state errors
-        if (statusError.message?.includes('appears stuck')) {
+        // Re-throw terminal errors we explicitly threw above (FAILED
+        // state, stuck-state) so the outer org-list catch can decide
+        // what to do with them. HTTP-level errors from the status
+        // endpoint (e.g. 404 on older builds, transient 5xx) fall
+        // through and are silently logged so the loop can keep
+        // polling the org list.
+        if (
+          statusError.message?.includes('Organization creation failed') ||
+          statusError.message?.includes('appears stuck') ||
+          statusError.message?.includes('creation FAILED')
+        ) {
           throw statusError;
         }
         // Status endpoint might not exist or may fail - that's okay
