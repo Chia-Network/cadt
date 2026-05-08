@@ -55,7 +55,7 @@ const app = express();
 // This also silences the express-rate-limit ValidationError that fires
 // when X-Forwarded-For is present but trust proxy is disabled.
 // Never use `true`; it trusts the user-supplied leftmost IP.
-const trustProxy = getConfig().APP.TRUST_PROXY ?? 0;
+const trustProxy = parseInt(getConfig().APP.TRUST_PROXY ?? 0, 10);
 app.set('trust proxy', trustProxy);
 
 app.use(
