@@ -123,6 +123,7 @@
   "overrides": {
     "diff": "8.0.3",
     "esbuild": "0.27.3",
+    "ip-address": "10.1.1",
     "tar": "7.5.13",
     "mocha": {
       "serialize-javascript": "7.0.5"
