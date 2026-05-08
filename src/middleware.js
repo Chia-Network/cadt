@@ -20,6 +20,7 @@ import { Organization } from './models';
 import { OrganizationsV2 } from './models/v2/index.js';
 import { logger } from './config/logger.js';
 import { sendReadOnlyError } from './utils/read-only-response.js';
+import { getRateLimitRetryAfterSeconds } from './utils/rate-limit.js';
 
 const { USE_SIMULATOR } = getConfig().APP;
 
@@ -68,7 +69,7 @@ const generalLimiter = rateLimit({
       message: 'Too many requests. Please slow down and try again later.',
       error: 'RATE_LIMIT_EXCEEDED',
       success: false,
-      retryAfter: Math.ceil(req.rateLimit.resetTime / 1000), // seconds until reset
+      retryAfter: getRateLimitRetryAfterSeconds(req.rateLimit?.resetTime),
     });
   },
 });
