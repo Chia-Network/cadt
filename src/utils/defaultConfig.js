@@ -2,6 +2,17 @@ export const defaultConfig = {
   APP: {
     CW_PORT: 31310,
     BIND_ADDRESS: 'localhost',
+    /**
+     * Number of reverse-proxy hops between the internet and CADT.
+     * Passed directly to Express `trust proxy`.
+     *   0  – no proxy (default, direct access)
+     *   1  – one hop  (nginx OR Cloudflare-only)
+     *   2  – two hops (Cloudflare → nginx, typical k8s ingress setup)
+     * Setting this correctly lets express-rate-limit see the real client IP
+     * instead of the proxy IP.  Never set to `true`; that trusts the
+     * user-supplied leftmost IP and defeats rate limiting.
+     */
+    TRUST_PROXY: 0,
     DATALAYER_URL: 'https://localhost:8562',
     WALLET_URL: 'https://localhost:9256',
     USE_SIMULATOR: false,

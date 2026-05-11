@@ -47,6 +47,17 @@ const isReadOnlyMethodBlocked = (method) => !['GET', 'HEAD', 'OPTIONS'].includes
 
 const app = express();
 
+// Configure proxy trust so Express resolves real client IPs from
+// X-Forwarded-For headers.  TRUST_PROXY counts reverse-proxy hops:
+//   0  – no proxy (default, direct access)
+//   1  – one hop  (nginx OR Cloudflare-only)
+//   2  – two hops (Cloudflare → nginx, typical k8s ingress setup)
+// This also silences the express-rate-limit ValidationError that fires
+// when X-Forwarded-For is present but trust proxy is disabled.
+// Never use `true`; it trusts the user-supplied leftmost IP.
+const trustProxy = parseInt(getConfig().APP.TRUST_PROXY ?? 0, 10);
+app.set('trust proxy', trustProxy);
+
 app.use(
   cors({
     exposedHeaders: Object.values(headerKeys).join(','),
