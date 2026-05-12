@@ -41,6 +41,7 @@ const HEALTH_ENDPOINTS = new Set([
   '/v2/health',
   '/v1/health/wallet',
   '/v2/health/wallet',
+  '/diagnostics',
 ]);
 
 const isHealthEndpoint = (path) => HEALTH_ENDPOINTS.has(path);
@@ -314,6 +315,13 @@ app.use(function (req, res, next) {
 });
 
 app.use(async function (req, res, next) {
+  // Skip the home-organization-synced header probe on health endpoints so
+  // /diagnostics (and /health*) can respond even when migrations or the
+  // organizations table are slow to come up.
+  if (isHealthEndpoint(req.path)) {
+    return next();
+  }
+
   if (process.env.NODE_ENV !== 'test') {
     // Wait for migrations to complete before accessing organizations table
     const { waitForMigrations } = await import('./routes/index.js');
@@ -396,6 +404,13 @@ app.use(async function (req, res, next) {
 });
 
 app.use(async function (req, res, next) {
+  // Skip the all-data-synced header probe on health endpoints so /diagnostics
+  // (and /health*) can respond even when migrations or the organizations
+  // table are slow to come up.
+  if (isHealthEndpoint(req.path)) {
+    return next();
+  }
+
   // Wait for migrations to complete before accessing organizations table
   const { waitForMigrations } = await import('./routes/index.js');
   await waitForMigrations();
@@ -474,6 +489,14 @@ app.use(async function (req, res, next) {
 });
 
 app.use(async function (req, res, next) {
+  // Skip the wallet-synced header probe for health endpoints. walletIsSynced
+  // can hang for up to 300s when the wallet RPC is unreachable, which would
+  // defeat the purpose of /diagnostics (and slow down /health) precisely in
+  // the scenarios where those endpoints are most useful.
+  if (isHealthEndpoint(req.path)) {
+    return next();
+  }
+
   if (USE_SIMULATOR) {
     res.setHeader(headerKeys.WALLET_SYNCED, true);
   } else {
@@ -488,6 +511,38 @@ app.get('/health', (req, res) => {
     message: 'OK',
     timestamp: new Date().toISOString(),
   });
+});
+
+// System-wide diagnostics. Mounted on the root app (not under /v1 or /v2) so
+// it can report CADT, Chia, and machine status independent of the data-model
+// version. Lives in HEALTH_ENDPOINTS above so it bypasses the rate limiter,
+// startup gates, and the Chia/datalayer assertions -- this endpoint is meant
+// to be useful precisely when those subsystems are broken.
+//
+// Auth: handled by the global API-key middleware further up, which runs for
+// EVERY route including HEALTH_ENDPOINTS. When CADT_API_KEY is configured the
+// caller must present x-api-key before reaching this handler. We rely on
+// that single enforcement point rather than duplicating the constant-time
+// check here.
+//
+// Read-only: when V1 or V2 READ_ONLY is set we strip sensitive fields
+// (balances, transaction details, peer details, subscription IDs, home org
+// IDs) the same way wallet-health.js does for /v{1,2}/health/wallet.
+app.get('/diagnostics', async (req, res) => {
+  try {
+    const configV1 = getConfig();
+    const configV2 = getConfigV2();
+    const readOnly = configV2.READ_ONLY === true || configV1.READ_ONLY === true;
+    const { getDiagnosticsResponse } = await import('./routes/diagnostics.js');
+    const result = await getDiagnosticsResponse({ readOnly });
+    return res.status(200).json(result);
+  } catch (error) {
+    logger.error(`[diagnostics]: unexpected error building response: ${error.message}`);
+    return res.status(200).json({
+      timestamp: new Date().toISOString(),
+      error: `Failed to build diagnostics response: ${error.message}`,
+    });
+  }
 });
 
 // Conditionally mount V1 and V2 routes based on config
