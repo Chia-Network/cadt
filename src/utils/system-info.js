@@ -61,10 +61,19 @@ const getDiskInfo = async (targetPath) => {
     }
 
     const stats = await fs.promises.statfs(resolvedPath);
+    // Per POSIX statvfs(3) the `blocks`/`bavail` fields are denominated in
+    // `f_frsize` (fundamental block size), not `f_bsize` (optimal transfer
+    // block size). Node's libuv wrapper currently only exposes `bsize`, and
+    // on Linux+ext4 the two are equal so `blocks * bsize` matches `df -B1`
+    // byte-exactly. We still prefer `frsize` when present (some Node forks
+    // and future versions expose it) and fall back to `bsize` -- a zero-cost
+    // hedge against environments like Docker+VirtioFS where the two can
+    // differ.
+    const blockSize = stats.frsize ?? stats.bsize;
     return {
       path: resolvedPath,
-      totalBytes: stats.blocks * stats.bsize,
-      freeBytes: stats.bavail * stats.bsize,
+      totalBytes: stats.blocks * blockSize,
+      freeBytes: stats.bavail * blockSize,
     };
   } catch (error) {
     logger.debug(`[diagnostics]: failed to stat disk for ${targetPath}: ${error.message}`);
