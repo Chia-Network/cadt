@@ -83,7 +83,14 @@ describe('Wallet Health - Live', function () {
       expect(res.status).to.equal(200);
 
       const body = res.body;
-      console.log('  /diagnostics response keys:', Object.keys(body).join(', '));
+      // Log the full response so it's easy to inspect what /diagnostics
+      // actually reports against this CI environment. This runs as a
+      // preflight in 5 different live-api workflows, so the body is the
+      // best single artifact for eyeballing the endpoint's real output.
+      console.log('  ----- /diagnostics response -----');
+      console.log(JSON.stringify(body, null, 2)
+        .split('\n').map((l) => '  ' + l).join('\n'));
+      console.log('  ----- end /diagnostics response -----');
 
       // Top-level shape -----------------------------------------------------
       expect(body.timestamp, 'timestamp must be ISO-8601').to.match(
