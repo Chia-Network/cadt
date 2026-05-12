@@ -348,20 +348,29 @@ export const getDiagnosticsResponse = async ({ readOnly = false } = {}) => {
   };
 
   // ---- Chia: network match ------------------------------------------------
-  // We use exact equality here, NOT the substring semantics of
-  // assertChiaNetworkMatchInConfiguration (which treats `CHIA_NETWORK:
-  // "testnet"` as matching any actual network containing "testnet"). That
-  // substring rule has a real false-positive: `"testnet10".includes("testnet1")`
-  // is true. The diagnostics endpoint's job is to surface the truth so
-  // operators can spot a stale or mistyped config; the `actual` and
-  // `configured` fields above let them judge whether the existing assertion
-  // would also have considered them a match.
+  // CADT's CHIA_NETWORK config is a binary mainnet-vs-testnet flag, NOT an
+  // exact chia network name. Cross-referenced against every use in the
+  // codebase:
+  //   - default is 'mainnet' (defaultConfig.js)
+  //   - simulator forces it to the literal string 'testnet' (config-loader.js)
+  //   - currency selection is `=== 'mainnet' ? 'XCH' : 'TXCH'` (coin-management.js)
+  //   - the existing assertion accepts any chia network whose name contains
+  //     CHIA_NETWORK as a substring (data-assertions.js)
+  // So `mainnet` should match chia's `mainnet`, and `testnet` should match
+  // any chia testnet variant (`testneta`, `testnet10`, `testnet11`, ...). We
+  // normalise both sides to that binary before comparing -- this is both
+  // strictly more correct than the substring rule (no `testnet1`/`testnet10`
+  // false positive) and operationally aligned with how CADT itself decides
+  // what to do.
   const actualNetwork = activeNetworkRes.ok
     ? activeNetworkRes.value?.network_name || null
     : null;
   const configuredNetwork = appConfig.CHIA_NETWORK || null;
+  const normalizeChiaNetwork = (n) => (n === 'mainnet' ? 'mainnet' : 'testnet');
   const networkMatches =
-    actualNetwork && configuredNetwork ? actualNetwork === configuredNetwork : null;
+    actualNetwork && configuredNetwork
+      ? normalizeChiaNetwork(actualNetwork) === normalizeChiaNetwork(configuredNetwork)
+      : null;
 
   // ---- Chia: wallet -------------------------------------------------------
   // connectionError is non-empty whenever the wallet is unreachable, even

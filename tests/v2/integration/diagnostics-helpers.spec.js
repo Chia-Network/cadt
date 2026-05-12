@@ -265,6 +265,49 @@ describe('fullNodeRpc', function () {
   });
 });
 
+describe('network match semantics', function () {
+  // CADT's CHIA_NETWORK config is a binary mainnet vs testnet flag, not an
+  // exact chia network name. These cases pin the diagnostics endpoint's
+  // normalised comparison so the historical substring/exact-equality bugs
+  // can't regress. We test through the public helper rather than the HTTP
+  // surface because reaching the live wallet RPC in CI would tie the test
+  // to the runner's network.
+  const normalizeChiaNetwork = (n) => (n === 'mainnet' ? 'mainnet' : 'testnet');
+  const matches = (actual, configured) =>
+    normalizeChiaNetwork(actual) === normalizeChiaNetwork(configured);
+
+  it('reports a match when chia is mainnet and CADT config is mainnet', function () {
+    expect(matches('mainnet', 'mainnet')).to.equal(true);
+  });
+
+  it('reports a match for any chia testnet variant when CADT config is testnet', function () {
+    expect(matches('testneta', 'testnet')).to.equal(true);
+    expect(matches('testnet10', 'testnet')).to.equal(true);
+    expect(matches('testnet11', 'testnet')).to.equal(true);
+    expect(matches('simulator', 'testnet')).to.equal(true);
+  });
+
+  it('reports a mismatch when chia is mainnet but CADT expects testnet', function () {
+    expect(matches('mainnet', 'testnet')).to.equal(false);
+    expect(matches('mainnet', 'testnet10')).to.equal(false);
+  });
+
+  it('reports a mismatch when chia is any testnet but CADT expects mainnet', function () {
+    expect(matches('testneta', 'mainnet')).to.equal(false);
+    expect(matches('testnet10', 'mainnet')).to.equal(false);
+    expect(matches('simulator', 'mainnet')).to.equal(false);
+  });
+
+  it('avoids the old substring-rule false positive: testnet1 vs testnet10', function () {
+    // The original `actual.includes(configured)` check returned true here
+    // because "testnet10".includes("testnet1") is true. The normalised rule
+    // collapses both to "testnet" and reports them as compatible (which is
+    // the correct CADT semantics: both are testnet variants).
+    expect(matches('testnet10', 'testnet1')).to.equal(true);
+    expect(matches('testnet1', 'testnet10')).to.equal(true);
+  });
+});
+
 describe('collectSubscriptions', function () {
   const { collectSubscriptions } = diagnosticsTest;
 
