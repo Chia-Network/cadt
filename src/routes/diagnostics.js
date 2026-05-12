@@ -225,20 +225,28 @@ const buildTrustedPeerView = (connectionsResult, chiaConfigResult) => {
 export const getDiagnosticsResponse = async ({ readOnly = false } = {}) => {
   const timestamp = new Date().toISOString();
 
+  const configV1 = getConfig();
+  const configV2 = getConfigV2();
+  const appConfig = configV1.APP || {};
+
+  // Short-circuit BEFORE pulling in the heavy wallet/datalayer/model
+  // dependencies. The read-only path only needs system-info / process-scan /
+  // chia-tools probes plus the synchronously-available config, so importing
+  // wallet.js or models/v2/index.js here would (a) defeat the "no
+  // authenticated RPC on unauthenticated public hits" property and (b)
+  // make /diagnostics itself fail whenever the DB/wallet modules can't
+  // initialize -- which is precisely the failure mode this endpoint exists
+  // to diagnose.
+  if (readOnly) {
+    return buildReadOnlyResponse({ timestamp, configV1, configV2, appConfig });
+  }
+
   const wallet = (await import('../datalayer/wallet.js')).default;
   const fullNodeRpc = (await import('../datalayer/fullNodeRpc.js')).default;
   const persistance = await import('../datalayer/persistance.js');
   const { Organization } = await import('../models/index.js');
   const { OrganizationsV2 } = await import('../models/v2/index.js');
   const fullNodeModule = await import('../datalayer/fullNode.js');
-
-  const configV1 = getConfig();
-  const configV2 = getConfigV2();
-  const appConfig = configV1.APP || {};
-
-  if (readOnly) {
-    return buildReadOnlyResponse({ timestamp, configV1, configV2, appConfig });
-  }
 
   // Kick off every external call in parallel. None of these can throw.
   const [
@@ -340,12 +348,20 @@ export const getDiagnosticsResponse = async ({ readOnly = false } = {}) => {
   };
 
   // ---- Chia: network match ------------------------------------------------
+  // We use exact equality here, NOT the substring semantics of
+  // assertChiaNetworkMatchInConfiguration (which treats `CHIA_NETWORK:
+  // "testnet"` as matching any actual network containing "testnet"). That
+  // substring rule has a real false-positive: `"testnet10".includes("testnet1")`
+  // is true. The diagnostics endpoint's job is to surface the truth so
+  // operators can spot a stale or mistyped config; the `actual` and
+  // `configured` fields above let them judge whether the existing assertion
+  // would also have considered them a match.
   const actualNetwork = activeNetworkRes.ok
     ? activeNetworkRes.value?.network_name || null
     : null;
   const configuredNetwork = appConfig.CHIA_NETWORK || null;
   const networkMatches =
-    actualNetwork && configuredNetwork ? actualNetwork.includes(configuredNetwork) : null;
+    actualNetwork && configuredNetwork ? actualNetwork === configuredNetwork : null;
 
   // ---- Chia: wallet -------------------------------------------------------
   // connectionError is non-empty whenever the wallet is unreachable, even
