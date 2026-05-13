@@ -532,7 +532,7 @@ app.get('/diagnostics', async (req, res) => {
   try {
     const configV1 = getConfig();
     const configV2 = getConfigV2();
-    const readOnly = configV2.READ_ONLY === true || configV1.READ_ONLY === true;
+    const readOnly = !!(configV2.READ_ONLY || configV1.READ_ONLY);
     const { getDiagnosticsResponse } = await import('./routes/diagnostics.js');
     const result = await getDiagnosticsResponse({ readOnly });
     return res.status(200).json(result);
