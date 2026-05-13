@@ -333,18 +333,23 @@ const getChiaVersion = async () => {
   const url = `${rpcUrl}/get_version`;
   const { cert, key, timeout } = getBaseOptions();
 
-  const response = await superagent
-    .post(url)
-    .key(key)
-    .cert(cert)
-    .timeout(timeout)
-    .send(JSON.stringify({}));
+  try {
+    const response = await superagent
+      .post(url)
+      .key(key)
+      .cert(cert)
+      .timeout(timeout)
+      .send(JSON.stringify({}));
 
-  const data = response.body;
-  if (data.success) {
-    return data.version || null;
+    const data = response.body;
+    if (data.success) {
+      return data.version || null;
+    }
+    return null;
+  } catch (error) {
+    logger.debug(`[diagnostics]: wallet get_version failed: ${error.message}`);
+    return null;
   }
-  return null;
 };
 
 /**

@@ -14,6 +14,8 @@ import fs from 'fs';
 import path from 'path';
 import superagent from 'superagent';
 
+process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
+
 import _ from 'lodash';
 
 import { getChiaConfig } from './fullNode.js';
