@@ -12,8 +12,6 @@
  * home org IDs) stripped, matching the convention from wallet-health.js.
  */
 
-import os from 'os';
-
 import _ from 'lodash';
 
 import { getConfig, getConfigV2 } from '../utils/config-loader.js';
@@ -248,7 +246,58 @@ export const getDiagnosticsResponse = async ({ readOnly = false } = {}) => {
   const { OrganizationsV2 } = await import('../models/v2/index.js');
   const fullNodeModule = await import('../datalayer/fullNode.js');
 
-  // Kick off every external call in parallel. None of these can throw.
+  // Phase 1: fast local probes (process scan, system info, chia-tools).
+  // We need the process scan result before deciding whether to probe the
+  // full node RPC, so these run first.
+  const [chiaProcessesRes, systemInfoRes, chiaToolsRes] = await Promise.all([
+    settle('scanChiaProcesses', () => scanChiaProcesses(), DEFAULT_TIMEOUT_MS),
+    settle('getSystemInfo', () => getSystemInfo(), DEFAULT_TIMEOUT_MS),
+    settle('probeChiaTools', () => probeChiaTools(), DEFAULT_TIMEOUT_MS),
+  ]);
+
+  const processesValue = chiaProcessesRes.ok
+    ? chiaProcessesRes.value
+    : { matches: [], installPaths: [], multipleVersionsDetected: false, error: chiaProcessesRes.error };
+
+  // If the scan succeeded and found processes, check for chia_full_node.
+  // If the scan failed or is unsupported (Windows, minimal Docker image
+  // without ps, /proc restrictions), we can't tell whether the full node
+  // is running, so default to true and let the RPC timeout be the backstop.
+  const scanReliable = chiaProcessesRes.ok && !processesValue.note;
+  const fullNodeRunningLocally = scanReliable
+    ? processesValue.matches.some((m) => /chia_full_node/i.test(m.command))
+    : true;
+
+  // Phase 2: network RPCs in parallel. Full-node RPCs are skipped when the
+  // process scan shows no local full node — the calls would just timeout or
+  // ECONNREFUSED, wasting wall-clock for no diagnostic value.
+  const rpcSettles = [
+    settle('wallet.getActiveNetwork', () => wallet.getActiveNetwork(), DEFAULT_TIMEOUT_MS),
+    settle('wallet.walletIsSynced', () => wallet.walletIsSynced(), DEFAULT_TIMEOUT_MS),
+    settle('wallet.getWalletBalance', () => wallet.getWalletBalance(), DEFAULT_TIMEOUT_MS),
+    settle('wallet.getWalletConnections', () => wallet.getWalletConnections(), DEFAULT_TIMEOUT_MS),
+    settle(
+      'getWalletHealthResponse',
+      () => getWalletHealthResponse(wallet, { readOnly: false }),
+      DEFAULT_TIMEOUT_MS,
+    ),
+    fullNodeRunningLocally
+      ? settle('fullNode.getBlockchainState', () => fullNodeRpc.getBlockchainState(), DEFAULT_TIMEOUT_MS)
+      : Promise.resolve({ ok: false, error: 'full node not running locally' }),
+    fullNodeRunningLocally
+      ? settle('fullNode.getFullNodeConnections', () => fullNodeRpc.getFullNodeConnections(), DEFAULT_TIMEOUT_MS)
+      : Promise.resolve({ ok: false, error: 'full node not running locally' }),
+    settle('getChiaConfig', () => Promise.resolve(fullNodeModule.getChiaConfig()), 1000),
+    settle('persistance.dataLayerAvailable', () => persistance.dataLayerAvailable(), DEFAULT_TIMEOUT_MS),
+    settle(
+      'collectSubscriptions',
+      () => collectSubscriptions(persistance),
+      SUBSCRIPTION_BUDGET_MS + 1000,
+    ),
+    settle('Organization.getHomeOrg', () => readHomeOrgId(Organization), DEFAULT_TIMEOUT_MS),
+    settle('OrganizationsV2.getHomeOrg', () => readHomeOrgId(OrganizationsV2), DEFAULT_TIMEOUT_MS),
+  ];
+
   const [
     activeNetworkRes,
     walletSyncedRes,
@@ -262,38 +311,7 @@ export const getDiagnosticsResponse = async ({ readOnly = false } = {}) => {
     subscriptionsRes,
     homeOrgV1Res,
     homeOrgV2Res,
-    systemInfoRes,
-    chiaProcessesRes,
-    chiaToolsRes,
-  ] = await Promise.all([
-    settle('wallet.getActiveNetwork', () => wallet.getActiveNetwork(), DEFAULT_TIMEOUT_MS),
-    settle('wallet.walletIsSynced', () => wallet.walletIsSynced(), DEFAULT_TIMEOUT_MS),
-    settle('wallet.getWalletBalance', () => wallet.getWalletBalance(), DEFAULT_TIMEOUT_MS),
-    settle('wallet.getWalletConnections', () => wallet.getWalletConnections(), DEFAULT_TIMEOUT_MS),
-    settle(
-      'getWalletHealthResponse',
-      () => getWalletHealthResponse(wallet, { readOnly: false }),
-      DEFAULT_TIMEOUT_MS,
-    ),
-    settle('fullNode.getBlockchainState', () => fullNodeRpc.getBlockchainState(), DEFAULT_TIMEOUT_MS),
-    settle(
-      'fullNode.getFullNodeConnections',
-      () => fullNodeRpc.getFullNodeConnections(),
-      DEFAULT_TIMEOUT_MS,
-    ),
-    settle('getChiaConfig', () => Promise.resolve(fullNodeModule.getChiaConfig()), 1000),
-    settle('persistance.dataLayerAvailable', () => persistance.dataLayerAvailable(), DEFAULT_TIMEOUT_MS),
-    settle(
-      'collectSubscriptions',
-      () => collectSubscriptions(persistance),
-      SUBSCRIPTION_BUDGET_MS + 1000,
-    ),
-    settle('Organization.getHomeOrg', () => readHomeOrgId(Organization), DEFAULT_TIMEOUT_MS),
-    settle('OrganizationsV2.getHomeOrg', () => readHomeOrgId(OrganizationsV2), DEFAULT_TIMEOUT_MS),
-    settle('getSystemInfo', () => getSystemInfo(), DEFAULT_TIMEOUT_MS),
-    settle('scanChiaProcesses', () => scanChiaProcesses(), DEFAULT_TIMEOUT_MS),
-    settle('probeChiaTools', () => probeChiaTools(), DEFAULT_TIMEOUT_MS),
-  ]);
+  ] = await Promise.all(rpcSettles);
 
   // walletReachable: derived from the get_network_info RPC return value, NOT
   // from settle().ok -- walletIsSynced and getWalletBalance both swallow
@@ -399,6 +417,9 @@ export const getDiagnosticsResponse = async ({ readOnly = false } = {}) => {
 
   // ---- Chia: full node ----------------------------------------------------
   const fullNodeSection = (() => {
+    if (!fullNodeRunningLocally) {
+      return { runningLocally: false, reachable: false };
+    }
     const base = fullNodeStateRes.ok
       ? fullNodeStateRes.value
       : { reachable: false, error: fullNodeStateRes.error };
@@ -406,6 +427,7 @@ export const getDiagnosticsResponse = async ({ readOnly = false } = {}) => {
       ? fullNodeConnectionsRes.value
       : { reachable: false, error: fullNodeConnectionsRes.error };
     return {
+      runningLocally: true,
       ...base,
       peerCount: connections.connections ? connections.connections.length : null,
       connectionsError: connections.error || null,
@@ -431,23 +453,15 @@ export const getDiagnosticsResponse = async ({ readOnly = false } = {}) => {
   // ---- Chia: services / chia-tools / processes ---------------------------
   const servicesSection = {
     walletReachable,
-    fullNodeReachable: fullNodeStateRes.ok ? !!fullNodeStateRes.value?.reachable : false,
+    fullNodeReachable: fullNodeRunningLocally && fullNodeStateRes.ok
+      ? !!fullNodeStateRes.value?.reachable
+      : false,
     datalayerReachable: datalayerAvailableRes.ok ? datalayerAvailableRes.value === true : false,
   };
 
   const chiaToolsSection = chiaToolsRes.ok
     ? chiaToolsRes.value
     : { installed: false, version: null, error: chiaToolsRes.error, note: 'probe failed' };
-
-  const processesSection = chiaProcessesRes.ok
-    ? chiaProcessesRes.value
-    : {
-        supported: false,
-        platform: os.platform(),
-        matches: [],
-        multipleVersionsDetected: false,
-        error: chiaProcessesRes.error,
-      };
 
   // ---- System -------------------------------------------------------------
   const systemSection = systemInfoRes.ok
@@ -459,18 +473,18 @@ export const getDiagnosticsResponse = async ({ readOnly = false } = {}) => {
     timestamp,
     readOnly: false,
     cadt: cadtSection,
+    network: {
+      chia: actualNetwork,
+      cadt: configuredNetwork,
+      matches: networkMatches,
+    },
     chia: {
-      network: {
-        actual: actualNetwork,
-        configured: configuredNetwork,
-        matches: networkMatches,
-      },
       wallet: walletSection,
       fullNode: fullNodeSection,
       datalayer: datalayerSection,
       services: servicesSection,
       chiaTools: chiaToolsSection,
-      processes: processesSection,
+      runningProcesses: processesValue,
     },
     system: systemSection,
   };
@@ -495,9 +509,9 @@ const buildReadOnlyResponse = async ({ timestamp, configV1, configV2, appConfig 
     settle('probeChiaTools', () => probeChiaTools(), DEFAULT_TIMEOUT_MS),
   ]);
 
-  const processesSection = chiaProcessesRes.ok
+  const processesValue = chiaProcessesRes.ok
     ? chiaProcessesRes.value
-    : { supported: false, matches: [], multipleVersionsDetected: false, error: chiaProcessesRes.error };
+    : { matches: [], installPaths: [], multipleVersionsDetected: false, error: chiaProcessesRes.error };
   const chiaToolsSection = chiaToolsRes.ok
     ? chiaToolsRes.value
     : { installed: false, version: null, error: chiaToolsRes.error };
@@ -529,13 +543,11 @@ const buildReadOnlyResponse = async ({ timestamp, configV1, configV2, appConfig 
         governanceBodyId: configV2.GOVERNANCE?.GOVERNANCE_BODY_ID || null,
       },
     },
+    network: { cadt: appConfig.CHIA_NETWORK || null },
     chia: {
-      network: { configured: appConfig.CHIA_NETWORK || null },
       chiaTools: { installed: chiaToolsSection.installed, version: chiaToolsSection.version },
-      processes: {
-        supported: processesSection.supported,
-        platform: processesSection.platform || null,
-        multipleVersionsDetected: processesSection.multipleVersionsDetected,
+      runningProcesses: {
+        multipleVersionsDetected: processesValue.multipleVersionsDetected,
       },
     },
     system: systemSection,

@@ -20,6 +20,7 @@ describe('/diagnostics endpoint', function () {
       expect(response.body).to.have.property('timestamp').that.is.a('string');
       expect(response.body).to.have.property('readOnly');
       expect(response.body).to.have.property('cadt').that.is.an('object');
+      expect(response.body).to.have.property('network').that.is.an('object');
       expect(response.body).to.have.property('chia').that.is.an('object');
       expect(response.body).to.have.property('system').that.is.an('object');
     });
@@ -46,7 +47,12 @@ describe('/diagnostics endpoint', function () {
       expect(system).to.have.property('memory').that.is.an('object');
       expect(system.memory).to.have.property('totalBytes').that.is.a('number');
       expect(system.memory).to.have.property('freeBytes').that.is.a('number');
+      expect(system.memory).to.have.property('percentUsed').that.is.a('number');
       expect(system).to.have.property('disk').that.is.an('object');
+      expect(system.disk).to.have.property('chiaRootPath').that.is.a('string');
+      if (system.disk.totalBytes !== null) {
+        expect(system.disk).to.have.property('percentUsed').that.is.a('number');
+      }
     });
 
     it('reports chia.services flags', async function () {
@@ -57,13 +63,18 @@ describe('/diagnostics endpoint', function () {
       expect(services).to.have.property('datalayerReachable').that.is.a('boolean');
     });
 
-    it('reports chia.processes with a clear platform indicator', async function () {
+    it('reports chia.runningProcesses with scan results', async function () {
       const response = await supertest(app).get('/diagnostics').expect(200);
-      const processes = response.body.chia.processes;
-      expect(processes).to.have.property('platform').that.is.a('string');
-      expect(processes).to.have.property('supported').that.is.a('boolean');
+      const processes = response.body.chia.runningProcesses;
       expect(processes).to.have.property('matches').that.is.an('array');
       expect(processes).to.have.property('multipleVersionsDetected').that.is.a('boolean');
+    });
+
+    it('reports fullNode.runningLocally based on process scan', async function () {
+      const response = await supertest(app).get('/diagnostics').expect(200);
+      const fullNode = response.body.chia.fullNode;
+      expect(fullNode).to.have.property('runningLocally').that.is.a('boolean');
+      expect(fullNode).to.have.property('reachable').that.is.a('boolean');
     });
 
     it('reports chia-tools with the PATH-visibility note', async function () {
@@ -88,11 +99,6 @@ describe('/diagnostics endpoint', function () {
     });
 
     it('keeps wallet.reachable and connectionError consistent with each other', async function () {
-      // Contract test (environment-independent): walletReachable must reflect
-      // the real RPC outcome, and connectionError must be non-empty iff
-      // walletReachable is false. This catches the original "reachable always
-      // returns true because the helpers swallow errors" bug regardless of
-      // whether a real wallet happens to be listening in the test env.
       const response = await supertest(app).get('/diagnostics').expect(200);
       const wallet = response.body.chia.wallet;
       expect(wallet.reachable).to.be.a('boolean');
@@ -101,7 +107,6 @@ describe('/diagnostics endpoint', function () {
       } else {
         expect(wallet.connectionError).to.be.a('string').and.not.empty;
       }
-      // Services flag must agree with the per-subsystem flag.
       expect(response.body.chia.services.walletReachable).to.equal(wallet.reachable);
     });
   });
@@ -164,20 +169,16 @@ describe('/diagnostics endpoint', function () {
         expect(response.body).to.have.property('readOnly', true);
         expect(response.body).to.have.property('message').that.is.a('string');
 
-        // Read-only short-circuits before the wallet/datalayer fan-out, so
-        // those entire sections must be absent.
         expect(response.body.chia).to.not.have.property('wallet');
         expect(response.body.chia).to.not.have.property('datalayer');
         expect(response.body.chia).to.not.have.property('fullNode');
         expect(response.body.chia).to.not.have.property('services');
 
-        // No home org IDs (those would leak operator identity)
         expect(response.body.cadt.v1).to.not.have.property('homeOrgId');
         expect(response.body.cadt.v2).to.not.have.property('homeOrgId');
 
-        // Still reports the cheap public info
         expect(response.body.cadt).to.have.property('version');
-        expect(response.body.chia.network).to.have.property('configured');
+        expect(response.body.network).to.have.property('cadt');
         expect(response.body.chia).to.have.property('chiaTools');
         expect(response.body).to.have.property('system');
       }, { APP: { READ_ONLY: true } });
@@ -186,8 +187,6 @@ describe('/diagnostics endpoint', function () {
     it('keeps full detail by default (READ_ONLY off)', async function () {
       const response = await supertest(app).get('/diagnostics').expect(200);
       expect(response.body.readOnly).to.equal(false);
-      // Even though the underlying RPCs may be unreachable in this env, the
-      // keys exist so the response shape stays stable.
       expect(response.body.chia.wallet).to.have.property('pendingTransactions');
       expect(response.body.chia.wallet).to.have.property('trustedFullNodePeers');
       expect(response.body.chia.datalayer).to.have.property('subscriptions');
@@ -204,13 +203,11 @@ describe('/diagnostics endpoint', function () {
         const response = await supertest(app).get('/diagnostics');
         expect(response.status).to.equal(200);
         expect(response.body.readOnly).to.equal(true);
-        // Sensitive sections must be absent
         expect(response.body.chia).to.not.have.property('wallet');
         expect(response.body.chia).to.not.have.property('datalayer');
         expect(response.body.chia).to.not.have.property('fullNode');
-        // Public-safe sections still present
         expect(response.body.cadt).to.have.property('version');
-        expect(response.body.chia.network).to.have.property('configured');
+        expect(response.body.network).to.have.property('cadt');
         expect(response.body).to.have.property('system');
       }, { APP: { READ_ONLY: true, CADT_API_KEY: '' } });
     });
@@ -229,9 +226,6 @@ describe('/diagnostics endpoint', function () {
           .set('x-api-key', 'protected-observer-key');
         expect(response.status).to.equal(200);
         expect(response.body.readOnly).to.equal(true);
-        // Reduced response shape applies even when authenticated -- the
-        // server is still in READ_ONLY mode, so we don't expose operational
-        // details to anyone, authenticated or not.
         expect(response.body.chia).to.not.have.property('wallet');
         expect(response.body.chia).to.not.have.property('datalayer');
       }, { APP: { READ_ONLY: true, CADT_API_KEY: 'protected-observer-key' } });
@@ -259,9 +253,8 @@ describe('/diagnostics endpoint', function () {
     it('always returns 200 with the documented top-level keys', async function () {
       const response = await supertest(app).get('/diagnostics').expect(200);
       expect(response.body).to.have.all.keys(
-        'timestamp', 'readOnly', 'cadt', 'chia', 'system',
+        'timestamp', 'readOnly', 'cadt', 'network', 'chia', 'system',
       );
-      // System info (CPU/RAM/disk) is local and must always be present
       expect(response.body.system).to.have.property('cpu');
       expect(response.body.system).to.have.property('memory');
     });

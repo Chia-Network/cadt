@@ -64,16 +64,15 @@ const runPs = () =>
 
 /**
  * Scan running processes for chia binaries.
- * @returns {Promise<{supported: boolean, platform: string, matches: Array, multipleVersionsDetected: boolean, error?: string}>}
+ * @returns {Promise<{matches: Array, installPaths: string[], multipleVersionsDetected: boolean, note?: string, error?: string}>}
  */
 export const scanChiaProcesses = async () => {
   const platform = os.platform();
 
   if (platform === 'win32') {
     return {
-      supported: false,
-      platform,
       matches: [],
+      installPaths: [],
       multipleVersionsDetected: false,
       note: 'process scan is not supported on Windows',
     };
@@ -100,8 +99,6 @@ export const scanChiaProcesses = async () => {
     }
 
     return {
-      supported: true,
-      platform,
       matches,
       installPaths: Array.from(installPaths),
       multipleVersionsDetected: installPaths.size > 1,
@@ -109,9 +106,8 @@ export const scanChiaProcesses = async () => {
   } catch (error) {
     logger.debug(`[diagnostics]: chia process scan failed: ${error.message}`);
     return {
-      supported: true,
-      platform,
       matches: [],
+      installPaths: [],
       multipleVersionsDetected: false,
       error: error.message,
     };

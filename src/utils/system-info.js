@@ -26,13 +26,17 @@ const getCpuInfo = () => {
 
 const getMemoryInfo = () => {
   try {
+    const totalBytes = os.totalmem();
+    const freeBytes = os.freemem();
+    const usedBytes = totalBytes - freeBytes;
     return {
-      totalBytes: os.totalmem(),
-      freeBytes: os.freemem(),
+      totalBytes,
+      freeBytes,
+      percentUsed: totalBytes > 0 ? Math.round((usedBytes / totalBytes) * 1000) / 10 : null,
     };
   } catch (error) {
     logger.debug(`[diagnostics]: failed to read memory info: ${error.message}`);
-    return { totalBytes: null, freeBytes: null, error: error.message };
+    return { totalBytes: null, freeBytes: null, percentUsed: null, error: error.message };
   }
 };
 
@@ -53,9 +57,10 @@ const getDiskInfo = async (targetPath) => {
 
     if (typeof fs.promises.statfs !== 'function') {
       return {
-        path: resolvedPath,
+        chiaRootPath: resolvedPath,
         totalBytes: null,
         freeBytes: null,
+        percentUsed: null,
         error: 'fs.promises.statfs is not available in this Node runtime',
       };
     }
@@ -70,17 +75,22 @@ const getDiskInfo = async (targetPath) => {
     // hedge against environments like Docker+VirtioFS where the two can
     // differ.
     const blockSize = stats.frsize ?? stats.bsize;
+    const totalBytes = stats.blocks * blockSize;
+    const freeBytes = stats.bavail * blockSize;
+    const usedBytes = totalBytes - freeBytes;
     return {
-      path: resolvedPath,
-      totalBytes: stats.blocks * blockSize,
-      freeBytes: stats.bavail * blockSize,
+      chiaRootPath: resolvedPath,
+      totalBytes,
+      freeBytes,
+      percentUsed: totalBytes > 0 ? Math.round((usedBytes / totalBytes) * 1000) / 10 : null,
     };
   } catch (error) {
     logger.debug(`[diagnostics]: failed to stat disk for ${targetPath}: ${error.message}`);
     return {
-      path: targetPath,
+      chiaRootPath: targetPath,
       totalBytes: null,
       freeBytes: null,
+      percentUsed: null,
       error: error.message,
     };
   }
