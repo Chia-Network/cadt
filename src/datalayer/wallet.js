@@ -333,22 +333,18 @@ const getChiaVersion = async () => {
   const url = `${rpcUrl}/get_version`;
   const { cert, key, timeout } = getBaseOptions();
 
-  try {
-    const response = await superagent
-      .post(url)
-      .key(key)
-      .cert(cert)
-      .timeout(timeout)
-      .send(JSON.stringify({}));
+  const response = await superagent
+    .post(url)
+    .key(key)
+    .cert(cert)
+    .timeout(timeout)
+    .send(JSON.stringify({}));
 
-    const data = response.body;
-    if (data.success) {
-      return data.version || null;
-    }
-    return null;
-  } catch {
-    return null;
+  const data = response.body;
+  if (data.success) {
+    return data.version || null;
   }
+  return null;
 };
 
 /**
