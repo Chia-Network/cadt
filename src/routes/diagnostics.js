@@ -263,7 +263,7 @@ export const getDiagnosticsResponse = async ({ readOnly = false } = {}) => {
   // If the scan failed or is unsupported (Windows, minimal Docker image
   // without ps, /proc restrictions), we can't tell whether the full node
   // is running, so default to true and let the RPC timeout be the backstop.
-  const scanReliable = chiaProcessesRes.ok && !processesValue.note;
+  const scanReliable = chiaProcessesRes.ok && !processesValue.note && !processesValue.error;
   const fullNodeRunningLocally = scanReliable
     ? processesValue.matches.some((m) => /chia_full_node/i.test(m.command))
     : true;
