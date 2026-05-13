@@ -55,6 +55,15 @@ describe('/diagnostics endpoint', function () {
       }
     });
 
+    it('includes chia.version (string or null)', async function () {
+      const response = await supertest(app).get('/diagnostics').expect(200);
+      expect(response.body.chia).to.have.property('version');
+      const v = response.body.chia.version;
+      if (v !== null) {
+        expect(v).to.be.a('string');
+      }
+    });
+
     it('reports chia.services flags', async function () {
       const response = await supertest(app).get('/diagnostics').expect(200);
       const services = response.body.chia.services;

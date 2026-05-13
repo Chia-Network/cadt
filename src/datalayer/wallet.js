@@ -329,6 +329,28 @@ const getActiveNetwork = async () => {
   }
 };
 
+const getChiaVersion = async () => {
+  const url = `${rpcUrl}/get_version`;
+  const { cert, key, timeout } = getBaseOptions();
+
+  try {
+    const response = await superagent
+      .post(url)
+      .key(key)
+      .cert(cert)
+      .timeout(timeout)
+      .send(JSON.stringify({}));
+
+    const data = response.body;
+    if (data.success) {
+      return data.version || null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
 /**
  * Return the wallet's peer connections (used by /diagnostics to cross-reference
  * connected full-node peers against the trusted_peers map in the chia config).
@@ -927,6 +949,7 @@ export default {
   waitForAllTransactionsToConfirm,
   waitForSpendableCoins,
   getActiveNetwork,
+  getChiaVersion,
   getWalletConnections,
   getLastWalletSyncError,
   getWalletBlockchainSyncStatus,

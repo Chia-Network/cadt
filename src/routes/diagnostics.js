@@ -273,6 +273,7 @@ export const getDiagnosticsResponse = async ({ readOnly = false } = {}) => {
   // ECONNREFUSED, wasting wall-clock for no diagnostic value.
   const rpcSettles = [
     settle('wallet.getActiveNetwork', () => wallet.getActiveNetwork(), DEFAULT_TIMEOUT_MS),
+    settle('wallet.getChiaVersion', () => wallet.getChiaVersion(), DEFAULT_TIMEOUT_MS),
     settle('wallet.walletIsSynced', () => wallet.walletIsSynced(), DEFAULT_TIMEOUT_MS),
     settle('wallet.getWalletBalance', () => wallet.getWalletBalance(), DEFAULT_TIMEOUT_MS),
     settle('wallet.getWalletConnections', () => wallet.getWalletConnections(), DEFAULT_TIMEOUT_MS),
@@ -300,6 +301,7 @@ export const getDiagnosticsResponse = async ({ readOnly = false } = {}) => {
 
   const [
     activeNetworkRes,
+    chiaVersionRes,
     walletSyncedRes,
     walletBalanceRes,
     walletConnectionsRes,
@@ -479,6 +481,7 @@ export const getDiagnosticsResponse = async ({ readOnly = false } = {}) => {
       matches: networkMatches,
     },
     chia: {
+      version: chiaVersionRes.ok ? chiaVersionRes.value : null,
       wallet: walletSection,
       fullNode: fullNodeSection,
       datalayer: datalayerSection,

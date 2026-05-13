@@ -137,6 +137,12 @@ describe('Wallet Health - Live', function () {
         expect(body.system.disk.percentUsed).to.be.a('number').and.to.be.at.least(0).and.at.most(100);
       }
 
+      // Chia: version -------------------------------------------------------
+      expect(body.chia).to.have.property('version');
+      if (body.chia.version !== null) {
+        expect(body.chia.version).to.be.a('string');
+      }
+
       // Chia: services flags ------------------------------------------------
       expect(body.chia.services).to.be.an('object');
       expect(body.chia.services.walletReachable).to.be.a('boolean');
