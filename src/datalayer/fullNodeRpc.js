@@ -86,7 +86,7 @@ export const getBlockchainState = async (options = {}) => {
       synced: state.sync?.synced === true,
       syncing: state.sync?.sync_mode === true,
       peakHeight: state.peak?.height ?? null,
-      syncMode: state.sync?.sync_mode === true ? 'syncing' : state.sync?.synced ? 'synced' : 'not_synced',
+      syncMode: state.sync?.sync_mode === true ? 'syncing' : state.sync?.synced === true ? 'synced' : 'not_synced',
       genesisChallengeInitialized: state.genesis_challenge_initialized ?? null,
     };
   } catch (error) {
