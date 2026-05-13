@@ -191,7 +191,7 @@ const buildTrustedPeerView = (connectionsResult, chiaConfigResult) => {
     view.chiaConfigError = chiaConfigResult.error;
   }
 
-  if (connectionsResult?.ok) {
+  if (connectionsResult?.ok && connectionsResult.value?.success !== false) {
     const connections = connectionsResult.value?.connections || [];
     view.connected = connections.map((c) => {
       const trusted = !!(
@@ -201,7 +201,9 @@ const buildTrustedPeerView = (connectionsResult, chiaConfigResult) => {
       return { peerHost: c.peerHost, peerPort: c.peerPort, type: c.type, trusted };
     });
   } else if (connectionsResult) {
-    view.connectionsError = connectionsResult.error;
+    view.connectionsError = connectionsResult.ok
+      ? connectionsResult.value?.error || 'wallet connections unavailable'
+      : connectionsResult.error;
   }
 
   return view;
