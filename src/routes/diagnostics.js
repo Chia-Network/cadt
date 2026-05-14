@@ -257,7 +257,6 @@ export const getDiagnosticsResponse = async () => {
   const rpcSettles = [
     settle('wallet.getActiveNetwork', () => wallet.getActiveNetwork(), DEFAULT_TIMEOUT_MS),
     settle('wallet.getChiaVersion', () => wallet.getChiaVersion(), DEFAULT_TIMEOUT_MS),
-    settle('wallet.walletIsSynced', () => wallet.walletIsSynced(), DEFAULT_TIMEOUT_MS),
     settle('wallet.getWalletBalance', () => wallet.getWalletBalance(), DEFAULT_TIMEOUT_MS),
     settle('wallet.getWalletConnections', () => wallet.getWalletConnections(), DEFAULT_TIMEOUT_MS),
     settle(
@@ -285,7 +284,6 @@ export const getDiagnosticsResponse = async () => {
   const [
     activeNetworkRes,
     chiaVersionRes,
-    walletSyncedRes,
     walletBalanceRes,
     walletConnectionsRes,
     walletHealthRes,
@@ -306,13 +304,10 @@ export const getDiagnosticsResponse = async () => {
   // ground-truth reachability probe.
   const walletReachable = activeNetworkRes.ok && activeNetworkRes.value !== false;
 
-  // lastWalletSyncError is a module-level slot in wallet.js that walletIsSynced
-  // overwrites on every call. It's our best signal for the SPECIFIC connection
-  // error (ECONNREFUSED, ETIMEDOUT, etc.) but it can be `null` if a
-  // concurrent caller cleared it after our walletIsSynced returned. When the
-  // wallet is unreachable but the slot is empty, we fall back to a synthetic
-  // message so operators looking at the JSON always know unreachability is
-  // distinct from "reachable but unsynced".
+  // walletIsSynced() is called internally by getWalletHealthResponse, which
+  // populates the module-level lastWalletSyncError slot. We read it here for
+  // the specific error message (ECONNREFUSED, ETIMEDOUT, etc.) and fall back
+  // to a synthetic message when the slot is empty.
   const walletConnectionError = wallet.getLastWalletSyncError?.();
 
   const enableV1 = configV1?.ENABLE !== false;
@@ -391,7 +386,7 @@ export const getDiagnosticsResponse = async () => {
     rpcUrl: appConfig.WALLET_URL || null,
     reachable: walletReachable,
     connectionError: walletConnectionErrorMessage,
-    synced: walletSyncedRes.ok ? walletSyncedRes.value === true : false,
+    synced: walletHealthRes.ok ? walletHealthRes.value?.synced === true : false,
     balanceXch:
       walletReachable && walletBalanceRes.ok && walletBalanceRes.value !== false
         ? walletBalanceRes.value
