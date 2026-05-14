@@ -63,14 +63,6 @@ describe('/diagnostics endpoint', function () {
       }
     });
 
-    it('reports chia.services flags', async function () {
-      const response = await supertest(app).get('/diagnostics').expect(200);
-      const services = response.body.chia.services;
-      expect(services).to.have.property('walletReachable').that.is.a('boolean');
-      expect(services).to.have.property('fullNodeReachable').that.is.a('boolean');
-      expect(services).to.have.property('datalayerReachable').that.is.a('boolean');
-    });
-
     it('reports chia.runningProcesses with scan results', async function () {
       const response = await supertest(app).get('/diagnostics').expect(200);
       const processes = response.body.chia.runningProcesses;
@@ -115,7 +107,6 @@ describe('/diagnostics endpoint', function () {
       } else {
         expect(wallet.connectionError).to.be.a('string').and.not.empty;
       }
-      expect(response.body.chia.services.walletReachable).to.equal(wallet.reachable);
     });
   });
 
@@ -259,6 +250,176 @@ describe('/diagnostics endpoint', function () {
         expect(view.connected[0].trusted).to.equal(false);
         expect(view.configuredTrustedNodeIds).to.deep.equal([]);
       });
+    });
+
+    describe('StatusAccumulator', function () {
+      const SA = () => diagnostics.__test.StatusAccumulator;
+
+      it('starts at ok with no message', function () {
+        const s = new (SA())();
+        expect(s.result()).to.deep.equal({ status: 'ok' });
+      });
+
+      it('escalates from ok to warning', function () {
+        const s = new (SA())();
+        s.escalate('warning', 'disk space low');
+        expect(s.result()).to.deep.equal({ status: 'warning', message: 'disk space low' });
+      });
+
+      it('escalates from ok to critical', function () {
+        const s = new (SA())();
+        s.escalate('critical', 'out of disk');
+        expect(s.result()).to.deep.equal({ status: 'critical', message: 'out of disk' });
+      });
+
+      it('never downgrades from critical to warning', function () {
+        const s = new (SA())();
+        s.escalate('critical', 'bad');
+        s.escalate('warning', 'less bad');
+        expect(s.result().status).to.equal('critical');
+      });
+
+      it('joins multiple messages with two spaces', function () {
+        const s = new (SA())();
+        s.escalate('warning', 'msg1.');
+        s.escalate('warning', 'msg2.');
+        expect(s.result()).to.deep.equal({ status: 'warning', message: 'msg1.  msg2.' });
+      });
+
+      it('omits message key when no messages given', function () {
+        const s = new (SA())();
+        s.escalate('warning');
+        expect(s.result()).to.deep.equal({ status: 'warning' });
+        expect(s.result()).to.not.have.property('message');
+      });
+
+      it('accumulates messages across severity levels', function () {
+        const s = new (SA())();
+        s.escalate('warning', 'first');
+        s.escalate('critical', 'second');
+        const r = s.result();
+        expect(r.status).to.equal('critical');
+        expect(r.message).to.equal('first  second');
+      });
+
+      it('throws on unknown severity', function () {
+        const s = new (SA())();
+        expect(() => s.escalate('panic')).to.throw('unknown severity');
+      });
+    });
+  });
+
+  describe('status logic', function () {
+    it('system.disk has a status field', async function () {
+      const response = await supertest(app).get('/diagnostics').expect(200);
+      const disk = response.body.system.disk;
+      expect(disk).to.have.property('status').that.is.oneOf(['ok', 'warning', 'critical']);
+    });
+
+    it('system.memory has a status field', async function () {
+      const response = await supertest(app).get('/diagnostics').expect(200);
+      const memory = response.body.system.memory;
+      expect(memory).to.have.property('status').that.is.oneOf(['ok', 'warning', 'critical']);
+    });
+
+    it('system.cpu has a status field', async function () {
+      const response = await supertest(app).get('/diagnostics').expect(200);
+      const cpu = response.body.system.cpu;
+      expect(cpu).to.have.property('status').that.is.oneOf(['ok', 'warning', 'critical']);
+    });
+
+    it('chia.wallet has a status field', async function () {
+      const response = await supertest(app).get('/diagnostics').expect(200);
+      expect(response.body.chia.wallet)
+        .to.have.property('status').that.is.oneOf(['ok', 'warning', 'critical']);
+    });
+
+    it('chia.fullNode has a status field', async function () {
+      const response = await supertest(app).get('/diagnostics').expect(200);
+      expect(response.body.chia.fullNode)
+        .to.have.property('status').that.is.oneOf(['ok', 'warning', 'critical']);
+    });
+
+    it('chia.datalayer has a status field', async function () {
+      const response = await supertest(app).get('/diagnostics').expect(200);
+      expect(response.body.chia.datalayer)
+        .to.have.property('status').that.is.oneOf(['ok', 'warning', 'critical']);
+    });
+
+    it('chia.chiaTools has a status field', async function () {
+      const response = await supertest(app).get('/diagnostics').expect(200);
+      expect(response.body.chia.chiaTools)
+        .to.have.property('status').that.is.oneOf(['ok', 'warning', 'critical']);
+    });
+
+    it('network has a status field', async function () {
+      const response = await supertest(app).get('/diagnostics').expect(200);
+      expect(response.body.network)
+        .to.have.property('status').that.is.oneOf(['ok', 'warning', 'critical']);
+    });
+
+    it('chiaTools status is warning when not installed', async function () {
+      const response = await supertest(app).get('/diagnostics').expect(200);
+      const chiaTools = response.body.chia.chiaTools;
+      if (!chiaTools.installed) {
+        expect(chiaTools.status).to.equal('warning');
+        expect(chiaTools.message).to.include('chia-tools');
+      }
+    });
+
+    it('network status is ok when matches is null or true', async function () {
+      const response = await supertest(app).get('/diagnostics').expect(200);
+      const network = response.body.network;
+      if (network.matches !== false) {
+        expect(network.status).to.equal('ok');
+      }
+    });
+
+    it('disk status thresholds: ok / warning / critical at boundaries', async function () {
+      const SA = (await import('../../../src/routes/diagnostics.js')).__test.StatusAccumulator;
+
+      const computeDisk = (pct) => {
+        const s = new SA();
+        if (pct != null) {
+          if (pct > 96) s.escalate('critical', 'Disk usage above 96%');
+          else if (pct > 90) s.escalate('warning', 'Disk usage above 90%');
+        }
+        return s.result();
+      };
+
+      expect(computeDisk(50).status).to.equal('ok');
+      expect(computeDisk(90).status).to.equal('ok');
+      expect(computeDisk(90.01).status).to.equal('warning');
+      expect(computeDisk(96).status).to.equal('warning');
+      expect(computeDisk(96.01).status).to.equal('critical');
+      expect(computeDisk(100).status).to.equal('critical');
+      expect(computeDisk(null).status).to.equal('ok');
+    });
+
+    it('memory status thresholds: ok / warning / critical at boundaries', async function () {
+      const SA = (await import('../../../src/routes/diagnostics.js')).__test.StatusAccumulator;
+
+      const computeMemory = (pct) => {
+        const s = new SA();
+        if (pct != null) {
+          if (pct > 99) s.escalate('critical', 'Memory usage above 99%');
+          else if (pct > 90) s.escalate('warning', 'Memory usage above 90%');
+        }
+        return s.result();
+      };
+
+      expect(computeMemory(50).status).to.equal('ok');
+      expect(computeMemory(90).status).to.equal('ok');
+      expect(computeMemory(90.01).status).to.equal('warning');
+      expect(computeMemory(99).status).to.equal('warning');
+      expect(computeMemory(99.01).status).to.equal('critical');
+      expect(computeMemory(100).status).to.equal('critical');
+      expect(computeMemory(null).status).to.equal('ok');
+    });
+
+    it('response does not contain chia.services', async function () {
+      const response = await supertest(app).get('/diagnostics').expect(200);
+      expect(response.body.chia).to.not.have.property('services');
     });
   });
 });

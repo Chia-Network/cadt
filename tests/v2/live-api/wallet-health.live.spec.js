@@ -142,11 +142,15 @@ describe('Wallet Health - Live', function () {
         expect(body.chia.version).to.be.a('string');
       }
 
-      // Chia: services flags ------------------------------------------------
-      expect(body.chia.services).to.be.an('object');
-      expect(body.chia.services.walletReachable).to.be.a('boolean');
-      expect(body.chia.services.fullNodeReachable).to.be.a('boolean');
-      expect(body.chia.services.datalayerReachable).to.be.a('boolean');
+      // Status fields -------------------------------------------------------
+      expect(body.system.disk).to.have.property('status').that.is.oneOf(['ok', 'warning', 'critical']);
+      expect(body.system.memory).to.have.property('status').that.is.oneOf(['ok', 'warning', 'critical']);
+      expect(body.system.cpu).to.have.property('status').that.is.oneOf(['ok', 'warning', 'critical']);
+      expect(body.chia.wallet).to.have.property('status').that.is.oneOf(['ok', 'warning', 'critical']);
+      expect(body.chia.fullNode).to.have.property('status').that.is.oneOf(['ok', 'warning', 'critical']);
+      expect(body.chia.datalayer).to.have.property('status').that.is.oneOf(['ok', 'warning', 'critical']);
+      expect(body.chia.chiaTools).to.have.property('status').that.is.oneOf(['ok', 'warning', 'critical']);
+      expect(body.network).to.have.property('status').that.is.oneOf(['ok', 'warning', 'critical']);
 
       // Network section (top-level) -----------------------------------------
       expect(body.network).to.be.an('object');
@@ -169,9 +173,6 @@ describe('Wallet Health - Live', function () {
           'unreachable wallet must carry a connection error message',
         ).to.be.a('string').and.not.empty;
       }
-      // Consistency between per-section and aggregated flags
-      expect(body.chia.services.walletReachable).to.equal(body.chia.wallet.reachable);
-
       // Chia: full node + datalayer (just shape, not state) ----------------
       expect(body.chia.fullNode).to.be.an('object');
       expect(body.chia.fullNode).to.have.property('runningLocally').that.is.a('boolean');

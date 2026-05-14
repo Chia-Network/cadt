@@ -22,6 +22,32 @@ import { probeChiaTools } from '../utils/chia-tools-probe.js';
 import { logger } from '../config/logger.js';
 import packageJson from '../../package.json' with { type: 'json' };
 
+/**
+ * Accumulates a worst-case status across multiple checks.  Severity only
+ * escalates: ok → warning → critical.  Messages are joined with two-space
+ * separation into a single string.
+ */
+class StatusAccumulator {
+  static #levels = { ok: 0, warning: 1, critical: 2 };
+  static #names = ['ok', 'warning', 'critical'];
+
+  #level = 0;
+  #messages = [];
+
+  escalate(severity, message) {
+    const target = StatusAccumulator.#levels[severity];
+    if (target === undefined) throw new Error(`unknown severity: ${severity}`);
+    if (target > this.#level) this.#level = target;
+    if (message) this.#messages.push(message);
+  }
+
+  result() {
+    const status = StatusAccumulator.#names[this.#level];
+    if (this.#messages.length === 0) return { status };
+    return { status, message: this.#messages.join('  ') };
+  }
+}
+
 // Timeouts deliberately err on the generous side: /diagnostics is allowed to
 // be slow if the goal is a comprehensive snapshot. A busy-but-healthy wallet
 // (e.g. long-syncing while operators are debugging) regularly takes several
@@ -430,15 +456,7 @@ export const getDiagnosticsResponse = async () => {
     };
   })();
 
-  // ---- Chia: services / chia-tools / processes ---------------------------
-  const servicesSection = {
-    walletReachable,
-    fullNodeReachable: fullNodeRunningLocally && fullNodeStateRes.ok
-      ? !!fullNodeStateRes.value?.reachable
-      : false,
-    datalayerReachable: datalayerAvailableRes.ok ? datalayerAvailableRes.value === true : false,
-  };
-
+  // ---- Chia: chia-tools / processes ---------------------------------------
   const chiaToolsSection = chiaToolsRes.ok
     ? chiaToolsRes.value
     : { installed: false, version: null, error: chiaToolsRes.error, note: 'probe failed' };
@@ -448,28 +466,177 @@ export const getDiagnosticsResponse = async () => {
     ? systemInfoRes.value
     : { error: systemInfoRes.error };
 
+  // ---- Status computation -------------------------------------------------
+
+  // Precompute process-running booleans for status checks below.
+  const chiaRunningLocally = processesValue.matches.some(
+    (m) => /chia_/i.test(m.command),
+  );
+  const fullNodeProcessRunning = processesValue.matches.some(
+    (m) => /chia_full_node/i.test(m.command),
+  );
+  const dlProcessRunning = processesValue.matches.some(
+    (m) => /chia_data_layer/i.test(m.command),
+  );
+  const walletProcessRunning = processesValue.matches.some(
+    (m) => /chia_wallet/i.test(m.command),
+  );
+
+  // system.disk
+  if (systemSection.disk) {
+    const diskStatus = new StatusAccumulator();
+    const pct = systemSection.disk.percentUsed;
+    if (pct != null) {
+      if (pct > 96) diskStatus.escalate('critical', 'Disk usage above 96%');
+      else if (pct > 90) diskStatus.escalate('warning', 'Disk usage above 90%');
+    }
+    Object.assign(systemSection.disk, diskStatus.result());
+  }
+
+  // system.memory
+  if (systemSection.memory) {
+    const memStatus = new StatusAccumulator();
+    const pct = systemSection.memory.percentUsed;
+    if (pct != null) {
+      if (pct > 99) memStatus.escalate('critical', 'Memory usage above 99%');
+      else if (pct > 90) memStatus.escalate('warning', 'Memory usage above 90%');
+    }
+    Object.assign(systemSection.memory, memStatus.result());
+  }
+
+  // system.cpu
+  if (systemSection.cpu) {
+    const cpuStatus = new StatusAccumulator();
+    const cores = systemSection.cpu.cores;
+    if (cores != null && chiaRunningLocally) {
+      const msg =
+        'Both CADT and Chia are heavy on CPU and a 4 core or greater system is recommended when running them together';
+      if (cores === 1) cpuStatus.escalate('critical', msg);
+      else if (cores < 4) cpuStatus.escalate('warning', msg);
+    } else if (cores != null) {
+      if (cores === 1) {
+        cpuStatus.escalate(
+          'warning',
+          'CADT can often use 100% of a single CPU core, so a 2 core or greater system is recommended when running CADT by itself',
+        );
+      }
+    }
+    Object.assign(systemSection.cpu, cpuStatus.result());
+  }
+
+  // chiaTools
+  {
+    const ctStatus = new StatusAccumulator();
+    if (!chiaToolsSection.installed) {
+      ctStatus.escalate('warning', 'chia-tools is recommended to help manage Chia');
+    }
+    Object.assign(chiaToolsSection, ctStatus.result());
+  }
+
+  // datalayer
+  {
+    const dlStatus = new StatusAccumulator();
+    if (dlProcessRunning && !datalayerSection.reachable) {
+      dlStatus.escalate(
+        'critical',
+        'Chia DataLayer service unreachable - this usually indicates a crashed or stuck process that needs to be killed',
+      );
+    }
+    if (datalayerSection.subscriptions?.some((s) => s.synced === false)) {
+      dlStatus.escalate('warning', 'One or more DataLayer subscriptions are not synced');
+    }
+    Object.assign(datalayerSection, dlStatus.result());
+  }
+
+  // fullNode — use fullNodeProcessRunning (from matches) rather than
+  // fullNodeRunningLocally (which defaults true on unreliable scans) to
+  // avoid false-positive criticals on Windows / minimal Docker images.
+  {
+    const fnStatus = new StatusAccumulator();
+    if (fullNodeProcessRunning && !fullNodeSection.reachable) {
+      fnStatus.escalate(
+        'critical',
+        'Chia full node service unreachable - this usually indicates a crashed or stuck process that needs to be killed',
+      );
+    }
+    Object.assign(fullNodeSection, fnStatus.result());
+  }
+
+  // wallet
+  {
+    const walletStatus = new StatusAccumulator();
+
+    if (walletProcessRunning && !walletReachable) {
+      walletStatus.escalate(
+        'critical',
+        'Chia wallet service unreachable - this usually indicates a crashed or stuck process that needs to be killed',
+      );
+    }
+
+    if (walletReachable && !walletSection.synced) {
+      walletStatus.escalate('warning', 'Wallet syncing');
+    }
+
+    const coinAmount = appConfig.DEFAULT_COIN_AMOUNT ?? 300;
+    const fee = appConfig.DEFAULT_FEE ?? 3000;
+    const minMirrorXch = (coinAmount + fee) / 1_000_000_000_000;
+    if (walletSection.balanceXch != null && walletSection.balanceXch < minMirrorXch) {
+      walletStatus.escalate('critical', 'Wallet balance too low to create mirrors');
+    }
+
+    const pendingTx = walletSection.pendingTransactions;
+    if (pendingTx && !pendingTx.error) {
+      const hasStuck =
+        pendingTx.standardWallet?.stuck?.length > 0 ||
+        pendingTx.dataLayerWallet?.stuck?.length > 0;
+      if (hasStuck) {
+        walletStatus.escalate('critical', 'Stuck transactions detected that need manual intervention');
+      }
+      const hasRejected =
+        pendingTx.standardWallet?.rejected?.length > 0 ||
+        pendingTx.dataLayerWallet?.rejected?.length > 0;
+      if (hasRejected) {
+        walletStatus.escalate('critical', 'Rejected transactions detected that need attention');
+      }
+    }
+
+    if (walletReachable && walletSection.trustedFullNodePeers?.hasTrustedConnection === false) {
+      walletStatus.escalate(
+        'warning',
+        'Performance is severely degraded when the Chia wallet is not connected to a trusted full node peer',
+      );
+    }
+
+    Object.assign(walletSection, walletStatus.result());
+  }
+
+  // network
+  const networkStatus = new StatusAccumulator();
+  if (networkMatches === false) {
+    networkStatus.escalate('warning', 'CADT configured network does not match Chia network');
+  }
+  const networkSection = {
+    chia: actualNetwork,
+    cadt: configuredNetwork,
+    matches: networkMatches,
+    ...networkStatus.result(),
+  };
+
   // ---- Full response ------------------------------------------------------
-  const fullResponse = {
+  return {
     timestamp,
     cadt: cadtSection,
-    network: {
-      chia: actualNetwork,
-      cadt: configuredNetwork,
-      matches: networkMatches,
-    },
+    network: networkSection,
     chia: {
       version: chiaVersionRes.ok ? chiaVersionRes.value : null,
       wallet: walletSection,
       fullNode: fullNodeSection,
       datalayer: datalayerSection,
-      services: servicesSection,
       chiaTools: chiaToolsSection,
       runningProcesses: processesValue,
     },
     system: systemSection,
   };
-
-  return fullResponse;
 };
 
 export const __test = {
@@ -477,4 +644,5 @@ export const __test = {
   collectSubscriptions,
   buildTrustedPeerView,
   normalizeNodeId,
+  StatusAccumulator,
 };
