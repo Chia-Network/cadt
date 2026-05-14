@@ -96,7 +96,6 @@ describe('Wallet Health - Live', function () {
       expect(body.timestamp, 'timestamp must be ISO-8601').to.match(
         /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
       );
-      expect(body.readOnly).to.be.a('boolean');
       expect(body.cadt).to.be.an('object');
       expect(body.network).to.be.an('object');
       expect(body.chia).to.be.an('object');

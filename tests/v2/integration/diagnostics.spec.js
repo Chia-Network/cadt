@@ -18,7 +18,6 @@ describe('/diagnostics endpoint', function () {
     it('responds 200 with the documented top-level shape', async function () {
       const response = await supertest(app).get('/diagnostics').expect(200);
       expect(response.body).to.have.property('timestamp').that.is.a('string');
-      expect(response.body).to.have.property('readOnly');
       expect(response.body).to.have.property('cadt').that.is.an('object');
       expect(response.body).to.have.property('network').that.is.an('object');
       expect(response.body).to.have.property('chia').that.is.an('object');
@@ -164,89 +163,30 @@ describe('/diagnostics endpoint', function () {
     });
   });
 
-  describe('read-only stripping', function () {
-    // The exact contract is documented in src/routes/diagnostics.js and
-    // mirrors the wallet-health.js convention: when READ_ONLY is true the
-    // response retains only non-sensitive metadata. Balances, transaction
-    // details, peer details, subscription IDs, and home-org IDs MUST be
-    // absent. We also intentionally short-circuit BEFORE the wallet/datalayer
-    // RPC fan-out, so the entire `chia.wallet` and `chia.datalayer` sections
-    // are omitted in read-only mode.
-    it('omits operational details when READ_ONLY is enabled', async function () {
-      await withConfigOverride(async () => {
-        const response = await supertest(app).get('/diagnostics').expect(200);
-        expect(response.body).to.have.property('readOnly', true);
-        expect(response.body).to.have.property('message').that.is.a('string');
-
-        expect(response.body.chia).to.not.have.property('wallet');
-        expect(response.body.chia).to.not.have.property('datalayer');
-        expect(response.body.chia).to.not.have.property('fullNode');
-        expect(response.body.chia).to.not.have.property('services');
-
-        expect(response.body.cadt.v1).to.not.have.property('homeOrgId');
-        expect(response.body.cadt.v2).to.not.have.property('homeOrgId');
-
-        expect(response.body.cadt).to.have.property('version');
-        expect(response.body.network).to.have.property('cadt');
-        expect(response.body.chia).to.have.property('chiaTools');
-        expect(response.body).to.have.property('system');
-      }, { APP: { READ_ONLY: true } });
-    });
-
-    it('keeps full detail by default (READ_ONLY off)', async function () {
-      const response = await supertest(app).get('/diagnostics').expect(200);
-      expect(response.body.readOnly).to.equal(false);
-      expect(response.body.chia.wallet).to.have.property('pendingTransactions');
-      expect(response.body.chia.wallet).to.have.property('trustedFullNodePeers');
-      expect(response.body.chia.datalayer).to.have.property('subscriptions');
-    });
-
-    // The four scenarios below exhaustively cover the (READ_ONLY × API key
-    // configured × key provided) matrix for READ_ONLY=true. They confirm both
-    // (a) a public observer node with no API key gets the reduced response
-    // without authentication, and (b) when an API key IS configured the
-    // endpoint still enforces it, returning the reduced response only to
-    // authenticated callers.
-    it('public observer node (READ_ONLY=true, no API key): returns 200 with reduced fields without auth', async function () {
-      await withConfigOverride(async () => {
-        const response = await supertest(app).get('/diagnostics');
-        expect(response.status).to.equal(200);
-        expect(response.body.readOnly).to.equal(true);
-        expect(response.body.chia).to.not.have.property('wallet');
-        expect(response.body.chia).to.not.have.property('datalayer');
-        expect(response.body.chia).to.not.have.property('fullNode');
-        expect(response.body.cadt).to.have.property('version');
-        expect(response.body.network).to.have.property('cadt');
-        expect(response.body).to.have.property('system');
-      }, { APP: { READ_ONLY: true, CADT_API_KEY: '' } });
-    });
-
-    it('READ_ONLY=true + API key configured + no key provided: rejects with 403', async function () {
+  describe('read-only mode', function () {
+    it('returns 403 when READ_ONLY is enabled', async function () {
       await withConfigOverride(async () => {
         const response = await supertest(app).get('/diagnostics');
         expect(response.status).to.equal(403);
-      }, { APP: { READ_ONLY: true, CADT_API_KEY: 'protected-observer-key' } });
+        expect(response.body).to.have.property('error').that.is.a('string');
+      }, { APP: { READ_ONLY: true } });
     });
 
-    it('READ_ONLY=true + API key configured + correct key: returns 200 with reduced fields', async function () {
+    it('returns 403 regardless of API key when READ_ONLY is enabled', async function () {
       await withConfigOverride(async () => {
         const response = await supertest(app)
           .get('/diagnostics')
           .set('x-api-key', 'protected-observer-key');
-        expect(response.status).to.equal(200);
-        expect(response.body.readOnly).to.equal(true);
-        expect(response.body.chia).to.not.have.property('wallet');
-        expect(response.body.chia).to.not.have.property('datalayer');
+        expect(response.status).to.equal(403);
+        expect(response.body).to.have.property('error').that.is.a('string');
       }, { APP: { READ_ONLY: true, CADT_API_KEY: 'protected-observer-key' } });
     });
 
-    it('READ_ONLY=true + API key configured + wrong key: rejects with 403', async function () {
-      await withConfigOverride(async () => {
-        const response = await supertest(app)
-          .get('/diagnostics')
-          .set('x-api-key', 'X'.repeat('protected-observer-key'.length));
-        expect(response.status).to.equal(403);
-      }, { APP: { READ_ONLY: true, CADT_API_KEY: 'protected-observer-key' } });
+    it('returns full detail by default (READ_ONLY off)', async function () {
+      const response = await supertest(app).get('/diagnostics').expect(200);
+      expect(response.body.chia.wallet).to.have.property('pendingTransactions');
+      expect(response.body.chia.wallet).to.have.property('trustedFullNodePeers');
+      expect(response.body.chia.datalayer).to.have.property('subscriptions');
     });
   });
 
@@ -262,7 +202,7 @@ describe('/diagnostics endpoint', function () {
     it('always returns 200 with the documented top-level keys', async function () {
       const response = await supertest(app).get('/diagnostics').expect(200);
       expect(response.body).to.have.all.keys(
-        'timestamp', 'readOnly', 'cadt', 'network', 'chia', 'system',
+        'timestamp', 'cadt', 'network', 'chia', 'system',
       );
       expect(response.body.system).to.have.property('cpu');
       expect(response.body.system).to.have.property('memory');

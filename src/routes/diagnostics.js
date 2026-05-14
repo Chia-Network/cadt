@@ -7,9 +7,8 @@
  * when something is broken, so every external call is fenced behind
  * `Promise.allSettled` with a per-call timeout. The route never throws.
  *
- * In read-only mode the same shape is returned but with sensitive fields
- * (balances, transaction details, peer host details, subscription IDs,
- * home org IDs) stripped, matching the convention from wallet-health.js.
+ * The endpoint is disabled entirely in read-only mode (handled by
+ * middleware returning 403), so there is no reduced-information path.
  */
 
 import _ from 'lodash';
@@ -215,31 +214,13 @@ const buildTrustedPeerView = (connectionsResult, chiaConfigResult) => {
  * Heavy module dependencies (database models, datalayer RPC clients) are
  * loaded dynamically so this file is safe to import from contexts where
  * those modules aren't ready yet (tests, early startup).
- *
- * In read-only mode we deliberately skip the expensive wallet/datalayer/
- * full-node RPC fan-out -- read-only ("public observer") deployments
- * should not be making per-request authenticated wallet RPC calls on
- * unauthenticated public hits. This matches the precedent in
- * src/routes/wallet-health.js, which also short-circuits before fetch.
  */
-export const getDiagnosticsResponse = async ({ readOnly = false } = {}) => {
+export const getDiagnosticsResponse = async () => {
   const timestamp = new Date().toISOString();
 
   const configV1 = getConfig();
   const configV2 = getConfigV2();
   const appConfig = configV1.APP || {};
-
-  // Short-circuit BEFORE pulling in the heavy wallet/datalayer/model
-  // dependencies. The read-only path only needs system-info / process-scan /
-  // chia-tools probes plus the synchronously-available config, so importing
-  // wallet.js or models/v2/index.js here would (a) defeat the "no
-  // authenticated RPC on unauthenticated public hits" property and (b)
-  // make /diagnostics itself fail whenever the DB/wallet modules can't
-  // initialize -- which is precisely the failure mode this endpoint exists
-  // to diagnose.
-  if (readOnly) {
-    return buildReadOnlyResponse({ timestamp, configV1, configV2, appConfig });
-  }
 
   const wallet = (await import('../datalayer/wallet.js')).default;
   const fullNodeRpc = (await import('../datalayer/fullNodeRpc.js')).default;
@@ -475,7 +456,6 @@ export const getDiagnosticsResponse = async ({ readOnly = false } = {}) => {
   // ---- Full response ------------------------------------------------------
   const fullResponse = {
     timestamp,
-    readOnly: false,
     cadt: cadtSection,
     network: {
       chia: actualNetwork,
@@ -495,68 +475,6 @@ export const getDiagnosticsResponse = async ({ readOnly = false } = {}) => {
   };
 
   return fullResponse;
-};
-
-/**
- * Read-only diagnostics: only cheap, public-safe data. We short-circuit
- * BEFORE the wallet/datalayer/full-node RPC fan-out so a read-only
- * deployment doesn't make per-request authenticated wallet RPC calls on
- * unauthenticated public hits.
- */
-const buildReadOnlyResponse = async ({ timestamp, configV1, configV2, appConfig }) => {
-  const enableV1 = configV1?.ENABLE !== false;
-  const enableV2 = configV2?.ENABLE !== false;
-  const chiaRoot = getChiaRoot();
-
-  const [systemInfoRes, chiaProcessesRes, chiaToolsRes] = await Promise.all([
-    settle('getSystemInfo', () => getSystemInfo(), DEFAULT_TIMEOUT_MS),
-    settle('scanChiaProcesses', () => scanChiaProcesses(), DEFAULT_TIMEOUT_MS),
-    settle('probeChiaTools', () => probeChiaTools(), DEFAULT_TIMEOUT_MS),
-  ]);
-
-  const processesValue = chiaProcessesRes.ok
-    ? chiaProcessesRes.value
-    : { matches: [], installPaths: [], multipleVersionsDetected: false, error: chiaProcessesRes.error };
-  const chiaToolsSection = chiaToolsRes.ok
-    ? chiaToolsRes.value
-    : { installed: false, version: null, error: chiaToolsRes.error };
-  const systemSection = systemInfoRes.ok ? systemInfoRes.value : { error: systemInfoRes.error };
-
-  return {
-    timestamp,
-    readOnly: true,
-    message: 'Operational details are not available on read-only nodes',
-    cadt: {
-      version: packageJson.version,
-      configDir: `${chiaRoot}/cadt`,
-      configFile: `${chiaRoot}/cadt/config.yaml`,
-      datalayerUrl: appConfig.DATALAYER_URL || null,
-      datalayerFileServerUrl: appConfig.DATALAYER_FILE_SERVER_URL || null,
-      useSimulator: appConfig.USE_SIMULATOR === true,
-      v1: {
-        enabled: enableV1,
-        readOnly: configV1.READ_ONLY === true,
-        isGovernanceBody: configV1.IS_GOVERNANCE_BODY === true,
-        apiKeyConfigured: !!(configV1.CADT_API_KEY && configV1.CADT_API_KEY !== ''),
-        governanceBodyId: configV1.GOVERNANCE?.GOVERNANCE_BODY_ID || null,
-      },
-      v2: {
-        enabled: enableV2,
-        readOnly: configV2.READ_ONLY === true,
-        isGovernanceBody: configV2.IS_GOVERNANCE_BODY === true,
-        apiKeyConfigured: !!(configV2.CADT_API_KEY && configV2.CADT_API_KEY !== ''),
-        governanceBodyId: configV2.GOVERNANCE?.GOVERNANCE_BODY_ID || null,
-      },
-    },
-    network: { cadt: appConfig.CHIA_NETWORK || null },
-    chia: {
-      chiaTools: { installed: chiaToolsSection.installed, version: chiaToolsSection.version },
-      runningProcesses: {
-        multipleVersionsDetected: processesValue.multipleVersionsDetected,
-      },
-    },
-    system: systemSection,
-  };
 };
 
 export const __test = {

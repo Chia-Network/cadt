@@ -525,16 +525,20 @@ app.get('/health', (req, res) => {
 // that single enforcement point rather than duplicating the constant-time
 // check here.
 //
-// Read-only: when V1 or V2 READ_ONLY is set we strip sensitive fields
-// (balances, transaction details, peer details, subscription IDs, home org
-// IDs) the same way wallet-health.js does for /v{1,2}/health/wallet.
+// Disabled in read-only mode: the diagnostics payload exposes system details
+// (paths, wallet balances, peer IPs, subscription IDs) that should not be
+// served on unauthenticated public-observer nodes.
 app.get('/diagnostics', async (req, res) => {
   try {
     const configV1 = getConfig();
     const configV2 = getConfigV2();
-    const readOnly = !!(configV2.READ_ONLY || configV1.READ_ONLY);
+    if (configV2.READ_ONLY || configV1.READ_ONLY) {
+      return res.status(403).json({
+        error: 'The /diagnostics endpoint is not available on read-only nodes',
+      });
+    }
     const { getDiagnosticsResponse } = await import('./routes/diagnostics.js');
-    const result = await getDiagnosticsResponse({ readOnly });
+    const result = await getDiagnosticsResponse();
     return res.status(200).json(result);
   } catch (error) {
     logger.error(`[diagnostics]: unexpected error building response: ${error.message}`);
