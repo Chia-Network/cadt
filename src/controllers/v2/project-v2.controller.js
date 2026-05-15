@@ -36,6 +36,7 @@ import { projectV2Schema } from '../../validations/v2/project-v2.validations.js'
 import { formatModelAssociationName } from '../../utils/model-utils.js';
 import { resolveOrgUid } from '../../utils/owner-utils.js';
 import { stageProjectChildDeletes } from '../../utils/v2-cascade-delete.js';
+import { checkReferences, buildReferenceConflictBody } from '../../utils/v2-reference-guards.js';
 
 export const create = async (req, res) => {
   try {
@@ -817,6 +818,11 @@ export const destroy = async (req, res) => {
         message: 'Project not found',
         success: false,
       });
+    }
+
+    const refResult = await checkReferences('project', id);
+    if (refResult.hasReferences) {
+      return res.status(409).json(buildReferenceConflictBody('project', refResult));
     }
 
     const releaseTransactionMutex =

@@ -40,8 +40,8 @@
  *
  * These records intentionally do NOT cascade. The correct approaches (in order
  * of priority) are:
- *   - Tier 2: Block delete with 409 if local references exist (or allow with
- *             ?force=true after showing impact)
+ *   - Tier 2: Block delete with 409 if any local references exist (committed or staged
+ *             INSERT/UPDATE); clients must remove references first
  *   - Tier 3: Soft delete / deprecation (the only truly safe distributed
  *             systems answer — tombstones over hard deletes)
  *   - Tier 4: Orphan cleanup endpoint for records with zero local references

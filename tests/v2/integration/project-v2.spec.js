@@ -1243,6 +1243,50 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         expect(matching, `missing staged delete for ${table}:${id}`).to.exist;
       }
     });
+
+    it('should return 409 when another project references this project', async function () {
+      const homeOrgId = await getV2HomeOrgId();
+      const program = await ProgramV2.create({
+        programName: 'Ref guard program',
+        programRegistry: 'Test Registry',
+        programRegistryActivityId: `REF-PGM-${uuidv4().slice(0, 8)}`,
+      });
+      const targetProject = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+        projectRegistryName: 'Test Registry',
+        projectId: `REF-TGT-${uuidv4().slice(0, 8)}`,
+        projectName: 'Target project for ref guard',
+        projectSector: ['Agriculture'],
+        orgUid: homeOrgId,
+        cadTrustProgramId: program.cadTrustProgramId,
+      }));
+      await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+        projectRegistryName: 'Test Registry',
+        projectId: `REF-PTR-${uuidv4().slice(0, 8)}`,
+        projectName: 'Referrer project',
+        projectSector: ['Agriculture'],
+        orgUid: homeOrgId,
+        cadTrustProgramId: program.cadTrustProgramId,
+        cadTrustReferenceProjectId: targetProject.cadTrustProjectId,
+      }));
+
+      const response = await supertest(app)
+        .delete(`/v2/project/${targetProject.cadTrustProjectId}`)
+        .expect(409);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.equal('Referenced records must be removed before deletion');
+      expect(response.body.references).to.deep.include({ table: 'project', count: 1 });
+
+      const stagingDeletes = await StagingV2.findAll({
+        where: { table: 'project', action: 'DELETE' },
+        raw: true,
+      });
+      const forTarget = stagingDeletes.find((row) => {
+        const data = JSON.parse(row.data);
+        return data[0]?.cad_trust_project_id === targetProject.cadTrustProjectId;
+      });
+      expect(forTarget).to.be.undefined;
+    });
   });
 
   describe('Phase 20.5: Advanced Features Tests', function () {

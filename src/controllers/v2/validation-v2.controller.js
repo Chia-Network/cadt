@@ -21,6 +21,7 @@ import { resolveOrgUid } from '../../utils/owner-utils.js';
 
 import { loggerV2 } from '../../config/logger.js';
 import { validationV2Schema } from '../../validations/v2/validation-v2.validations.js';
+import { checkReferences, buildReferenceConflictBody } from '../../utils/v2-reference-guards.js';
 
 export const create = async (req, res) => {
   try {
@@ -311,6 +312,11 @@ export const destroy = async (req, res) => {
         message: 'Validation not found',
         success: false,
       });
+    }
+
+    const refResult = await checkReferences('validation', id);
+    if (refResult.hasReferences) {
+      return res.status(409).json(buildReferenceConflictBody('validation', refResult));
     }
 
     // Stage the delete

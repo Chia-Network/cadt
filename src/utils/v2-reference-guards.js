@@ -3,12 +3,11 @@
 /**
  * V2 Delete Reference Guards
  *
- * Prevents deletion of shared/standalone records (methodology, stakeholder,
- * program, label) when local references still exist. Returns reference counts
- * so the caller can decide whether to proceed with ?force=true.
+ * Blocks deletion when any local record (committed or staged INSERT/UPDATE)
+ * still references the target. References from any org/registry in the synced
+ * database count the same.
  *
- * See v2-cascade-delete.js for the full design rationale on why these records
- * must not be silently deleted.
+ * See v2-cascade-delete.js for cascade vs shared-record design rationale.
  */
 
 import {
@@ -17,10 +16,29 @@ import {
   UnitLabelV2,
   ProjectV2,
   StagingV2,
+  IssuanceV2,
+  VerificationV2,
+  AefT5AuthorizedEntitiesV2,
+  AefT2AuthorizationsV2,
+  AefT3ActionsV2,
+  AefT4HoldingsV2,
 } from '../models/v2/index.js';
 import { Op } from 'sequelize';
 import { toSnakeCase } from './v2-camel-to-snake.js';
 
+const REFERENCE_ERROR_CODE = 'Referenced records must be removed before deletion';
+
+/**
+ * @typedef {object} ReferenceDefinition
+ * @property {import('sequelize').Model} model
+ * @property {string} fkField - Sequelize attribute (camelCase)
+ * @property {string} table - staging / DB table name (snake_case)
+ * @property {string} label - human-readable plural for messages
+ * @property {(recordId: string) => object} [buildWhere] - optional custom where clause
+ * @property {(record: object, recordId: string) => boolean} [stagedMatch] - staged row match
+ */
+
+/** @type {Record<string, ReferenceDefinition[]>} */
 const REFERENCE_MAP = {
   methodology: [
     {
@@ -54,9 +72,75 @@ const REFERENCE_MAP = {
       label: 'unit-label links',
     },
   ],
+  project_methodology: [
+    {
+      model: IssuanceV2,
+      fkField: 'cadTrustProjectMethodologyId',
+      table: 'issuance',
+      label: 'issuance records',
+    },
+  ],
+  location: [
+    {
+      model: IssuanceV2,
+      fkField: 'cadTrustLocationId',
+      table: 'issuance',
+      label: 'issuance records',
+    },
+  ],
+  validation: [
+    {
+      model: VerificationV2,
+      fkField: 'cadTrustValidationId',
+      table: 'verification',
+      label: 'verifications',
+    },
+  ],
+  project: [
+    {
+      model: ProjectV2,
+      fkField: 'cadTrustReferenceProjectId',
+      table: 'project',
+      label: 'projects referencing this project',
+      buildWhere: (recordId) => ({
+        cadTrustReferenceProjectId: recordId,
+        cadTrustProjectId: { [Op.ne]: recordId },
+      }),
+      stagedMatch: (record, recordId) => (
+        record?.cad_trust_reference_project_id === recordId
+        && record?.cad_trust_project_id !== recordId
+      ),
+    },
+  ],
+  unit: [
+    {
+      model: AefT5AuthorizedEntitiesV2,
+      fkField: 'cadTrustUnitId',
+      table: 'aef_t5_authorized_entities',
+      label: 'AEF-T5 authorized entity records',
+    },
+    {
+      model: AefT2AuthorizationsV2,
+      fkField: 'cadTrustUnitId',
+      table: 'aef_t2_authorizations',
+      label: 'AEF-T2 authorization records',
+    },
+    {
+      model: AefT3ActionsV2,
+      fkField: 'cadTrustUnitId',
+      table: 'aef_t3_actions',
+      label: 'AEF-T3 action records',
+    },
+    {
+      model: AefT4HoldingsV2,
+      fkField: 'cadTrustUnitId',
+      table: 'aef_t4_holdings',
+      label: 'AEF-T4 holding records',
+    },
+  ],
 };
 
-const countStagedReferences = async (table, snakeFkField, recordId) => {
+const countStagedReferences = async (table, snakeFkField, recordId, matchPredicate = null) => {
   const stagedRows = await StagingV2.findAll({
     where: {
       table,
@@ -73,12 +157,15 @@ const countStagedReferences = async (table, snakeFkField, recordId) => {
       const parsedData = JSON.parse(stagedRow.data);
       const records = Array.isArray(parsedData) ? parsedData : [parsedData];
       for (const record of records) {
-        if (record?.[snakeFkField] === recordId) {
+        if (matchPredicate) {
+          if (matchPredicate(record)) {
+            count += 1;
+          }
+        } else if (record?.[snakeFkField] === recordId) {
           count += 1;
         }
       }
     } catch {
-      // Ignore malformed staging rows here; staging validation catches these separately.
       continue;
     }
   }
@@ -86,9 +173,10 @@ const countStagedReferences = async (table, snakeFkField, recordId) => {
 };
 
 /**
- * Check whether any local records reference the given shared record.
+ * Check whether any local records reference the given record (committed + staged).
  *
- * @param {string} table   – one of 'methodology', 'stakeholder', 'program', 'label'
+ * @param {string} table – logical key: methodology, stakeholder, program, label,
+ *   project_methodology, location, validation, project, unit
  * @param {string} recordId – PK of the record being deleted
  * @returns {{ hasReferences: boolean, references: Array<{table: string, count: number, label: string}> }}
  */
@@ -100,11 +188,17 @@ export const checkReferences = async (table, recordId) => {
 
   const references = [];
 
-  for (const { model, fkField, table: refTable, label } of definitions) {
-    const mainCount = await model.count({ where: { [fkField]: recordId } });
-    const stagedCount = await countStagedReferences(refTable, toSnakeCase(fkField), recordId);
-    const totalCount = mainCount + stagedCount;
+  for (const def of definitions) {
+    const { model, fkField, table: refTable, label, buildWhere, stagedMatch } = def;
+    const where = buildWhere ? buildWhere(recordId) : { [fkField]: recordId };
+    const mainCount = await model.count({ where });
 
+    const snakeFk = toSnakeCase(fkField);
+    const stagedCount = stagedMatch
+      ? await countStagedReferences(refTable, snakeFk, recordId, (record) => stagedMatch(record, recordId))
+      : await countStagedReferences(refTable, snakeFk, recordId);
+
+    const totalCount = mainCount + stagedCount;
     if (totalCount > 0) {
       references.push({ table: refTable, count: totalCount, label });
     }
@@ -125,10 +219,13 @@ export const checkReferences = async (table, recordId) => {
  */
 export const buildReferenceConflictBody = (entityName, refResult) => {
   const parts = refResult.references.map((r) => `${r.count} ${r.label}`);
+  const refSummary = parts.join(', ');
   return {
     success: false,
-    message: `Cannot delete ${entityName}: referenced by ${parts.join(', ')}`,
+    message: `Cannot delete ${entityName}: it is still referenced by ${refSummary}. Remove those references before deleting this ${entityName}.`,
+    error: REFERENCE_ERROR_CODE,
     references: refResult.references.map(({ table, count }) => ({ table, count })),
-    hint: 'Remove all references first, or use ?force=true to delete anyway',
   };
 };
+
+export const REFERENCE_GUARD_ERROR = REFERENCE_ERROR_CODE;

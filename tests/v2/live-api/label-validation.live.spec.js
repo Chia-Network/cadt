@@ -264,7 +264,7 @@ describe('Label Live API Validation Tests', function () {
       // Delete in reverse order
       for (let i = idsToDelete.length - 1; i >= 0; i--) {
         const id = idsToDelete[i];
-        const response = await makeDeleteRequest(request, '/v2/label', id, { query: { force: 'true' } });
+        const response = await makeDeleteRequest(request, '/v2/label', id);
         expect(response.success).to.be.true;
 
         if (shouldAutoCommit()) {
