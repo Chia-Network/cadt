@@ -23,9 +23,8 @@ import { sendReadOnlyError } from './utils/read-only-response.js';
 import { getRateLimitRetryAfterSeconds } from './utils/rate-limit.js';
 import {
   checkDiskSpace,
-  peekDiskSpaceStatus,
-  refreshDiskSpaceStatus,
   logDiskSpaceStatus,
+  buildHealthDiskSpacePayload,
   buildInsufficientDiskSpaceError,
   isWriteRejectedByDiskGuard,
 } from './utils/disk-space.js';
@@ -544,34 +543,14 @@ app.use(async function (req, res, next) {
 });
 
 app.get('/health', (req, res) => {
-  // Surface disk-space status so monitoring can alert before writes get
-  // blocked. Use the non-blocking peek (cached value only) and kick off
-  // an async refresh in the background — synchronously awaiting statfs
-  // here can cause k8s liveness probes (default 1 s timeout) to fail
-  // when the filesystem is slow or wedged, which is exactly when /health
-  // most needs to stay responsive.
-  let diskSpace = null;
-  try {
-    const status = peekDiskSpaceStatus();
-    if (status) {
-      diskSpace = {
-        severity: status.severity,
-        freeBytes: status.freeBytes,
-        blockBytes: status.blockBytes,
-        warnBytes: status.warnBytes,
-      };
-      // Drive the debounced log from /health too so a mostly-idle CADT
-      // (no writes in flight) still surfaces warn/block transitions.
-      logDiskSpaceStatus(status);
-    }
-    refreshDiskSpaceStatus();
-  } catch (err) {
-    logger.debug(`disk-space-guard: /health peek failed: ${err.message}`);
-  }
+  // Non-blocking: build the cached disk-space projection (helper handles
+  // peek + transition log + async refresh + safe-fail). Synchronously
+  // awaiting statfs here would risk timing out k8s liveness probes when
+  // the filesystem is slow.
   res.status(200).json({
     message: 'OK',
     timestamp: new Date().toISOString(),
-    diskSpace,
+    diskSpace: buildHealthDiskSpacePayload(),
   });
 });
 

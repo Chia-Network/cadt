@@ -154,36 +154,31 @@ const computeStatus = async () => {
   });
 };
 
-/**
- * Non-blocking peek at the current disk-space status. Returns the cached
- * value if one exists, otherwise null. Never triggers a statfs.
- *
- * Used by /health endpoints so liveness probes never block on a slow
- * filesystem (statfs can hang for seconds on NFS/EBS hiccups, and k8s'
- * default livenessProbe.timeoutSeconds is 1 s — a full statfs round trip
- * can trigger spurious pod restarts precisely when operators most need
- * /health to respond).
- *
- * The cache is kept fresh by checkDiskSpace() calls from the write-path
- * middleware (every 30 s of write traffic) and by the periodic refresh
- * driven from refreshDiskSpaceStatus() below. As a fallback, /health
- * handlers should also kick off an async refresh (and ignore the
- * promise) so a quiet, mostly-idle instance still gets timely updates.
- */
-export const peekDiskSpaceStatus = () => {
+// Non-blocking peek at the current disk-space status. Returns the cached
+// value if one exists, otherwise null. Never triggers a statfs.
+//
+// Used by buildHealthDiskSpacePayload so /health probes never block on
+// a slow filesystem (statfs can hang for seconds on NFS/EBS hiccups,
+// and k8s' default livenessProbe.timeoutSeconds is 1 s -- a full statfs
+// round trip can trigger spurious pod restarts precisely when /health
+// most needs to respond).
+//
+// The cache is kept fresh by checkDiskSpace() calls from the write-path
+// middleware and by the fire-and-forget refresh kicked off from
+// buildHealthDiskSpacePayload, so a quiet, mostly-idle instance still
+// sees timely updates.
+const peekDiskSpaceStatus = () => {
   if (testOverride !== null) {
     return testOverride;
   }
   return cachedStatus;
 };
 
-/**
- * Fire-and-forget refresh of the cached disk-space status. Used by
- * /health and similar non-blocking callers that want the cache to stay
- * warm without paying statfs latency on the request path. Failures are
- * swallowed (computeStatus already logs them).
- */
-export const refreshDiskSpaceStatus = () => {
+// Fire-and-forget refresh of the cached disk-space status. Used by
+// buildHealthDiskSpacePayload to keep the cache warm without paying
+// statfs latency on the request path. Failures are swallowed
+// (computeStatus already logs them).
+const refreshDiskSpaceStatus = () => {
   // Reuse the same in-flight de-dup as checkDiskSpace so callers don't
   // accidentally schedule overlapping statfs calls.
   void checkDiskSpace().catch(() => {});
@@ -278,6 +273,51 @@ export const logDiskSpaceStatus = (status) => {
       break;
   }
   lastLoggedSeverity = status.severity;
+};
+
+// Fields exposed on /health endpoints. Centralising the projection here
+// keeps /health, /v1/health, and /v2/health byte-for-byte consistent;
+// adding a new field (e.g. `error`, `path`) only requires a change in
+// this list, not in three handlers.
+const HEALTH_DISK_SPACE_FIELDS = Object.freeze([
+  'severity',
+  'freeBytes',
+  'blockBytes',
+  'warnBytes',
+]);
+
+/**
+ * Build the standard `diskSpace` payload for /health-style endpoints
+ * and drive the same side effects every health handler should perform:
+ *   - debounced transition log line (so a mostly-idle instance still
+ *     surfaces warn/block transitions even with no writes in flight)
+ *   - fire-and-forget cache refresh (so the next probe sees up-to-date
+ *     numbers without this request paying statfs latency)
+ *
+ * Returns the projection object (or null if the cache hasn't been
+ * populated yet). Never throws - any internal failure is swallowed
+ * after a debug log so /health itself stays 200.
+ *
+ * Callers must NOT pass the returned object back to a caller that
+ * could mutate it; the live cache reference is frozen so attempts to
+ * mutate the projection's shared keys are silent no-ops anyway, but a
+ * fresh object is returned here for safety.
+ */
+export const buildHealthDiskSpacePayload = () => {
+  try {
+    const status = peekDiskSpaceStatus();
+    refreshDiskSpaceStatus();
+    if (!status) return null;
+    logDiskSpaceStatus(status);
+    const payload = {};
+    for (const field of HEALTH_DISK_SPACE_FIELDS) {
+      payload[field] = status[field] ?? null;
+    }
+    return payload;
+  } catch (err) {
+    logger.debug(`disk-space-guard: health payload failed: ${err.message}`);
+    return null;
+  }
 };
 
 /**

@@ -3,12 +3,7 @@
 import express from 'express';
 import { getWalletHealthResponse } from '../wallet-health.js';
 import { getConfig } from '../../utils/config-loader';
-import {
-  peekDiskSpaceStatus,
-  refreshDiskSpaceStatus,
-  logDiskSpaceStatus,
-} from '../../utils/disk-space.js';
-import { logger } from '../../config/logger.js';
+import { buildHealthDiskSpacePayload } from '../../utils/disk-space.js';
 const V1Router = express.Router();
 
 import {
@@ -25,30 +20,12 @@ import {
 } from './resources';
 
 V1Router.get('/health', (req, res) => {
-  // Non-blocking: use cached disk-space status only and trigger an async
-  // refresh. Synchronously awaiting statfs would risk timing out k8s
-  // liveness probes when the filesystem is slow. See bare /health in
-  // src/middleware.js for full rationale.
-  let diskSpace = null;
-  try {
-    const status = peekDiskSpaceStatus();
-    if (status) {
-      diskSpace = {
-        severity: status.severity,
-        freeBytes: status.freeBytes,
-        blockBytes: status.blockBytes,
-        warnBytes: status.warnBytes,
-      };
-      logDiskSpaceStatus(status);
-    }
-    refreshDiskSpaceStatus();
-  } catch (err) {
-    logger.debug(`disk-space-guard: /v1/health peek failed: ${err.message}`);
-  }
+  // Non-blocking: see bare /health in src/middleware.js. The shared
+  // helper handles peek + transition log + async refresh.
   res.status(200).json({
     message: 'V1 API is running',
     timestamp: new Date().toISOString(),
-    diskSpace,
+    diskSpace: buildHealthDiskSpacePayload(),
   });
 });
 
