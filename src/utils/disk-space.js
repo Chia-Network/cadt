@@ -319,9 +319,6 @@ export const __invalidateDiskSpaceCacheForTests = () => {
   inflight = null;
 };
 
-// Exposed for /health and any future callers that want to format MB.
-export const BYTES_PER_MEGABYTE = BYTES_PER_MB;
-
 // Methods that should be rejected when severity === 'block'. DELETE is
 // intentionally omitted so operators can free space without restarting.
 // Note: a pathological large CASCADE DELETE can still trigger SQLITE_FULL
