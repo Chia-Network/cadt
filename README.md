@@ -44,6 +44,15 @@ CADT and Chia system usage will depend on many factors, including how busy the b
 
 ARM and x86 systems are supported.  While Windows, MacOS, and all versions of Linux are supported, Ubuntu Linux is the recommended operating system as it is used most in testing and our internal hosting.
 
+#### Disk space guard
+
+CADT defensively rejects write requests when the filesystem holding the V1/V2 SQLite databases drops below a low-space threshold, so a full disk cannot corrupt the database mid-transaction. Operators should monitor for this and free space (or expand the volume) before it triggers.
+
+* When free space falls below **1 GiB** (2³⁰ bytes), CADT logs a warning. Writes are still served.
+* When free space falls below **512 MiB** (2²⁰ × 512 bytes), CADT rejects `POST`, `PUT`, and `PATCH` requests with HTTP `507 Insufficient Storage` and logs an error. `GET` reads and `DELETE` requests are still served so operators can free space without restarting the service. Note that a very large `DELETE` (e.g., a cascading delete that touches many rows) writes to the SQLite WAL during the transaction; if the disk is critically low even an allowed `DELETE` may run out of space before the next checkpoint, so prefer freeing files outside the database first.
+* Log lines are emitted only on **severity transitions** (`ok` → `warn`, `warn` → `block`, recovery to `ok`, etc.) — not on every observation — so monitoring scrapes against `/health` cannot drown out the alert when free space first drops below a threshold.
+* Current status is exposed under the `diskSpace` field on the `/health`, `/v1/health`, and `/v2/health` endpoints for monitoring. The field is `null` until the first probe completes, otherwise an object with `severity` (`ok` / `warn` / `block` / `unknown`), `freeBytes` (the lowest free-space figure observed across the V1/V2 data directories, or `null` when every probe failed), and the `blockBytes` / `warnBytes` thresholds. The 507 response body itself only contains `{message, error: "INSUFFICIENT_DISK_SPACE", success: false}` — exact byte counts are reserved for `/health` so anonymous callers (the disk-space gate runs before the `CADT_API_KEY` check) cannot enumerate operational state.
+
 ### Linux
 
 A binary file that can run on all Linux distributions on x86 hardware can be found for each tagged release named `cadt-linux-x64-<version>.zip`.  This zip file will extract to the `cadt-linux-64` directory by default, where the `cadt` file can be executed to run the API.
