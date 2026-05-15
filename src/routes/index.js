@@ -10,6 +10,7 @@ import { pullPickListValues } from '../utils/data-loaders';
 import { pullPickListValuesV2 } from '../utils/v2-data-loaders';
 import { getConfig } from '../utils/config-loader';
 import { getConfigV2 } from '../utils/config-loader';
+import { getDiagnosticsResponse } from './diagnostics.js';
 
 import app from '../middleware';
 
@@ -72,6 +73,13 @@ export const initializeDatabases = async () => {
   migrationsReadyPromise = Promise.all(initPromises).then(() => {
     migrationsReady = true;
     logger.info('All database migrations completed');
+
+    // Snapshot diagnostics into the log so operators always have a baseline,
+    // even on READ_ONLY nodes that can't serve the /diagnostics endpoint.
+    // Fire-and-forget: don't block scheduler start on RPC timeouts.
+    getDiagnosticsResponse()
+      .then((d) => logger.info(`Startup diagnostics: ${JSON.stringify(d)}`))
+      .catch((e) => logger.warn(`Startup diagnostics collection failed: ${e.message}`));
 
     // Start scheduler after migrations complete
     // Note: scheduler.start is async - it runs coin management first before starting other tasks
