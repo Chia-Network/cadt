@@ -542,7 +542,7 @@ app.get('/diagnostics', async (req, res) => {
     return res.status(200).json(result);
   } catch (error) {
     logger.error(`[diagnostics]: unexpected error building response: ${error.message}`);
-    return res.status(200).json({
+    return res.status(500).json({
       timestamp: new Date().toISOString(),
       error: `Failed to build diagnostics response: ${error.message}`,
     });
