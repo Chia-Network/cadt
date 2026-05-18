@@ -64,6 +64,57 @@ setup() {
   ! meets_min_specs 8 $((10 * 1024 * 1024)) 50 300
 }
 
+@test "soft spec shortfall requires every metric to be close" {
+  is_soft_spec_shortfall 3 $((7 * 1024 * 1024)) 270 270
+  ! is_soft_spec_shortfall 8 $((10 * 1024 * 1024)) 50 300
+  ! is_soft_spec_shortfall 8 $((10 * 1024 * 1024)) 300 50
+}
+
+@test "validate_network rejects unsupported network names" {
+  validate_network mainnet
+  validate_network testneta
+
+  run validate_network testnet
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"Invalid network: testnet"* ]]
+}
+
+@test "apply_config_defaults sets optional non-interactive defaults" {
+  DATALAYER_PORT=""
+  KEY_MODE=""
+  READ_ONLY=""
+
+  apply_config_defaults
+
+  [[ "$DATALAYER_PORT" == "80" ]]
+  [[ "$KEY_MODE" == "generate" ]]
+  [[ "$READ_ONLY" == "false" ]]
+}
+
+@test "patch_cadt_config passes quoted api key without Python interpolation" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  cat >"${bin}/python3" <<EOF
+#!/usr/bin/env bash
+if [[ "\${1:-}" == "-c" ]]; then
+  exit 0
+fi
+printf '%s' "\${CADT_API_KEY_VALUE}" >"${BATS_TEST_TMPDIR}/api_key"
+exit 0
+EOF
+  chmod +x "${bin}/python3"
+
+  PATH="${bin}:$PATH"
+  NETWORK=mainnet
+  DATALAYER_URL="http://127.0.0.1"
+  READ_ONLY=false
+  CADT_API_KEY="abc'\\def"
+
+  patch_cadt_config
+
+  [[ "$(cat "${BATS_TEST_TMPDIR}/api_key")" == "$CADT_API_KEY" ]]
+}
+
 @test "parse_args sets network and versions" {
   NETWORK=""
   CHIA_VERSION_CHOICE=""

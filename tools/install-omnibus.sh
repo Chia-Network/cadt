@@ -108,6 +108,27 @@ meets_min_specs() {
   return 0
 }
 
+is_soft_spec_shortfall() {
+  local cpu="$1" mem_kib="$2" disk_root="$3" disk_home="$4"
+  [[ "$cpu" -ge "$((MIN_CPU_CORES - 1))" ]] || return 1
+  [[ "$mem_kib" -ge "$((MIN_RAM_KIB * 9 / 10))" ]] || return 1
+  [[ "$disk_root" -ge "$((MIN_DISK_GIB * 9 / 10))" ]] || return 1
+  [[ "$disk_home" -ge "$((MIN_DISK_GIB * 9 / 10))" ]] || return 1
+  return 0
+}
+
+validate_network() {
+  local network="$1"
+  [[ "$network" == "mainnet" || "$network" == "testneta" ]] ||
+    die "Invalid network: $network"
+}
+
+apply_config_defaults() {
+  [[ -z "$DATALAYER_PORT" ]] && DATALAYER_PORT=80
+  [[ -z "$KEY_MODE" ]] && KEY_MODE=generate
+  [[ -z "$READ_ONLY" ]] && READ_ONLY=false
+}
+
 pick_release_from_json() {
   # Usage: pick_release_from_json <json_file> <stable|prerelease|index>
   local json_file="$1" mode="$2"
@@ -421,18 +442,14 @@ check_min_specs() {
 
   info "System: ${cpu} CPUs, $((mem_kib / 1024 / 1024)) GiB RAM, ${disk_root} GiB free on /, ${disk_home} GiB free on \$HOME"
 
-  if meets_min_specs "$cpu" "$mem_kib" "$disk_root" "$MIN_DISK_GIB" \
-    && meets_min_specs "$cpu" "$mem_kib" "$disk_home" "$MIN_DISK_GIB"; then
+  if meets_min_specs "$cpu" "$mem_kib" "$disk_root" "$MIN_DISK_GIB" &&
+    meets_min_specs "$cpu" "$mem_kib" "$disk_home" "$MIN_DISK_GIB"; then
     success "Meets minimum requirements (${MIN_DISK_GIB} GiB disk, ${MIN_CPU_CORES} CPUs, 8 GiB RAM)"
     return 0
   fi
 
-  local soft=false
-  [[ "$cpu" -ge "$((MIN_CPU_CORES - 1))" ]] && soft=true
-  [[ "$mem_kib" -ge "$((MIN_RAM_KIB * 9 / 10))" ]] && soft=true
-  [[ "$disk_root" -ge "$((MIN_DISK_GIB * 9 / 10))" ]] && soft=true
-
-  if [[ "$soft" == true ]] && confirm "System is slightly below recommended specs. Continue anyway?"; then
+  if is_soft_spec_shortfall "$cpu" "$mem_kib" "$disk_root" "$disk_home" &&
+    confirm "System is slightly below recommended specs. Continue anyway?"; then
     warn "Continuing with below-minimum hardware."
     return 0
   fi
@@ -528,8 +545,8 @@ prompt_version_choice() {
     2) tag=$(pick_release_from_json "$tmp" prerelease) ;;
     3)
       echo ""
-      jq -r '.[] | select(.draft == false) | "\(.tag_name)\t\(if .prerelease then "pre-release" else "stable" end)"' "$tmp" \
-        | head -15 | nl -w2 -s') '
+      jq -r '.[] | select(.draft == false) | "\(.tag_name)\t\(if .prerelease then "pre-release" else "stable" end)"' "$tmp" |
+        head -15 | nl -w2 -s') '
       local num
       prompt_default num "Enter number" "1"
       tag=$(pick_release_from_json "$tmp" "$num")
@@ -567,16 +584,16 @@ setup_apt_repos() {
   local arch
   arch=$(dpkg --print-architecture)
   local signed="deb [arch=${arch} signed-by=/usr/share/keyrings/chia.gpg]"
-  echo "${signed} https://repo.chia.net/debian/ stable main" \
-    | sudo tee /etc/apt/sources.list.d/chia.list >/dev/null
-  echo "${signed} https://repo.chia.net/chia-test/debian/ stable main" \
-    | sudo tee /etc/apt/sources.list.d/chia-test.list >/dev/null
-  echo "${signed} https://repo.chia.net/cadt/debian/ stable main" \
-    | sudo tee /etc/apt/sources.list.d/cadt.list >/dev/null
-  echo "${signed} https://repo.chia.net/cadt-test/debian/ stable main" \
-    | sudo tee /etc/apt/sources.list.d/cadt-test.list >/dev/null
-  echo "${signed} https://repo.chia.net/chia-tools/debian/ stable main" \
-    | sudo tee /etc/apt/sources.list.d/chia-tools.list >/dev/null
+  echo "${signed} https://repo.chia.net/debian/ stable main" |
+    sudo tee /etc/apt/sources.list.d/chia.list >/dev/null
+  echo "${signed} https://repo.chia.net/chia-test/debian/ stable main" |
+    sudo tee /etc/apt/sources.list.d/chia-test.list >/dev/null
+  echo "${signed} https://repo.chia.net/cadt/debian/ stable main" |
+    sudo tee /etc/apt/sources.list.d/cadt.list >/dev/null
+  echo "${signed} https://repo.chia.net/cadt-test/debian/ stable main" |
+    sudo tee /etc/apt/sources.list.d/cadt-test.list >/dev/null
+  echo "${signed} https://repo.chia.net/chia-tools/debian/ stable main" |
+    sudo tee /etc/apt/sources.list.d/chia-tools.list >/dev/null
   sudo apt-get update -qq
   success "Apt repositories configured"
 }
@@ -612,8 +629,7 @@ run_prompts() {
       *) NETWORK=mainnet ;;
     esac
   fi
-  [[ "$NETWORK" == "mainnet" || "$NETWORK" == "testneta" ]] \
-    || die "Invalid network: $NETWORK"
+  validate_network "$NETWORK"
 
   local tmpjson
   tmpjson=$(mktemp)
@@ -677,7 +693,9 @@ run_prompts() {
   fi
 
   if [[ -z "$READ_ONLY" ]]; then
-    if confirm "Run CADT in read-only (observer) mode?"; then
+    if [[ "$ASSUME_YES" == true ]]; then
+      READ_ONLY=false
+    elif confirm "Run CADT in read-only (observer) mode?"; then
       READ_ONLY=true
     else
       READ_ONLY=false
@@ -900,29 +918,32 @@ patch_cadt_config() {
     governance_id="$GOVERNANCE_TESTNETA"
   fi
 
-  local api_key_py="None"
-  local read_only_py="False"
-  if [[ -n "$CADT_API_KEY" ]]; then
-    api_key_py="'${CADT_API_KEY}'"
-  fi
-  [[ "$READ_ONLY" == true ]] && read_only_py="True"
-
-  python3 <<PY
+  CADT_CONFIG_PATH="$CADT_CONFIG" \
+    CADT_NETWORK="$NETWORK" \
+    CADT_DATALAYER_URL="$DATALAYER_URL" \
+    CADT_GOVERNANCE_ID="$governance_id" \
+    CADT_READ_ONLY="$READ_ONLY" \
+    CADT_API_KEY_VALUE="$CADT_API_KEY" \
+    python3 <<'PY'
+import os
 import yaml
 from pathlib import Path
 
-path = Path("${CADT_CONFIG}")
+path = Path(os.environ["CADT_CONFIG_PATH"])
 with path.open() as f:
     cfg = yaml.safe_load(f)
 
-cfg.setdefault("APP", {})["CHIA_NETWORK"] = "${NETWORK}"
-cfg["APP"]["DATALAYER_FILE_SERVER_URL"] = "${DATALAYER_URL}"
+api_key = os.environ["CADT_API_KEY_VALUE"] or None
+read_only = os.environ["CADT_READ_ONLY"] == "true"
+
+cfg.setdefault("APP", {})["CHIA_NETWORK"] = os.environ["CADT_NETWORK"]
+cfg["APP"]["DATALAYER_FILE_SERVER_URL"] = os.environ["CADT_DATALAYER_URL"]
 
 for section in ("V1", "V2"):
     cfg.setdefault(section, {})
-    cfg[section]["READ_ONLY"] = ${read_only_py}
-    cfg[section]["CADT_API_KEY"] = ${api_key_py}
-    cfg[section].setdefault("GOVERNANCE", {})["GOVERNANCE_BODY_ID"] = "${governance_id}"
+    cfg[section]["READ_ONLY"] = read_only
+    cfg[section]["CADT_API_KEY"] = api_key
+    cfg[section].setdefault("GOVERNANCE", {})["GOVERNANCE_BODY_ID"] = os.environ["CADT_GOVERNANCE_ID"]
 
 with path.open("w") as f:
     yaml.dump(cfg, f, default_flow_style=False, sort_keys=False)
@@ -981,7 +1002,7 @@ print_final_summary() {
   info "Services"
   for svc in chia-full-node chia-wallet chia-data-layer cadt nginx; do
     local st
-  if [[ "$svc" == "nginx" ]]; then
+    if [[ "$svc" == "nginx" ]]; then
       st=$(systemctl is-active nginx 2>/dev/null || echo unknown)
     else
       st=$(systemctl is-active "${svc}@${USER}" 2>/dev/null || echo unknown)
@@ -1073,14 +1094,12 @@ BANNER
   fi
   rm -f "$tmpjson"
 
-  [[ -z "$DATALAYER_PORT" ]] && DATALAYER_PORT=80
-  [[ -z "$KEY_MODE" ]] && KEY_MODE=generate
-  [[ -z "$READ_ONLY" ]] && READ_ONLY=false
-
-  if [[ -z "$NETWORK" || -z "$CHIA_APT_VER" || -z "$TOOLS_APT_VER" || -z "$CADT_APT_VER" \
-    || -z "$DATALAYER_HOST" ]]; then
+  if [[ -z "$NETWORK" || -z "$CHIA_APT_VER" || -z "$TOOLS_APT_VER" || -z "$CADT_APT_VER" ||
+    -z "$DATALAYER_HOST" ]]; then
     run_prompts
   else
+    validate_network "$NETWORK"
+    apply_config_defaults
     build_datalayer_url
     if ! $ASSUME_YES; then
       echo ""

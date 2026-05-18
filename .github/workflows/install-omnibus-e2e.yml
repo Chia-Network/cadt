@@ -125,4 +125,4 @@ jobs:
           rc=$?
           set -e
           [[ "$rc" -ne 0 ]]
-          grep -qi 'non-root' /tmp/root.log
+          grep -qi 'regular user' /tmp/root.log
