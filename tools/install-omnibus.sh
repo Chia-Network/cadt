@@ -22,7 +22,7 @@ readonly CADT_CONFIG="${CHIA_ROOT}/cadt/config.yaml"
 readonly MIN_CPU_CORES=4
 readonly MIN_RAM_KIB=$((7680 * 1024)) # 7.5 GiB
 readonly DEFAULT_MIN_DISK_GIB=300
-readonly SPINNER_CHARS='|/-\'
+readonly SPINNER_CHARS="|/-\\"
 
 # Configurable via flags
 NETWORK=""
@@ -127,6 +127,20 @@ apply_config_defaults() {
   [[ -z "$DATALAYER_PORT" ]] && DATALAYER_PORT=80
   [[ -z "$KEY_MODE" ]] && KEY_MODE=generate
   [[ -z "$READ_ONLY" ]] && READ_ONLY=false
+}
+
+is_dpkg_package_installed() {
+  local pkg="$1"
+  dpkg -l "$pkg" 2>/dev/null | grep -q '^ii[[:space:]]'
+}
+
+validate_supported_apt_versions() {
+  if [[ "$CHIA_APT_VER" == *~rc* ]]; then
+    die "chia-blockchain-cli prerelease apt packages are not supported; choose stable or an explicit stable tag."
+  fi
+  if [[ "$TOOLS_APT_VER" == *~rc* ]]; then
+    die "chia-tools prerelease apt packages are not supported; choose stable or an explicit stable tag."
+  fi
 }
 
 pick_release_from_json() {
@@ -285,8 +299,8 @@ Run as a non-root user with sudo access.
 
 Options:
   --network=mainnet|testneta
-  --chia-version=stable|prerelease|<tag>
-  --chia-tools-version=stable|prerelease|<tag>
+  --chia-version=stable|<stable-tag>
+  --chia-tools-version=stable|<stable-tag>
   --cadt-version=stable|prerelease|<tag>
   --datalayer-host=<hostname-or-ip>
   --datalayer-port=<port>          (default: 80)
@@ -460,7 +474,7 @@ check_min_specs() {
 check_existing_install() {
   local found=false
   for pkg in chia-blockchain-cli cadt chia-tools; do
-    if dpkg -l "$pkg" 2>/dev/null | awk '/^ii/ {exit 0} END {exit 1}'; then
+    if is_dpkg_package_installed "$pkg"; then
       warn "Package already installed: $pkg"
       found=true
     fi
@@ -584,14 +598,15 @@ setup_apt_repos() {
   local arch
   arch=$(dpkg --print-architecture)
   local signed="deb [arch=${arch} signed-by=/usr/share/keyrings/chia.gpg]"
+  sudo rm -f /etc/apt/sources.list.d/chia-test.list /etc/apt/sources.list.d/cadt-test.list
   echo "${signed} https://repo.chia.net/debian/ stable main" |
     sudo tee /etc/apt/sources.list.d/chia.list >/dev/null
-  echo "${signed} https://repo.chia.net/chia-test/debian/ stable main" |
-    sudo tee /etc/apt/sources.list.d/chia-test.list >/dev/null
   echo "${signed} https://repo.chia.net/cadt/debian/ stable main" |
     sudo tee /etc/apt/sources.list.d/cadt.list >/dev/null
-  echo "${signed} https://repo.chia.net/cadt-test/debian/ stable main" |
-    sudo tee /etc/apt/sources.list.d/cadt-test.list >/dev/null
+  if [[ "$CADT_APT_VER" == *~rc* ]]; then
+    echo "${signed} https://repo.chia.net/cadt-test/debian/ stable main" |
+      sudo tee /etc/apt/sources.list.d/cadt-test.list >/dev/null
+  fi
   echo "${signed} https://repo.chia.net/chia-tools/debian/ stable main" |
     sudo tee /etc/apt/sources.list.d/chia-tools.list >/dev/null
   sudo apt-get update -qq
@@ -663,6 +678,7 @@ run_prompts() {
     fi
   fi
   rm -f "$tmpjson"
+  validate_supported_apt_versions
 
   if [[ -z "$DATALAYER_HOST" ]]; then
     local default_ip=""
@@ -713,7 +729,7 @@ run_prompts() {
     case "${apick,,}" in
       e)
         read -r -s -p "API key: " CADT_API_KEY </dev/tty
-        echo "" </dev/tty
+        printf '\n' >/dev/tty
         ;;
       s) CADT_API_KEY="" ;;
       *) CADT_API_KEY=$(openssl rand -hex 24) ;;
@@ -813,7 +829,7 @@ setup_chia_keys_import() {
     mnemonic=$(tr -d '\r\n' <"$IMPORT_KEY_FILE")
   elif [[ "$ASSUME_YES" != true ]]; then
     read -r -s -p "Enter 24-word mnemonic: " mnemonic </dev/tty
-    echo "" </dev/tty
+    printf '\n' >/dev/tty
   else
     die "--import-key-from-file is required with --yes for key import"
   fi
@@ -1093,11 +1109,13 @@ BANNER
     resolve_version_choice "$CADT_VERSION_CHOICE" "$tmpjson" CADT_APT_VER
   fi
   rm -f "$tmpjson"
+  validate_supported_apt_versions
 
   if [[ -z "$NETWORK" || -z "$CHIA_APT_VER" || -z "$TOOLS_APT_VER" || -z "$CADT_APT_VER" ||
     -z "$DATALAYER_HOST" ]]; then
     run_prompts
   else
+    validate_supported_apt_versions
     validate_network "$NETWORK"
     apply_config_defaults
     build_datalayer_url
@@ -1141,6 +1159,7 @@ BANNER
 }
 
 if [[ "${INSTALL_OMNIBUS_LIB_ONLY:-0}" == 1 ]]; then
+  # shellcheck disable=SC2317
   return 0 2>/dev/null || exit 0
 fi
 

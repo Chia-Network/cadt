@@ -79,6 +79,25 @@ setup() {
   [[ "$output" == *"Invalid network: testnet"* ]]
 }
 
+@test "validate_supported_apt_versions rejects unsupported Chia prereleases" {
+  CHIA_APT_VER="2.7.1~rc2"
+  TOOLS_APT_VER="1.2.3"
+  CADT_APT_VER="1.7.26~rc28"
+
+  run validate_supported_apt_versions
+
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"chia-blockchain-cli prerelease apt packages are not supported"* ]]
+}
+
+@test "validate_supported_apt_versions allows CADT prereleases" {
+  CHIA_APT_VER="2.7.1"
+  TOOLS_APT_VER="1.2.3"
+  CADT_APT_VER="1.7.26~rc28"
+
+  validate_supported_apt_versions
+}
+
 @test "apply_config_defaults sets optional non-interactive defaults" {
   DATALAYER_PORT=""
   KEY_MODE=""
@@ -89,6 +108,28 @@ setup() {
   [[ "$DATALAYER_PORT" == "80" ]]
   [[ "$KEY_MODE" == "generate" ]]
   [[ "$READ_ONLY" == "false" ]]
+}
+
+@test "is_dpkg_package_installed detects installed dpkg rows" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  cat >"${bin}/dpkg" <<'EOF'
+#!/usr/bin/env bash
+case "$2" in
+  cadt)
+    echo "ii  cadt 1.2.3 amd64 CADT"
+    ;;
+  *)
+    echo "un  $2 <none> <none>"
+    ;;
+esac
+EOF
+  chmod +x "${bin}/dpkg"
+
+  PATH="${bin}:$PATH"
+
+  is_dpkg_package_installed cadt
+  ! is_dpkg_package_installed chia-tools
 }
 
 @test "patch_cadt_config passes quoted api key without Python interpolation" {

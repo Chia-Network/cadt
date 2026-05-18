@@ -99,7 +99,7 @@ jobs:
             --generate-key \
             --mnemonic-output-file=/dev/null \
             --min-disk-gb=10 2>&1 | tee /tmp/rerun.log
-          rc=$?
+          rc=${PIPESTATUS[0]}
           set -e
           [[ "$rc" -ne 0 ]]
           grep -qi 'existing' /tmp/rerun.log
@@ -122,7 +122,7 @@ jobs:
         run: |
           set +e
           sudo bash -c 'cd "$PWD" && bash tools/install-omnibus.sh --yes --min-disk-gb=10' 2>&1 | tee /tmp/root.log
-          rc=$?
+          rc=${PIPESTATUS[0]}
           set -e
           [[ "$rc" -ne 0 ]]
           grep -qi 'regular user' /tmp/root.log
