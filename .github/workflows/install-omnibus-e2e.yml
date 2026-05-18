@@ -1,0 +1,128 @@
+name: Install Omnibus E2E
+
+on:
+  pull_request:
+    paths:
+      - 'tools/install-omnibus.sh'
+      - 'tools/test/**'
+      - '.github/workflows/install-omnibus-e2e.yml'
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: e2e (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Run installer (testneta, stable)
+        run: |
+          API_KEY="$(openssl rand -hex 24)"
+          echo "API_KEY=${API_KEY}" >> "$GITHUB_ENV"
+          bash tools/install-omnibus.sh \
+            --yes \
+            --network=testneta \
+            --chia-version=stable \
+            --chia-tools-version=stable \
+            --cadt-version=stable \
+            --datalayer-host=127.0.0.1 \
+            --datalayer-port=80 \
+            --generate-key \
+            --mnemonic-output-file=/dev/null \
+            --api-key="${API_KEY}" \
+            --min-disk-gb=10
+
+      - name: Assert all services active
+        run: |
+          for svc in chia-wallet chia-full-node chia-data-layer cadt; do
+            sudo systemctl is-active "${svc}@${USER}" || (
+              sudo journalctl -u "${svc}@${USER}" --no-pager -n 200
+              exit 1
+            )
+          done
+          sudo systemctl is-active nginx
+
+      - name: Assert nginx serves datalayer dir
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:80/)
+          [[ "$code" == "404" || "$code" == "200" || "$code" == "403" ]]
+
+      - name: Assert CADT API responds
+        run: |
+          for _ in $(seq 1 40); do
+            if curl -fsS -H "x-api-key: ${API_KEY}" http://localhost:31310/v1/health >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 5
+          done
+          sudo journalctl -u "cadt@${USER}" --no-pager -n 500
+          exit 1
+
+      - name: Assert testneta governance ID written
+        run: |
+          sudo apt-get install -y python3-yaml
+          python3 -c "
+          import yaml
+          c = yaml.safe_load(open('${HOME}/.chia/mainnet/cadt/config.yaml'))
+          tid = '1019153f631bb82e7fc4984dc1f0f2af9e95a7c29df743f7b4dcc2b975857409'
+          assert c['V1']['GOVERNANCE']['GOVERNANCE_BODY_ID'] == tid
+          assert c['V2']['GOVERNANCE']['GOVERNANCE_BODY_ID'] == tid
+          assert c['APP']['CHIA_NETWORK'] == 'testneta'
+          "
+
+      - name: Assert chia network is testneta
+        run: |
+          grep -q 'selected_network: testneta' "${HOME}/.chia/mainnet/config/config.yaml"
+
+      - name: Re-run installer must abort (existing install)
+        run: |
+          set +e
+          bash tools/install-omnibus.sh --yes \
+            --network=testneta \
+            --chia-version=stable \
+            --chia-tools-version=stable \
+            --cadt-version=stable \
+            --datalayer-host=127.0.0.1 \
+            --datalayer-port=80 \
+            --generate-key \
+            --mnemonic-output-file=/dev/null \
+            --min-disk-gb=10 2>&1 | tee /tmp/rerun.log
+          rc=$?
+          set -e
+          [[ "$rc" -ne 0 ]]
+          grep -qi 'existing' /tmp/rerun.log
+
+      - name: Upload install log on failure
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: install-log-${{ matrix.os }}
+          path: /tmp/cadt-install-*.log
+          if-no-files-found: ignore
+
+  root-rejection:
+    name: reject root execution
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Running as root must fail with helpful message
+        run: |
+          set +e
+          sudo bash -c 'cd "$PWD" && bash tools/install-omnibus.sh --yes --min-disk-gb=10' 2>&1 | tee /tmp/root.log
+          rc=$?
+          set -e
+          [[ "$rc" -ne 0 ]]
+          grep -qi 'non-root' /tmp/root.log

@@ -315,6 +315,18 @@ Note that the CADT application will need to be restarted after any changes to th
 
 ## Tools
 
+### install-omnibus.sh
+
+The [`install-omnibus.sh`](tools/install-omnibus.sh) script performs an interactive, soup-to-nuts installation of Chia (CLI), chia-tools, CADT, and nginx for serving DataLayer files on Ubuntu or Debian. Run it as a **non-root user with sudo access** (not as root):
+
+```bash
+./tools/install-omnibus.sh
+```
+
+Use `./tools/install-omnibus.sh --help` for non-interactive flags (version pinning, network, DataLayer URL, API key, and more). After installation, create or import a home organization via the CADT API once your Chia wallet is synced.
+
+To test the installer locally on a fresh VM, [Multipass](https://multipass.run/) works well: `multipass launch 24.04 --name cadt-test --cloud-init -` then copy the script and run it inside the VM.
+
 ### update-ip.sh
 
 The [`update-ip.sh`](tools/update-ip.sh) script in the `tools` directory helps manage the `DATALAYER_FILE_SERVER_URL` configuration when your server's IP address changes. This is particularly useful for servers with dynamic IP addresses. Note that this script must be run as root (using sudo).

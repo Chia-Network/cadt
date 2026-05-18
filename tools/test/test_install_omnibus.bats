@@ -1,0 +1,90 @@
+#!/usr/bin/env bats
+
+setup() {
+  export INSTALL_OMNIBUS_LIB_ONLY=1
+  # shellcheck source=/dev/null
+  source "${BATS_TEST_DIRNAME}/../install-omnibus.sh"
+}
+
+@test "normalize_apt_version converts -rc to ~rc" {
+  [[ "$(normalize_apt_version "2.7.1-rc2")" == "2.7.1~rc2" ]]
+  [[ "$(normalize_apt_version "1.7.26-rc28")" == "1.7.26~rc28" ]]
+}
+
+@test "normalize_apt_version leaves stable tags unchanged" {
+  [[ "$(normalize_apt_version "2.7.0")" == "2.7.0" ]]
+}
+
+@test "denormalize_tag_from_apt converts ~rc to -rc" {
+  [[ "$(denormalize_tag_from_apt "2.7.1~rc2")" == "2.7.1-rc2" ]]
+}
+
+@test "pick_release_from_json stable returns first non-prerelease" {
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  local tag
+  tag=$(pick_release_from_json "$fixture" stable)
+  [[ -n "$tag" ]]
+  run jq -r --arg t "$tag" '.[] | select(.tag_name == $t) | .prerelease' "$fixture"
+  [[ "$output" == "false" ]]
+}
+
+@test "pick_release_from_json prerelease returns first prerelease" {
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/cadt-releases.json"
+  local tag
+  tag=$(pick_release_from_json "$fixture" prerelease)
+  [[ -n "$tag" ]]
+  run jq -r --arg t "$tag" '.[] | select(.tag_name == $t) | .prerelease' "$fixture"
+  [[ "$output" == "true" ]]
+}
+
+@test "pick_release_from_json index returns numbered release" {
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  local tag
+  tag=$(pick_release_from_json "$fixture" 1)
+  [[ -n "$tag" ]]
+}
+
+@test "validate_datalayer_host sets WARN_DNS for hostname" {
+  WARN_DNS=0
+  validate_datalayer_host "datalayer.example.com"
+  [[ "$WARN_DNS" -eq 1 ]]
+}
+
+@test "validate_datalayer_host does not warn for IPv4" {
+  WARN_DNS=0
+  validate_datalayer_host "203.0.113.10"
+  [[ "$WARN_DNS" -eq 0 ]]
+}
+
+@test "meets_min_specs passes for adequate hardware" {
+  meets_min_specs 8 $((10 * 1024 * 1024)) 500 300
+}
+
+@test "meets_min_specs fails for low disk" {
+  ! meets_min_specs 8 $((10 * 1024 * 1024)) 50 300
+}
+
+@test "parse_args sets network and versions" {
+  NETWORK=""
+  CHIA_VERSION_CHOICE=""
+  parse_args \
+    --network=testneta \
+    --chia-version=stable \
+    --datalayer-host=127.0.0.1 \
+    --datalayer-port=8080 \
+    --generate-key \
+    --yes \
+    --min-disk-gb=10
+  [[ "$NETWORK" == "testneta" ]]
+  [[ "$CHIA_VERSION_CHOICE" == "stable" ]]
+  [[ "$DATALAYER_HOST" == "127.0.0.1" ]]
+  [[ "$DATALAYER_PORT" == "8080" ]]
+  [[ "$KEY_MODE" == "generate" ]]
+  [[ "$ASSUME_YES" == true ]]
+  [[ "$MIN_DISK_GIB" == "10" ]]
+}
+
+@test "is_ipv4 recognizes dotted quads" {
+  is_ipv4 "192.168.1.1"
+  ! is_ipv4 "not-an-ip"
+}
