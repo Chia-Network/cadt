@@ -15,14 +15,13 @@ import {
   makeDeleteRequest,
   checkRecordInStaging,
 } from './helpers/api-request-helpers.js';
-import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstRecordIdFromDatabase, getAllRecordIdsFromDatabase } from './helpers/shared-state.js';
+import { addCreatedId, shouldAutoCommit, trackBatchVerification } from './helpers/shared-state.js';
 import {
   generateProject,
   generateProjectMinimal,
   generateProjectMaximal,
   generateProjectLongStrings,
   generateProjectForbiddenFields,
-  getLongString,
   getInvalidPicklistValue,
 } from './data/test-data-generators.js';
 
@@ -186,9 +185,8 @@ describe('Project Live API Validation Tests', function () {
         // Query for test records by filtering by home org and TEST- prefix
         let page = 1;
         const limit = 100;
-        let found = false;
 
-        while (!found && page <= 10) { // Limit to 10 pages to avoid infinite loop
+        while (page <= 10) { // Limit to 10 pages to avoid infinite loop
           const response = await request.get(`/v2/project?page=${page}&limit=${limit}&orgUid=${homeOrgId}`).expect(200);
           const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);
 
@@ -199,7 +197,6 @@ describe('Project Live API Validation Tests', function () {
 
           if (testRecord) {
             id = testRecord.cadTrustProjectId;
-            found = true;
             break;
           }
 
@@ -230,7 +227,7 @@ describe('Project Live API Validation Tests', function () {
       // Required fields must always be included; optional fields can be null (matching V1 behavior)
       const updateData = {
         projectRegistryName: record.projectRegistryName,
-        projectId: `UPDATED-${Date.now()}`,
+        projectId: `TEST-UPDATED-${Date.now()}`,
         projectName: 'Updated Project Name',
         projectCreditingProgram: record.projectCreditingProgram ?? null,
         projectLink: record.projectLink ?? null,
