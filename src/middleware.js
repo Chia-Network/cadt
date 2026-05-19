@@ -21,6 +21,13 @@ import { OrganizationsV2 } from './models/v2/index.js';
 import { logger } from './config/logger.js';
 import { sendReadOnlyError } from './utils/read-only-response.js';
 import { getRateLimitRetryAfterSeconds } from './utils/rate-limit.js';
+import {
+  checkDiskSpace,
+  logDiskSpaceStatus,
+  buildHealthDiskSpacePayload,
+  buildInsufficientDiskSpaceError,
+  isWriteRejectedByDiskGuard,
+} from './utils/disk-space.js';
 
 const { USE_SIMULATOR } = getConfig().APP;
 
@@ -181,6 +188,35 @@ app.use(async function (req, res, next) {
     }
     if (READ_ONLY && isReadOnlyMethodBlocked(req.method)) {
       return sendReadOnlyError(res);
+    }
+
+    // Defensive disk-space guard. SQLite (the V1/V2 backing store) returns
+    // SQLITE_FULL mid-transaction when the underlying filesystem runs out
+    // of space, which can corrupt the WAL and leave the DB inconsistent.
+    // Reject POST/PUT/PATCH below the hardcoded BLOCK_BYTES threshold
+    // (see src/utils/disk-space.js) so reads stay available and operators
+    // can free space via DELETE without restarting. Runs after READ_ONLY
+    // (configuration wins over transient state) but before the wallet/
+    // datalayer RPC checks below so we don't pay an RPC cost on a request
+    // we already know we can't persist.
+    if (isWriteRejectedByDiskGuard(req.method)) {
+      let diskStatus = null;
+      try {
+        diskStatus = await checkDiskSpace();
+        logDiskSpaceStatus(diskStatus);
+      } catch (diskErr) {
+        // Fail open: a bug in the guard itself must not take down writes.
+        // computeStatus() swallows per-directory statfs errors and the
+        // dir-resolution helpers don't throw, so reaching this branch
+        // means something unexpected happened (e.g., getChiaRoot blew up
+        // because os.homedir() failed under a misconfigured PID-1).
+        logger.error(
+          `disk-space-guard: unexpected check failure: ${diskErr.message}`,
+        );
+      }
+      if (diskStatus && diskStatus.severity === 'block') {
+        return res.status(507).json(buildInsufficientDiskSpaceError());
+      }
     }
 
     await assertChiaNetworkMatchInConfiguration();
@@ -507,9 +543,14 @@ app.use(async function (req, res, next) {
 });
 
 app.get('/health', (req, res) => {
+  // Non-blocking: build the cached disk-space projection (helper handles
+  // peek + transition log + async refresh + safe-fail). Synchronously
+  // awaiting statfs here would risk timing out k8s liveness probes when
+  // the filesystem is slow.
   res.status(200).json({
     message: 'OK',
     timestamp: new Date().toISOString(),
+    diskSpace: buildHealthDiskSpacePayload(),
   });
 });
 
