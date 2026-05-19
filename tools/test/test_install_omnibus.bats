@@ -6,9 +6,9 @@ setup() {
   source "${BATS_TEST_DIRNAME}/../install-omnibus.sh"
 }
 
-@test "normalize_apt_version converts -rc to ~rc" {
-  [[ "$(normalize_apt_version "2.7.1-rc2")" == "2.7.1~rc2" ]]
-  [[ "$(normalize_apt_version "1.7.26-rc28")" == "1.7.26~rc28" ]]
+@test "normalize_apt_version leaves release candidate tags unchanged" {
+  [[ "$(normalize_apt_version "2.7.1-rc2")" == "2.7.1-rc2" ]]
+  [[ "$(normalize_apt_version "1.7.26-rc28")" == "1.7.26-rc28" ]]
 }
 
 @test "normalize_apt_version leaves stable tags unchanged" {
@@ -80,9 +80,9 @@ setup() {
 }
 
 @test "validate_supported_apt_versions rejects unsupported Chia prereleases" {
-  CHIA_APT_VER="2.7.1~rc2"
+  CHIA_APT_VER="2.7.1-rc2"
   TOOLS_APT_VER="1.2.3"
-  CADT_APT_VER="1.7.26~rc28"
+  CADT_APT_VER="1.7.26-rc28"
 
   run validate_supported_apt_versions
 
@@ -93,9 +93,21 @@ setup() {
 @test "validate_supported_apt_versions allows CADT prereleases" {
   CHIA_APT_VER="2.7.1"
   TOOLS_APT_VER="1.2.3"
-  CADT_APT_VER="1.7.26~rc28"
+  CADT_APT_VER="1.7.26-rc28"
 
   validate_supported_apt_versions
+}
+
+@test "cadt_health_curl_args includes API key header only when configured" {
+  local args
+
+  CADT_API_KEY=""
+  cadt_health_curl_args args
+  [[ "${args[*]}" == "-fsS http://localhost:31310/v1/health" ]]
+
+  CADT_API_KEY="secret-key"
+  cadt_health_curl_args args
+  [[ "${args[*]}" == "-fsS -H x-api-key: secret-key http://localhost:31310/v1/health" ]]
 }
 
 @test "apply_config_defaults sets optional non-interactive defaults" {

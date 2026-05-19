@@ -65,11 +65,7 @@ fi
 
 normalize_apt_version() {
   local tag="$1"
-  if [[ "$tag" =~ -rc ]]; then
-    echo "${tag/-rc/~rc}"
-  else
-    echo "$tag"
-  fi
+  echo "$tag"
 }
 
 denormalize_tag_from_apt() {
@@ -156,12 +152,21 @@ normalize_mnemonic_file() {
 }
 
 validate_supported_apt_versions() {
-  if [[ "$CHIA_APT_VER" == *~rc* ]]; then
+  if [[ "$CHIA_APT_VER" == *~rc* || "$CHIA_APT_VER" == *-rc* ]]; then
     die "chia-blockchain-cli prerelease apt packages are not supported; choose stable or an explicit stable tag."
   fi
-  if [[ "$TOOLS_APT_VER" == *~rc* ]]; then
+  if [[ "$TOOLS_APT_VER" == *~rc* || "$TOOLS_APT_VER" == *-rc* ]]; then
     die "chia-tools prerelease apt packages are not supported; choose stable or an explicit stable tag."
   fi
+}
+
+cadt_health_curl_args() {
+  local -n args_ref="$1"
+  args_ref=(-fsS)
+  if [[ -n "$CADT_API_KEY" ]]; then
+    args_ref+=(-H "x-api-key: ${CADT_API_KEY}")
+  fi
+  args_ref+=("http://localhost:31310/v1/health")
 }
 
 pick_release_from_json() {
@@ -645,7 +650,7 @@ setup_apt_repos() {
     sudo tee /etc/apt/sources.list.d/chia.list >/dev/null
   echo "${signed} https://repo.chia.net/cadt/debian/ stable main" |
     sudo tee /etc/apt/sources.list.d/cadt.list >/dev/null
-  if [[ "$CADT_APT_VER" == *~rc* ]]; then
+  if [[ "$CADT_APT_VER" == *~rc* || "$CADT_APT_VER" == *-rc* ]]; then
     echo "${signed} https://repo.chia.net/cadt-test/debian/ stable main" |
       sudo tee /etc/apt/sources.list.d/cadt-test.list >/dev/null
   fi
@@ -691,8 +696,8 @@ run_prompts() {
   local tmpjson
   tmpjson=$(mktemp)
   if [[ -z "$CHIA_APT_VER" ]]; then
-    fetch_releases_json "$GH_API_CHIA" "$tmpjson"
     if [[ -n "$CHIA_VERSION_CHOICE" ]]; then
+      fetch_releases_json "$GH_API_CHIA" "$tmpjson"
       resolve_version_choice "$CHIA_VERSION_CHOICE" "$tmpjson" CHIA_APT_VER
     else
       CHIA_VERSION_CHOICE=""
@@ -701,8 +706,8 @@ run_prompts() {
   fi
 
   if [[ -z "$TOOLS_APT_VER" ]]; then
-    fetch_releases_json "$GH_API_TOOLS" "$tmpjson"
     if [[ -n "$CHIA_TOOLS_VERSION_CHOICE" ]]; then
+      fetch_releases_json "$GH_API_TOOLS" "$tmpjson"
       resolve_version_choice "$CHIA_TOOLS_VERSION_CHOICE" "$tmpjson" TOOLS_APT_VER
     else
       CHIA_TOOLS_VERSION_CHOICE=""
@@ -711,8 +716,8 @@ run_prompts() {
   fi
 
   if [[ -z "$CADT_APT_VER" ]]; then
-    fetch_releases_json "$GH_API_CADT" "$tmpjson"
     if [[ -n "$CADT_VERSION_CHOICE" ]]; then
+      fetch_releases_json "$GH_API_CADT" "$tmpjson"
       resolve_version_choice "$CADT_VERSION_CHOICE" "$tmpjson" CADT_APT_VER
     else
       CADT_VERSION_CHOICE=""
@@ -1036,8 +1041,10 @@ start_cadt_and_wait() {
 
   elapsed=0
   spinner_start "Waiting for CADT API"
+  local health_args
+  cadt_health_curl_args health_args
   while [[ "$elapsed" -lt 120 ]]; do
-    if curl -fsS "http://localhost:31310/v1/health" >/dev/null 2>&1; then
+    if curl "${health_args[@]}" >/dev/null 2>&1; then
       spinner_stop 0
       success "CADT API is responding"
       return 0
