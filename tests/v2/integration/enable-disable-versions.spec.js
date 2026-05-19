@@ -3,6 +3,7 @@ import supertest from 'supertest';
 import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
+import { SimpleIntervalJob, Task } from 'toad-scheduler';
 import { getConfig, getConfigV2 } from '../../../src/utils/config-loader.js';
 import { initializeDatabases } from '../../../src/routes/index.js';
 import scheduler from '../../../src/tasks/index.js';
@@ -351,25 +352,25 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
 
     it('should replace existing job when job ID collides', async function () {
       await scheduler.start(true, true);
-      const { SimpleIntervalJob, Task } = await import('toad-scheduler');
-      const newtask = new Task('new-mirror-check', async () => {});
+      const newTask = new Task('new-mirror-check', async () => {});
       const job = new SimpleIntervalJob(
         {
           seconds: 300,
           runImmediately: false,
         },
-        newtask,
+        newTask,
         { id: 'mirror-check', preventOverrun: true },
       );
 
-      const oldjob = scheduler.jobRegistry['mirror-check'];
+      const oldJob = scheduler.jobRegistry['mirror-check'];
       scheduler.addJobToScheduler(job);
-      const newjob = scheduler.jobRegistry['mirror-check'];
-      expect(newjob).not.to.equal(oldjob);
-      expect(newjob).to.equal(job);
-      // since the old job should be stopped before removed from jobRegistry, should check status
-      expect(oldjob.getStatus()).to.equal('stopped');
-      expect(newjob.getStatus()).to.equal('running');
+      const newJob = scheduler.jobRegistry['mirror-check'];
+      expect(newJob).not.to.equal(oldJob);
+      expect(newJob).to.equal(job);
+      // Old job is stopped before being removed from jobRegistry; verify both
+      // the replacement and the prior job's resulting status.
+      expect(oldJob.getStatus()).to.equal('stopped');
+      expect(newJob.getStatus()).to.equal('running');
     });
   });
 
