@@ -1174,6 +1174,7 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
               unitBlockEnd: '1029',
               unitCurrentOwner: 'Owner 1',
               unitStatus: 'Issued',
+              unitStatusReason: 'Issued after split',
             },
             {
               unitCount: 40,
@@ -1181,6 +1182,7 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
               unitBlockEnd: '1069',
               unitCurrentOwner: 'Owner 2',
               unitStatus: 'Held',
+              unitStatusReason: 'Held after split',
             },
             {
               unitCount: 30,
@@ -1188,6 +1190,7 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
               unitBlockEnd: '1099',
               unitCurrentOwner: 'Owner 3',
               unitStatus: 'Retired',
+              unitStatusReason: 'Retired after split',
             },
           ],
         };
@@ -1218,6 +1221,9 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         expect(stagedData.length).to.equal(3);
         expect(stagedData[0].cadTrustUnitId).to.equal(unit.cadTrustUnitId); // First keeps original ID
         expect(stagedData[1].cadTrustUnitId).to.not.equal(unit.cadTrustUnitId); // Others get new IDs
+        expect(stagedData[0].unitStatusReason).to.equal('Issued after split');
+        expect(stagedData[1].unitStatusReason).to.equal('Held after split');
+        expect(stagedData[2].unitStatusReason).to.equal('Retired after split');
       });
 
       it('should return error if cadTrustUnitId is missing', async function () {
