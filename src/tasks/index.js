@@ -91,8 +91,19 @@ const addJobToScheduler = (job) => {
     }
   }
 
-  jobRegistry[job.id] = job;
-  scheduler.addSimpleIntervalJob(job);
+  try {
+    scheduler.addSimpleIntervalJob(job);
+    jobRegistry[job.id] = job;
+  } catch (error) {
+    // If we get here it almost always means the cleanup above did not
+    // fully drain the prior entry from toad-scheduler's internal registry
+    // (so registerJob() re-threw "already registered"). Warn so an
+    // operator notices the job is missing instead of failing startup for
+    // the whole batch.
+    logger.warn(
+      `[SCHEDULER] failed to register job ${job.id}: ${error.message}; this task will not run on this process until restart`,
+    );
+  }
 };
 
 const start = async (enableV1 = true, enableV2 = true) => {
