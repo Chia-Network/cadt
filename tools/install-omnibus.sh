@@ -907,7 +907,6 @@ start_chia_services() {
     die "Timed out waiting for ${dir}"
   fi
   spinner_stop 0
-  echo "$net" >"${TMPDIR:-/tmp}/cadt-install-network-$$"
 }
 
 configure_nginx_datalayer() {
