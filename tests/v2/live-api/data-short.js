@@ -65,6 +65,7 @@ const deletePhaseTestFiles = [
   'aef-t5-authorized-entities-validation.live.spec.js',
   'aef-t4-holdings-validation.live.spec.js',
   'aef-t3-actions-validation.live.spec.js',
+  'aef-t2-authorizations-validation.live.spec.js',
   'unit-validation.live.spec.js',
   'issuance-validation.live.spec.js',
   'verification-validation.live.spec.js',
@@ -79,7 +80,6 @@ const deletePhaseTestFiles = [
   'program-validation.live.spec.js',
   'stakeholder-validation.live.spec.js',
   'label-validation.live.spec.js',
-  'aef-t2-authorizations-validation.live.spec.js',
   'aef-t1-submission-validation.live.spec.js',
 ];
 

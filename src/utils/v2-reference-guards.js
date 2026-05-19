@@ -227,5 +227,3 @@ export const buildReferenceConflictBody = (entityName, refResult) => {
     references: refResult.references.map(({ table, count }) => ({ table, count })),
   };
 };
-
-export const REFERENCE_GUARD_ERROR = REFERENCE_ERROR_CODE;
