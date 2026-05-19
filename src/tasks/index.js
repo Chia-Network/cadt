@@ -79,14 +79,18 @@ const jobRegistry = {};
 const addJobToScheduler = (job) => {
   if (scheduler.existsById(job.id)) {
     logger.debug(`[SCHEDULER] Stopping and replacing existing job ${job.id}`);
+    // Mirror stopAll(): tolerate either call throwing on a job in a bad
+    // state so the replacement registration below always wins.
     try {
       scheduler.stopById(job.id);
+      scheduler.removeById(job.id);
     } catch (error) {
-      logger.info(`[SCHEDULER] fail to stop job ${job.id}: ${error.message}, force to replace it`);
+      logger.debug(
+        `[SCHEDULER] failed to clear existing job ${job.id}: ${error.message}; continuing with replacement`,
+      );
     }
-    scheduler.removeById(job.id);
   }
-  
+
   jobRegistry[job.id] = job;
   scheduler.addSimpleIntervalJob(job);
 };
