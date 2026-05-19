@@ -25,6 +25,7 @@ import {
 } from '../models/v2/index.js';
 import { Op } from 'sequelize';
 import { toSnakeCase } from './v2-camel-to-snake.js';
+import { getV2PrimaryKeyField } from './v2-primary-key-utils.js';
 
 const REFERENCE_ERROR_CODE = 'Referenced records must be removed before deletion';
 
@@ -172,6 +173,34 @@ const countStagedReferences = async (table, snakeFkField, recordId, matchPredica
   return count;
 };
 
+const findPendingStagedDeleteIds = async (table, primaryKeyField) => {
+  const stagedRows = await StagingV2.findAll({
+    where: {
+      table,
+      action: 'DELETE',
+      committed: false,
+      failed_commit: false,
+    },
+    raw: true,
+  });
+
+  const deletedIds = new Set();
+  for (const stagedRow of stagedRows) {
+    try {
+      const parsedData = JSON.parse(stagedRow.data);
+      const records = Array.isArray(parsedData) ? parsedData : [parsedData];
+      for (const record of records) {
+        if (record?.[primaryKeyField]) {
+          deletedIds.add(record[primaryKeyField]);
+        }
+      }
+    } catch {
+      continue;
+    }
+  }
+  return deletedIds;
+};
+
 /**
  * Check whether any local records reference the given record (committed + staged).
  *
@@ -191,7 +220,14 @@ export const checkReferences = async (table, recordId) => {
   for (const def of definitions) {
     const { model, fkField, table: refTable, label, buildWhere, stagedMatch } = def;
     const where = buildWhere ? buildWhere(recordId) : { [fkField]: recordId };
-    const mainCount = await model.count({ where });
+    const mainRecords = await model.findAll({ where, raw: true });
+    const primaryKeyAttr = model.primaryKeyAttribute;
+    const primaryKeyField = getV2PrimaryKeyField(refTable) || toSnakeCase(primaryKeyAttr);
+    const pendingDeleteIds = await findPendingStagedDeleteIds(refTable, primaryKeyField);
+    const mainCount = mainRecords.filter((row) => {
+      const rowId = row?.[primaryKeyAttr] ?? row?.[primaryKeyField];
+      return !pendingDeleteIds.has(rowId);
+    }).length;
 
     const snakeFk = toSnakeCase(fkField);
     const stagedCount = stagedMatch
