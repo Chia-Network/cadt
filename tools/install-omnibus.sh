@@ -296,6 +296,7 @@ parse_args() {
 # --- UI helpers ---
 
 die() {
+  cleanup_background_processes
   echo -e "${C_RED}ERROR:${C_RESET} $*" >&2
   exit 1
 }

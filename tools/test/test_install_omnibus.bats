@@ -6,6 +6,17 @@ setup() {
   source "${BATS_TEST_DIRNAME}/../install-omnibus.sh"
 }
 
+wait_for_pid_exit() {
+  local pid="$1"
+  for _ in {1..20}; do
+    if ! kill -0 "$pid" 2>/dev/null; then
+      return 0
+    fi
+    sleep 0.05
+  done
+  return 1
+}
+
 @test "normalize_apt_version leaves release candidate tags unchanged" {
   [[ "$(normalize_apt_version "2.7.1-rc2")" == "2.7.1-rc2" ]]
   [[ "$(normalize_apt_version "1.7.26-rc28")" == "1.7.26-rc28" ]]
@@ -163,8 +174,28 @@ EOF
 
   [[ -z "$SPINNER_PID" ]]
   [[ -z "$SUDO_KEEPALIVE_PID" ]]
-  ! kill -0 "$spinner_pid" 2>/dev/null
-  ! kill -0 "$keepalive_pid" 2>/dev/null
+  wait_for_pid_exit "$spinner_pid"
+  wait_for_pid_exit "$keepalive_pid"
+  wait "$spinner_pid" 2>/dev/null || true
+  wait "$keepalive_pid" 2>/dev/null || true
+}
+
+@test "die cleans up tracked background pids before exiting" {
+  sleep 60 &
+  local spinner_pid=$!
+  sleep 60 &
+  local keepalive_pid=$!
+  SPINNER_PID="$spinner_pid"
+  SUDO_KEEPALIVE_PID="$keepalive_pid"
+
+  run die "boom"
+
+  [[ "$status" -eq 1 ]]
+  [[ "$output" == *"ERROR:"*"boom"* ]]
+  wait_for_pid_exit "$spinner_pid"
+  wait_for_pid_exit "$keepalive_pid"
+  wait "$spinner_pid" 2>/dev/null || true
+  wait "$keepalive_pid" 2>/dev/null || true
 }
 
 @test "private output can render escapes without transforming literals" {
