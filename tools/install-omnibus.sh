@@ -411,6 +411,8 @@ EOF
 
 setup_logging() {
   LOG_FILE="/tmp/cadt-install-$(date +%Y%m%d-%H%M%S).log"
+  : >"$LOG_FILE"
+  chmod 600 "$LOG_FILE"
   # Private FD for mnemonic (not logged)
   exec 3>&1
   exec > >(tee -a "$LOG_FILE") 2>&1
@@ -981,6 +983,8 @@ start_cadt_and_wait() {
   done
   if [[ ! -f "$CADT_CONFIG" ]]; then
     spinner_stop 1
+    sudo systemctl status "cadt@${USER}" --no-pager -l || true
+    sudo journalctl -u "cadt@${USER}" --no-pager -n 200 || true
     die "Timed out waiting for ${CADT_CONFIG}"
   fi
   spinner_stop 0
@@ -1038,7 +1042,8 @@ print_final_summary() {
   echo "  Network:           ${NETWORK}"
   echo "  Governance ID:     ${governance_id}"
   if [[ -n "$CADT_API_KEY" ]]; then
-    echo "  API key:           ${CADT_API_KEY}"
+    echo "  API key:           (set; shown on terminal only)"
+    private_echo "  API key:           ${CADT_API_KEY}"
   else
     echo "  API key:           (not set)"
   fi
@@ -1046,20 +1051,20 @@ print_final_summary() {
   info "Next steps — home organization"
   echo "  Wait until 'chia show -s' reports synced before creating a home org."
   if [[ "$NETWORK" == "testneta" ]]; then
-    echo "  Get test TXCH from the Chia testnet faucet: https://testnet11-faucet.chia.net/"
+    echo "  Get test TXCH from the current testneta faucet for your environment."
   fi
   echo "  Create home org (v2):"
   echo "    curl -X POST http://localhost:31310/v2/organizations \\"
   echo "      -H 'Content-Type: application/json' \\"
   if [[ -n "$CADT_API_KEY" ]]; then
-    echo "      -H 'x-api-key: ${CADT_API_KEY}' \\"
+    echo "      -H 'x-api-key: <api-key>' \\"
   fi
   echo "      -d '{\"name\":\"My Organization\"}'"
   echo "  Import existing org:"
   echo "    curl -X PUT http://localhost:31310/v2/organizations \\"
   echo "      -H 'Content-Type: application/json' \\"
   if [[ -n "$CADT_API_KEY" ]]; then
-    echo "      -H 'x-api-key: ${CADT_API_KEY}' \\"
+    echo "      -H 'x-api-key: <api-key>' \\"
   fi
   echo "      -d '{\"orgUid\":\"<org-uid>\",\"isHome\":true}'"
   echo "  Docs: https://github.com/Chia-Network/cadt/blob/develop/docs/cadt_rpc_api_v2.md"
@@ -1117,6 +1122,11 @@ BANNER
   else
     validate_supported_apt_versions
     validate_network "$NETWORK"
+    validate_datalayer_host "$DATALAYER_HOST"
+    if [[ "$WARN_DNS" -eq 1 ]]; then
+      warn "DNS for '${DATALAYER_HOST}' must point to this machine so others can fetch your DataLayer files."
+      confirm "Continue with hostname '${DATALAYER_HOST}'?" || die "Aborted."
+    fi
     apply_config_defaults
     build_datalayer_url
     if ! $ASSUME_YES; then

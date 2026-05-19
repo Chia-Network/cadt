@@ -27,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Run installer (testneta, stable)
+      - name: Run installer (testneta, prerelease CADT)
         run: |
           API_KEY="$(openssl rand -hex 24)"
           echo "API_KEY=${API_KEY}" >> "$GITHUB_ENV"
@@ -36,7 +36,7 @@ jobs:
             --network=testneta \
             --chia-version=stable \
             --chia-tools-version=stable \
-            --cadt-version=stable \
+            --cadt-version=prerelease \
             --datalayer-host=127.0.0.1 \
             --datalayer-port=80 \
             --generate-key \
@@ -93,7 +93,7 @@ jobs:
             --network=testneta \
             --chia-version=stable \
             --chia-tools-version=stable \
-            --cadt-version=stable \
+            --cadt-version=prerelease \
             --datalayer-host=127.0.0.1 \
             --datalayer-port=80 \
             --generate-key \
