@@ -132,6 +132,44 @@ EOF
   ! is_dpkg_package_installed chia-tools
 }
 
+@test "normalize_mnemonic_file converts all whitespace to single spaces" {
+  local mnemonic_file="${BATS_TEST_TMPDIR}/mnemonic.txt"
+  printf 'word1\nword2\r\nword3\tword4   word5\n' >"$mnemonic_file"
+
+  [[ "$(normalize_mnemonic_file "$mnemonic_file")" == "word1 word2 word3 word4 word5" ]]
+}
+
+@test "cleanup_background_processes stops tracked background pids" {
+  sleep 60 &
+  local spinner_pid=$!
+  sleep 60 &
+  local keepalive_pid=$!
+  SPINNER_PID="$spinner_pid"
+  SUDO_KEEPALIVE_PID="$keepalive_pid"
+
+  cleanup_background_processes
+
+  [[ -z "$SPINNER_PID" ]]
+  [[ -z "$SUDO_KEEPALIVE_PID" ]]
+  ! kill -0 "$spinner_pid" 2>/dev/null
+  ! kill -0 "$keepalive_pid" 2>/dev/null
+}
+
+@test "private output can render escapes without transforming literals" {
+  local private_file="${BATS_TEST_TMPDIR}/private-output.txt"
+  exec 9>"$private_file"
+  PRIVATE_FD=9
+
+  private_echo '\033[31mred\033[0m'
+  private_literal 'abc\ndef'
+  exec 9>&-
+
+  run sed -n '1p' "$private_file"
+  [[ "$output" == $'\033[31mred\033[0m' ]]
+  run sed -n '2p' "$private_file"
+  [[ "$output" == 'abc\ndef' ]]
+}
+
 @test "patch_cadt_config passes quoted api key without Python interpolation" {
   local bin="${BATS_TEST_TMPDIR}/bin"
   mkdir -p "$bin"

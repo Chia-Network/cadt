@@ -134,6 +134,27 @@ is_dpkg_package_installed() {
   dpkg -l "$pkg" 2>/dev/null | grep -q '^ii[[:space:]]'
 }
 
+normalize_mnemonic_file() {
+  local path="$1"
+  awk '
+    {
+      gsub(/\r/, " ")
+      for (i = 1; i <= NF; i++) {
+        if (seen) {
+          printf " "
+        }
+        printf "%s", $i
+        seen = 1
+      }
+    }
+    END {
+      if (seen) {
+        printf "\n"
+      }
+    }
+  ' "$path"
+}
+
 validate_supported_apt_versions() {
   if [[ "$CHIA_APT_VER" == *~rc* ]]; then
     die "chia-blockchain-cli prerelease apt packages are not supported; choose stable or an explicit stable tag."
@@ -288,7 +309,12 @@ success() {
 
 private_echo() {
   # Write to private FD (not tee'd to install log)
-  echo "$@" >&${PRIVATE_FD}
+  printf '%b\n' "$*" >&${PRIVATE_FD}
+}
+
+private_literal() {
+  # Write sensitive literal text to the terminal without tee logging.
+  printf '%s\n' "$*" >&${PRIVATE_FD}
 }
 
 print_usage() {
@@ -315,8 +341,22 @@ Options:
 EOF
 }
 
+cleanup_background_processes() {
+  if [[ -n "${SPINNER_PID:-}" ]]; then
+    kill "$SPINNER_PID" 2>/dev/null || true
+    wait "$SPINNER_PID" 2>/dev/null || true
+    SPINNER_PID=""
+  fi
+  if [[ -n "${SUDO_KEEPALIVE_PID:-}" ]]; then
+    kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true
+    wait "$SUDO_KEEPALIVE_PID" 2>/dev/null || true
+    SUDO_KEEPALIVE_PID=""
+  fi
+}
+
 on_error() {
   local line="$1"
+  cleanup_background_processes
   echo -e "\n${C_RED}Install failed at line ${line}.${C_RESET}" >&2
   if [[ -n "${LOG_FILE:-}" ]]; then
     echo -e "${C_DIM}See log: ${LOG_FILE}${C_RESET}" >&2
@@ -828,7 +868,7 @@ setup_chia_keys_import() {
   local mnemonic=""
   if [[ -n "$IMPORT_KEY_FILE" ]]; then
     [[ -f "$IMPORT_KEY_FILE" ]] || die "Key file not found: $IMPORT_KEY_FILE"
-    mnemonic=$(tr -d '\r\n' <"$IMPORT_KEY_FILE")
+    mnemonic=$(normalize_mnemonic_file "$IMPORT_KEY_FILE")
   elif [[ "$ASSUME_YES" != true ]]; then
     read -r -s -p "Enter 24-word mnemonic: " mnemonic </dev/tty
     printf '\n' >/dev/tty
@@ -1043,7 +1083,7 @@ print_final_summary() {
   echo "  Governance ID:     ${governance_id}"
   if [[ -n "$CADT_API_KEY" ]]; then
     echo "  API key:           (set; shown on terminal only)"
-    private_echo "  API key:           ${CADT_API_KEY}"
+    private_literal "  API key:           ${CADT_API_KEY}"
   else
     echo "  API key:           (not set)"
   fi
@@ -1162,10 +1202,7 @@ BANNER
   info "Phase 7: Complete"
   print_final_summary
 
-  # Stop sudo keepalive
-  if [[ -n "${SUDO_KEEPALIVE_PID:-}" ]]; then
-    kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true
-  fi
+  cleanup_background_processes
 }
 
 if [[ "${INSTALL_OMNIBUS_LIB_ONLY:-0}" == 1 ]]; then
