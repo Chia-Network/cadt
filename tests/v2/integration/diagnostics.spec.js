@@ -4,7 +4,7 @@ import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareDb } from '../../../src/database/index.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { withConfigOverride } from '../utils/v2-test-helpers.js';
+import { createV2TestHomeOrg, withConfigOverride } from '../utils/v2-test-helpers.js';
 
 describe('/diagnostics endpoint', function () {
   this.timeout(60000);
@@ -420,6 +420,97 @@ describe('/diagnostics endpoint', function () {
     it('response does not contain chia.services', async function () {
       const response = await supertest(app).get('/diagnostics').expect(200);
       expect(response.body.chia).to.not.have.property('services');
+    });
+
+    it('chia.datalayer exposes ownedStores and expectedOwnedStores fields', async function () {
+      const response = await supertest(app).get('/diagnostics').expect(200);
+      const datalayer = response.body.chia.datalayer;
+      // ownedStores is either an array (datalayer reachable) or null (RPC
+      // failed); totalOwnedStores must match.
+      expect(datalayer).to.have.property('ownedStores');
+      expect(datalayer).to.have.property('totalOwnedStores');
+      if (datalayer.ownedStores === null) {
+        expect(datalayer.totalOwnedStores).to.equal(null);
+      } else {
+        expect(datalayer.ownedStores).to.be.an('array');
+        expect(datalayer.totalOwnedStores).to.equal(datalayer.ownedStores.length);
+      }
+      expect(datalayer).to.have.property('expectedOwnedStores').that.is.an('array');
+      datalayer.expectedOwnedStores.forEach((entry) => {
+        expect(entry).to.have.property('storeId').that.is.a('string');
+        expect(entry).to.have.property('label').that.is.a('string');
+        expect(entry).to.have.property('owned');
+        expect(entry.owned === true || entry.owned === false || entry.owned === null).to.equal(true);
+      });
+    });
+
+    it('escalateLostOwnedStores (production helper) escalates only on owned=false entries', async function () {
+      // Drives the actual exported production helper -- not a re-implementation --
+      // so this test fails if the escalation logic changes severity, message,
+      // or filter behavior. owned=null (RPC failure) must NOT escalate; the
+      // datalayer-unreachable critical above the helper handles that case.
+      const { StatusAccumulator, escalateLostOwnedStores } = (
+        await import('../../../src/routes/diagnostics.js')
+      ).__test;
+      const compute = (expectedOwnedStores) => {
+        const acc = new StatusAccumulator();
+        escalateLostOwnedStores(acc, expectedOwnedStores);
+        return acc.result();
+      };
+
+      expect(compute([{ storeId: 'a', label: 'v1 home org', owned: true }]).status).to.equal('ok');
+      expect(compute([{ storeId: 'a', label: 'v1 home org', owned: null }]).status).to.equal('ok');
+      expect(compute([]).status).to.equal('ok');
+      expect(compute(undefined).status).to.equal('ok');
+
+      const critical = compute([
+        { storeId: 'a', label: 'v1 home org', owned: true },
+        { storeId: 'b', label: 'v1 registry', owned: false },
+        { storeId: 'c', label: 'v1 file store', owned: null }, // unknown -- ignored
+      ]);
+      expect(critical.status).to.equal('critical');
+      expect(critical.message).to.include('b (v1 registry)');
+      expect(critical.message).to.not.include('a (v1 home org)');
+      expect(critical.message).to.not.include('c (v1 file store)');
+      expect(critical.message).to.include("can't be written to");
+    });
+
+    describe('end-to-end with seeded home org', function () {
+      // The mocha file order puts diagnostics.spec.js early in the v2 run;
+      // leaving a `test-home-org-v2` row behind would risk downstream
+      // tests that probe `is_home: true` finding it. Tear it back down
+      // after each test in this block.
+      afterEach(async function () {
+        const { OrganizationsV2 } = await import('../../../src/models/v2/index.js');
+        await OrganizationsV2.destroy({ where: { org_uid: 'test-home-org-v2' } });
+      });
+
+      it('when home org exists but datalayer owns no stores, status is critical', async function () {
+        // Real end-to-end check of the production wiring: seed a V2 home org
+        // with all four store IDs populated, then hit /diagnostics. The
+        // simulator's get_owned_stores returns an empty list, so the
+        // production escalation path must fire critical with the documented
+        // message -- exercising collectOwnedStoreExpectations, the V2
+        // governance gating, escalateLostOwnedStores, and datalayer status
+        // assembly all on the real code path.
+        await createV2TestHomeOrg();
+        const response = await supertest(app).get('/diagnostics').expect(200);
+        const datalayer = response.body.chia.datalayer;
+        expect(datalayer.ownedStores).to.be.an('array').that.is.empty;
+        expect(datalayer.expectedOwnedStores).to.be.an('array').that.is.not.empty;
+        const lost = datalayer.expectedOwnedStores.filter((e) => e.owned === false);
+        expect(lost.length).to.be.greaterThan(0);
+        const lostLabels = lost.map((e) => e.label);
+        expect(lostLabels).to.include('v2 home org');
+        expect(lostLabels).to.include('v2 registry');
+        expect(lostLabels).to.include('v2 file store');
+        expect(lostLabels).to.include('v2 data model version store');
+        expect(datalayer.status).to.equal('critical');
+        expect(datalayer.message).to.include("expected owned store is not owned by datalayer");
+        lost.forEach((entry) => {
+          expect(datalayer.message).to.include(`${entry.storeId} (${entry.label})`);
+        });
+      });
     });
   });
 });
