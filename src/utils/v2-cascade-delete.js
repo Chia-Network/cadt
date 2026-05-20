@@ -219,6 +219,16 @@ export const getProjectCascadeUnits = async (projectId, options = {}) => {
     return [];
   }
 
+  return getUnitsForIssuances(issuanceIds, { transaction });
+};
+
+const getUnitsForIssuances = async (issuanceIds, options = {}) => {
+  const { transaction } = options;
+
+  if (issuanceIds.length === 0) {
+    return [];
+  }
+
   return UnitV2.findAll({
     where: { cadTrustIssuanceId: issuanceIds },
     raw: true,
@@ -268,7 +278,11 @@ export const stageProjectChildDeletes = async (projectId, options = {}) => {
     });
     pushRowsForRecords(rows, issuances, 'issuance', 'cad_trust_issuance_id');
 
-    const units = await getProjectCascadeUnits(projectId, { transaction });
+    const issuanceIds = issuances
+      .map((issuance) => issuance.cadTrustIssuanceId)
+      .filter(Boolean);
+
+    const units = await getUnitsForIssuances(issuanceIds, { transaction });
     pushRowsForRecords(rows, units, 'unit', 'cad_trust_unit_id');
 
     const unitIds = units
