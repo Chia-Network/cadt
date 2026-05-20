@@ -15,16 +15,41 @@ import {
   makeDeleteRequest,
   checkRecordInStaging,
 } from './helpers/api-request-helpers.js';
-import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstRecordIdFromDatabase, getAllRecordIdsFromDatabase } from './helpers/shared-state.js';
+import { addCreatedId, getCreatedIds, shouldAutoCommit, trackBatchVerification, getFirstRecordIdFromDatabase, getAllRecordIdsFromDatabase } from './helpers/shared-state.js';
 import {
   generateProgram,
   generateProgramMinimal,
   generateProgramMaximal,
   generateProgramLongStrings,
   generateProgramForbiddenFields,
-  getLongString,
-  getInvalidPicklistValue,
 } from './data/test-data-generators.js';
+
+const REFERENCE_ERROR_CODE = 'Referenced records must be removed before deletion';
+const deleteTargetProgramIds = new Set();
+const blockedProgramIds = new Set();
+
+const getReferencedProgramIds = async (request) => {
+  const referencedProgramIds = new Set();
+  let page = 1;
+  const limit = 1000;
+  let hasMore = true;
+
+  while (hasMore) {
+    const response = await request.get('/v2/project').query({ page, limit }).expect(200);
+    const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);
+    for (const project of data) {
+      if (project.cadTrustProgramId) {
+        referencedProgramIds.add(project.cadTrustProgramId);
+      }
+    }
+
+    const totalPages = response.body?.pageCount || 1;
+    hasMore = page < totalPages && data.length === limit;
+    page++;
+  }
+
+  return referencedProgramIds;
+};
 
 describe('Program Live API Validation Tests', function () {
   this.timeout(600000); // 10 minute timeout
@@ -261,9 +286,9 @@ describe('Program Live API Validation Tests', function () {
     });
   });
   describe('Step 9: DELETE Request Tests', function () {
-    it('should delete all created programs', async function () {
+    it('should delete unreferenced programs and preserve referenced programs', async function () {
       // Get IDs from createdIds (if available) or query database for existing records
-      let idsToDelete = createdIds.length > 0 ? createdIds : [];
+      let idsToDelete = createdIds.length > 0 ? createdIds : getCreatedIds('program');
       if (idsToDelete.length === 0) {
         // Query database to get all existing records (for DELETE tests running in separate process)
         idsToDelete = await getAllRecordIdsFromDatabase(request, 'program');
@@ -273,11 +298,18 @@ describe('Program Live API Validation Tests', function () {
         // No records to delete, skip test
         return;
       }
+      idsToDelete.forEach((id) => deleteTargetProgramIds.add(id));
 
       // Delete in reverse order
       for (let i = idsToDelete.length - 1; i >= 0; i--) {
         const id = idsToDelete[i];
         const response = await makeDeleteRequest(request, '/v2/program', id);
+        if (response.success === false && response.error === REFERENCE_ERROR_CODE) {
+          expect(response.references).to.be.an('array').that.is.not.empty;
+          expect(response.references.some((ref) => ref.table === 'project' && ref.count > 0)).to.be.true;
+          blockedProgramIds.add(id);
+          continue;
+        }
         expect(response.success).to.be.true;
 
         if (shouldAutoCommit()) {
@@ -293,11 +325,24 @@ describe('Program Live API Validation Tests', function () {
   });
 
   describe('Step 10: Final Validation', function () {
-    it('should verify all programs are deleted', async function () {
-      const response = await request.get('/v2/program').query({ page: 1, limit: 10 }).expect(200);
-      const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);
-      // Should only have programs that existed before tests
-      expect(data.length).to.equal(0);
+    it('should verify remaining created programs are still referenced', async function () {
+      let idsToCheck = createdIds.length > 0 ? createdIds : getCreatedIds('program');
+      if (idsToCheck.length === 0) {
+        idsToCheck = [...deleteTargetProgramIds];
+      }
+      const referencedProgramIds = await getReferencedProgramIds(request);
+
+      for (const id of idsToCheck) {
+        const response = await request.get(`/v2/program/${id}`);
+        if (response.status === 404) {
+          continue;
+        }
+        expect(response.status).to.equal(200);
+        expect(
+          referencedProgramIds.has(id) || blockedProgramIds.has(id),
+          `Program ${id} remains without committed or delete-time project references`,
+        ).to.be.true;
+      }
     });
   });
 });
