@@ -26,10 +26,42 @@ import {
 
 const REFERENCE_ERROR_CODE = 'Referenced records must be removed before deletion';
 const deleteTargetProgramIds = new Set();
-const blockedProgramIds = new Set();
+
+const getProjectId = (project) => project.cadTrustProjectId || project.cad_trust_project_id;
+const getProgramId = (project) => project.cadTrustProgramId || project.cad_trust_program_id;
+
+const getProjectStagingReferences = async (request) => {
+  const pendingDeleteProjectIds = new Set();
+  const stagedReferencedProgramIds = new Set();
+  const response = await request
+    .get('/v2/staging')
+    .query({ page: 1, limit: 1000, table: 'project', type: 'staged' })
+    .expect(200);
+  const rows = response.body?.data || response.body || [];
+
+  for (const row of rows) {
+    const records = row.diff?.change || [];
+    for (const record of records) {
+      const projectId = getProjectId(record);
+      const programId = getProgramId(record);
+      if (row.action === 'DELETE' && projectId) {
+        pendingDeleteProjectIds.add(projectId);
+      } else if (['INSERT', 'UPDATE'].includes(row.action) && programId) {
+        stagedReferencedProgramIds.add(programId);
+      }
+    }
+  }
+
+  return { pendingDeleteProjectIds, stagedReferencedProgramIds };
+};
 
 const getReferencedProgramIds = async (request) => {
   const referencedProgramIds = new Set();
+  const { pendingDeleteProjectIds, stagedReferencedProgramIds } = await getProjectStagingReferences(request);
+  for (const programId of stagedReferencedProgramIds) {
+    referencedProgramIds.add(programId);
+  }
+
   let page = 1;
   const limit = 1000;
   let hasMore = true;
@@ -38,8 +70,10 @@ const getReferencedProgramIds = async (request) => {
     const response = await request.get('/v2/project').query({ page, limit }).expect(200);
     const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);
     for (const project of data) {
-      if (project.cadTrustProgramId) {
-        referencedProgramIds.add(project.cadTrustProgramId);
+      const projectId = getProjectId(project);
+      const programId = getProgramId(project);
+      if (programId && !pendingDeleteProjectIds.has(projectId)) {
+        referencedProgramIds.add(programId);
       }
     }
 
@@ -299,17 +333,20 @@ describe('Program Live API Validation Tests', function () {
         return;
       }
       idsToDelete.forEach((id) => deleteTargetProgramIds.add(id));
+      const expectedReferencedProgramIds = await getReferencedProgramIds(request);
 
       // Delete in reverse order
       for (let i = idsToDelete.length - 1; i >= 0; i--) {
         const id = idsToDelete[i];
         const response = await makeDeleteRequest(request, '/v2/program', id);
-        if (response.success === false && response.error === REFERENCE_ERROR_CODE) {
+        if (expectedReferencedProgramIds.has(id)) {
+          expect(response.success).to.be.false;
+          expect(response.error).to.equal(REFERENCE_ERROR_CODE);
           expect(response.references).to.be.an('array').that.is.not.empty;
           expect(response.references.some((ref) => ref.table === 'project' && ref.count > 0)).to.be.true;
-          blockedProgramIds.add(id);
           continue;
         }
+
         expect(response.success).to.be.true;
 
         if (shouldAutoCommit()) {
@@ -339,7 +376,7 @@ describe('Program Live API Validation Tests', function () {
         }
         expect(response.status).to.equal(200);
         expect(
-          referencedProgramIds.has(id) || blockedProgramIds.has(id),
+          referencedProgramIds.has(id),
           `Program ${id} remains without committed or delete-time project references`,
         ).to.be.true;
       }
