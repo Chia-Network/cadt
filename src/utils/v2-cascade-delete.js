@@ -188,6 +188,44 @@ export const stageUnitChildDeletes = async (unitId, options = {}) => {
   return rows.length;
 };
 
+export const getProjectCascadeUnits = async (projectId, options = {}) => {
+  const { transaction } = options;
+
+  const verifications = await VerificationV2.findAll({
+    where: { cadTrustProjectId: projectId },
+    raw: true,
+    transaction,
+  });
+
+  const verificationIds = verifications
+    .map((verification) => verification.cadTrustVerificationId)
+    .filter(Boolean);
+
+  if (verificationIds.length === 0) {
+    return [];
+  }
+
+  const issuances = await IssuanceV2.findAll({
+    where: { cadTrustVerificationId: verificationIds },
+    raw: true,
+    transaction,
+  });
+
+  const issuanceIds = issuances
+    .map((issuance) => issuance.cadTrustIssuanceId)
+    .filter(Boolean);
+
+  if (issuanceIds.length === 0) {
+    return [];
+  }
+
+  return UnitV2.findAll({
+    where: { cadTrustIssuanceId: issuanceIds },
+    raw: true,
+    transaction,
+  });
+};
+
 export const stageProjectChildDeletes = async (projectId, options = {}) => {
   const { transaction } = options;
   const rows = [];
@@ -230,30 +268,20 @@ export const stageProjectChildDeletes = async (projectId, options = {}) => {
     });
     pushRowsForRecords(rows, issuances, 'issuance', 'cad_trust_issuance_id');
 
-    const issuanceIds = issuances
-      .map((issuance) => issuance.cadTrustIssuanceId)
+    const units = await getProjectCascadeUnits(projectId, { transaction });
+    pushRowsForRecords(rows, units, 'unit', 'cad_trust_unit_id');
+
+    const unitIds = units
+      .map((unit) => unit.cadTrustUnitId)
       .filter(Boolean);
 
-    if (issuanceIds.length > 0) {
-      const units = await UnitV2.findAll({
-        where: { cadTrustIssuanceId: issuanceIds },
+    if (unitIds.length > 0) {
+      const unitLabels = await UnitLabelV2.findAll({
+        where: { cadTrustUnitId: unitIds },
         raw: true,
         transaction,
       });
-      pushRowsForRecords(rows, units, 'unit', 'cad_trust_unit_id');
-
-      const unitIds = units
-        .map((unit) => unit.cadTrustUnitId)
-        .filter(Boolean);
-
-      if (unitIds.length > 0) {
-        const unitLabels = await UnitLabelV2.findAll({
-          where: { cadTrustUnitId: unitIds },
-          raw: true,
-          transaction,
-        });
-        pushRowsForRecords(rows, unitLabels, 'unit_label', 'cad_trust_unit_label_id');
-      }
+      pushRowsForRecords(rows, unitLabels, 'unit_label', 'cad_trust_unit_label_id');
     }
   }
 

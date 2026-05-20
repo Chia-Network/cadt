@@ -35,8 +35,31 @@ import { loggerV2 } from '../../config/logger.js';
 import { projectV2Schema } from '../../validations/v2/project-v2.validations.js';
 import { formatModelAssociationName } from '../../utils/model-utils.js';
 import { resolveOrgUid } from '../../utils/owner-utils.js';
-import { stageProjectChildDeletes } from '../../utils/v2-cascade-delete.js';
+import { getProjectCascadeUnits, stageProjectChildDeletes } from '../../utils/v2-cascade-delete.js';
 import { checkReferences, buildReferenceConflictBody } from '../../utils/v2-reference-guards.js';
+
+const checkProjectCascadeUnitReferences = async (projectId) => {
+  const units = await getProjectCascadeUnits(projectId);
+  const referencesByTable = new Map();
+
+  for (const unit of units) {
+    const unitRefResult = await checkReferences('unit', unit.cadTrustUnitId);
+    for (const reference of unitRefResult.references) {
+      const existing = referencesByTable.get(reference.table);
+      if (existing) {
+        existing.count += reference.count;
+      } else {
+        referencesByTable.set(reference.table, { ...reference });
+      }
+    }
+  }
+
+  const references = [...referencesByTable.values()];
+  return {
+    hasReferences: references.length > 0,
+    references,
+  };
+};
 
 export const create = async (req, res) => {
   try {
@@ -823,6 +846,11 @@ export const destroy = async (req, res) => {
     const refResult = await checkReferences('project', id);
     if (refResult.hasReferences) {
       return res.status(409).json(buildReferenceConflictBody('project', refResult));
+    }
+
+    const cascadeRefResult = await checkProjectCascadeUnitReferences(id);
+    if (cascadeRefResult.hasReferences) {
+      return res.status(409).json(buildReferenceConflictBody('project', cascadeRefResult));
     }
 
     const releaseTransactionMutex =

@@ -112,6 +112,30 @@ const REFERENCE_MAP = {
         && record?.cad_trust_project_id !== recordId
       ),
     },
+    {
+      model: AefT5AuthorizedEntitiesV2,
+      fkField: 'cadTrustProjectId',
+      table: 'aef_t5_authorized_entities',
+      label: 'AEF-T5 authorized entity records',
+    },
+    {
+      model: AefT2AuthorizationsV2,
+      fkField: 'cadTrustProjectId',
+      table: 'aef_t2_authorizations',
+      label: 'AEF-T2 authorization records',
+    },
+    {
+      model: AefT3ActionsV2,
+      fkField: 'cadTrustProjectId',
+      table: 'aef_t3_actions',
+      label: 'AEF-T3 action records',
+    },
+    {
+      model: AefT4HoldingsV2,
+      fkField: 'cadTrustProjectId',
+      table: 'aef_t4_holdings',
+      label: 'AEF-T4 holding records',
+    },
   ],
   unit: [
     {
