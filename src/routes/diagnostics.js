@@ -80,16 +80,63 @@ const settle = async (label, producer, timeoutMs = DEFAULT_TIMEOUT_MS) => {
   }
 };
 
-const readHomeOrgId = async (Model, getter = 'getHomeOrg') => {
+/**
+ * Returns the full home-org record (raw object) for the given Model, or null
+ * when no home org is configured. Used to populate both the cadtSection
+ * homeOrgId field and the expected-owned-stores helper. We prefer
+ * Model.getHomeOrg(false) (includeAddress=false) so any model-level
+ * processing (metadata parsing, field normalization) is applied -- and to
+ * avoid the wallet RPC call that includeAddress=true triggers, which
+ * /diagnostics must not require.
+ *
+ * If `getHomeOrg` throws (e.g. V1 throws on malformed `metadata` JSON --
+ * see organizations.model.js, no try/catch around JSON.parse), we fall
+ * back to a direct raw findOne on the home-org row. That recovers the
+ * owned-store cross-reference for the very failure mode operators are
+ * likely hitting /diagnostics to debug.
+ */
+const readHomeOrgRecord = async (Model, getter = 'getHomeOrg', whereClause) => {
   try {
-    // includeAddress=false avoids a wallet RPC call inside getHomeOrg --
-    // /diagnostics must keep working when the wallet is unreachable.
-    const homeOrg = await Model[getter](false);
-    if (!homeOrg) return null;
-    // V1 uses `orgUid`, V2 uses `org_uid`
-    return homeOrg.orgUid || homeOrg.org_uid || null;
+    // `null` is a legitimate "no home org configured" answer (common on
+    // fresh installs) -- return it without triggering the fallback, which
+    // is only useful when getHomeOrg threw on otherwise-valid data.
+    return (await Model[getter](false)) || null;
   } catch (error) {
-    logger.debug(`[diagnostics]: home org lookup failed: ${error.message}`);
+    logger.warn(`[diagnostics]: ${getter} failed: ${error.message}; trying raw findOne`);
+  }
+  if (!whereClause) return null;
+  try {
+    return (await Model.findOne({ where: whereClause, raw: true })) || null;
+  } catch (error) {
+    logger.warn(`[diagnostics]: raw home org fallback failed: ${error.message}`);
+    return null;
+  }
+};
+
+const homeOrgUid = (record) =>
+  record ? record.orgUid || record.org_uid || null : null;
+
+/**
+ * Read a single string value out of the V1 Meta table, or null when the key
+ * is absent. Used for governance store IDs that only exist when this node
+ * IS the governance body (the local creation flow upserts these keys).
+ */
+const readMetaValueV1 = async (Meta, metaKey) => {
+  try {
+    const row = await Meta.findOne({ where: { metaKey }, raw: true });
+    return row?.metaValue || null;
+  } catch (error) {
+    logger.debug(`[diagnostics]: V1 Meta[${metaKey}] lookup failed: ${error.message}`);
+    return null;
+  }
+};
+
+const readMetaValueV2 = async (MetaV2, metaKey) => {
+  try {
+    const row = await MetaV2.findOne({ where: { meta_key: metaKey }, raw: true });
+    return row?.meta_value || null;
+  } catch (error) {
+    logger.debug(`[diagnostics]: V2 Meta[${metaKey}] lookup failed: ${error.message}`);
     return null;
   }
 };
@@ -177,6 +224,111 @@ const collectSubscriptions = async (persistance) => {
 };
 
 /**
+ * Pure helper: given the list of expected-owned-store entries (as produced
+ * by `collectOwnedStoreExpectations`), escalate `accumulator` to critical
+ * when one or more entries have `owned === false`. Entries with
+ * `owned === null` (datalayer RPC failure -> ownership unknown) are not
+ * escalated -- the existing datalayer-unreachable critical already covers
+ * that case. Returns the list of escalated entries for tests/log purposes.
+ *
+ * Exported through `__test` so the integration test can drive the real
+ * escalation path (instead of re-implementing it).
+ */
+const escalateLostOwnedStores = (accumulator, expectedOwnedStores) => {
+  const lostStores = (expectedOwnedStores || []).filter((s) => s.owned === false);
+  if (lostStores.length > 0) {
+    const detail = lostStores.map((s) => `${s.storeId} (${s.label})`).join(', ');
+    accumulator.escalate(
+      'critical',
+      `expected owned store is not owned by datalayer and can't be written to: ${detail}`,
+    );
+  }
+  return lostStores;
+};
+
+/**
+ * Pure helper: cross-reference the set of datalayer-owned store IDs against
+ * the stores CADT itself created (home org + registry + lazily-created
+ * file/data-model stores + locally-created governance stores). Detects the
+ * "datalayer/chia wallet forgot about a store we created" failure mode,
+ * which leaves the store unwritable until the wallet is restored.
+ *
+ * Inputs are pre-resolved so this function is sync and trivially testable.
+ *  - ownedStoresResult: result from persistance.getOwnedStores() or null on RPC failure
+ *  - v1HomeOrg / v2HomeOrg: home org records or null
+ *  - v1GovernanceBodyStoreId / v1GovernanceVersionStoreId / v2GovernanceBodyStoreId /
+ *    v2GovernanceVersionStoreId: governance store IDs that this node owns. The
+ *    caller is responsible for distinguishing owner vs subscriber: it must
+ *    pass null for any key the local node does not own. V1 has no
+ *    subscribe-to-governance-body flow so both V1 keys are always owned when
+ *    present; V2 *does* have one, and `MetaV2.governanceBodyId` is upserted
+ *    on subscribe -- so the V2 caller must gate both V2 entries on the
+ *    presence of `MetaV2.mainGoveranceBodyId`, which subscribers do not write.
+ *
+ * Lazily-created stores (V1 fileStoreId / dataModelVersionStoreId, V2
+ * file_store_subscribed / data_model_version_store_id) are skipped when
+ * NULL -- datalayer cannot have "forgotten" a store CADT hasn't asked it
+ * to create yet, so listing them would generate false-positive criticals.
+ */
+const collectOwnedStoreExpectations = ({
+  ownedStoresResult,
+  v1HomeOrg,
+  v2HomeOrg,
+  v1GovernanceBodyStoreId,
+  v1GovernanceVersionStoreId,
+  v2GovernanceBodyStoreId,
+  v2GovernanceVersionStoreId,
+}) => {
+  const ownedStores =
+    ownedStoresResult && ownedStoresResult.success ? ownedStoresResult.storeIds || [] : null;
+  const ownedSet = ownedStores ? new Set(ownedStores) : null;
+
+  const expected = [];
+  const push = (storeId, label) => {
+    if (storeId) expected.push({ storeId, label });
+  };
+
+  if (v1HomeOrg) {
+    push(v1HomeOrg.orgUid, 'v1 home org');
+    push(v1HomeOrg.registryId, 'v1 registry');
+    push(v1HomeOrg.fileStoreId, 'v1 file store');
+    push(v1HomeOrg.dataModelVersionStoreId, 'v1 data model version store');
+  }
+
+  if (v2HomeOrg) {
+    push(v2HomeOrg.org_uid, 'v2 home org');
+    push(v2HomeOrg.registry_id, 'v2 registry');
+    // file_store_subscribed is overloaded: on the home org row it stores the
+    // locally-created file store ID (filestore-v2.model.js
+    // createDataLayerStoreWithRetry path) and is genuinely owned. On a
+    // non-home/subscribed org row it stores a REMOTE org's file store ID
+    // (organizations-v2.model.js upsert path). The caller only passes the
+    // home-org record here, so this is safe today -- if a future code path
+    // ever lands a non-owned ID on the home-org row, it will produce a
+    // false-positive critical, so any future writer of this column must
+    // continue to use a locally-created store ID for is_home=true rows.
+    push(v2HomeOrg.file_store_subscribed, 'v2 file store');
+    push(v2HomeOrg.data_model_version_store_id, 'v2 data model version store');
+  }
+
+  push(v1GovernanceBodyStoreId, 'v1 governance body');
+  push(v1GovernanceVersionStoreId, 'v1 governance version store');
+  push(v2GovernanceBodyStoreId, 'v2 governance body');
+  push(v2GovernanceVersionStoreId, 'v2 governance version store');
+
+  const expectedOwnedStores = expected.map((entry) => ({
+    ...entry,
+    owned: ownedSet ? ownedSet.has(entry.storeId) : null,
+  }));
+
+  return {
+    ownedStores,
+    totalOwnedStores: ownedStores ? ownedStores.length : null,
+    expectedOwnedStores,
+  };
+};
+
+/**
  * Normalize a chia peer node_id for comparison: strip a leading 0x and
  * lowercase. Both the chia config's `wallet.trusted_peers` keys and the
  * `get_connections` RPC values are hex, but they differ on the 0x prefix
@@ -251,8 +403,8 @@ export const getDiagnosticsResponse = async () => {
   const wallet = (await import('../datalayer/wallet.js')).default;
   const fullNodeRpc = (await import('../datalayer/fullNodeRpc.js')).default;
   const persistance = await import('../datalayer/persistance.js');
-  const { Organization } = await import('../models/index.js');
-  const { OrganizationsV2 } = await import('../models/v2/index.js');
+  const { Organization, Meta } = await import('../models/index.js');
+  const { OrganizationsV2, MetaV2 } = await import('../models/v2/index.js');
   const fullNodeModule = await import('../datalayer/fullNode.js');
 
   // Phase 1: fast local probes (process scan, system info, chia-tools).
@@ -303,8 +455,52 @@ export const getDiagnosticsResponse = async () => {
       () => collectSubscriptions(persistance),
       SUBSCRIPTION_BUDGET_MS + 1000,
     ),
-    settle('Organization.getHomeOrg', () => readHomeOrgId(Organization), DEFAULT_TIMEOUT_MS),
-    settle('OrganizationsV2.getHomeOrg', () => readHomeOrgId(OrganizationsV2), DEFAULT_TIMEOUT_MS),
+    settle(
+      'Organization.getHomeOrg',
+      () => readHomeOrgRecord(Organization, 'getHomeOrg', { isHome: true }),
+      DEFAULT_TIMEOUT_MS,
+    ),
+    settle(
+      'OrganizationsV2.getHomeOrg',
+      () => readHomeOrgRecord(OrganizationsV2, 'getHomeOrg', { is_home: true }),
+      DEFAULT_TIMEOUT_MS,
+    ),
+    // Detect "datalayer/chia wallet forgot about a store CADT owns" failures
+    // (see chia.datalayer.expectedOwnedStores in the response). Falls back to
+    // ownedStoresResult=null on RPC failure, which makes per-expected owned
+    // flags null (unknown) rather than false -- the existing datalayer-
+    // unreachable critical already covers that case.
+    settle('persistance.getOwnedStores', () => persistance.getOwnedStores(), DEFAULT_TIMEOUT_MS),
+    // V1 governance: both Meta keys are upserted only by
+    // Governance.createGoveranceBody (there is no V1 subscribe-to-body
+    // flow), so both are always owned when present.
+    settle(
+      'Meta.mainGoveranceBodyId',
+      () => readMetaValueV1(Meta, 'mainGoveranceBodyId'),
+      DEFAULT_TIMEOUT_MS,
+    ),
+    settle(
+      'Meta.governanceBodyId',
+      () => readMetaValueV1(Meta, 'governanceBodyId'),
+      DEFAULT_TIMEOUT_MS,
+    ),
+    // V2 governance: `mainGoveranceBodyId` is upserted ONLY by the create
+    // paths (createGoveranceBody / addV2ToExistingGovernanceBody), never by
+    // GovernanceV2.subscribeToGovernanceBody. `governanceBodyId` is upserted
+    // by both create AND subscribe, so it cannot be treated as an
+    // owned-store marker on its own. We use the presence of
+    // `mainGoveranceBodyId` below as the binary "this node IS the V2
+    // governance body" gate before publishing either V2 entry.
+    settle(
+      'MetaV2.mainGoveranceBodyId',
+      () => readMetaValueV2(MetaV2, 'mainGoveranceBodyId'),
+      DEFAULT_TIMEOUT_MS,
+    ),
+    settle(
+      'MetaV2.governanceBodyId',
+      () => readMetaValueV2(MetaV2, 'governanceBodyId'),
+      DEFAULT_TIMEOUT_MS,
+    ),
   ];
 
   const [
@@ -320,6 +516,11 @@ export const getDiagnosticsResponse = async () => {
     subscriptionsRes,
     homeOrgV1Res,
     homeOrgV2Res,
+    ownedStoresRes,
+    metaV1MainGovBodyRes,
+    metaV1GovBodyRes,
+    metaV2MainGovBodyRes,
+    metaV2GovBodyRes,
   ] = await Promise.all(rpcSettles);
 
   // walletReachable: derived from the get_network_info RPC return value, NOT
@@ -340,6 +541,9 @@ export const getDiagnosticsResponse = async () => {
   const enableV2 = configV2?.ENABLE !== false;
   const chiaRoot = getChiaRoot();
 
+  const v1HomeOrg = homeOrgV1Res.ok ? homeOrgV1Res.value : null;
+  const v2HomeOrg = homeOrgV2Res.ok ? homeOrgV2Res.value : null;
+
   // ---- CADT section -------------------------------------------------------
   const cadtSection = {
     version: packageJson.version,
@@ -359,7 +563,7 @@ export const getDiagnosticsResponse = async () => {
       isGovernanceBody: configV1.IS_GOVERNANCE_BODY === true,
       apiKeyConfigured: !!(configV1.CADT_API_KEY && configV1.CADT_API_KEY !== ''),
       governanceBodyId: configV1.GOVERNANCE?.GOVERNANCE_BODY_ID || null,
-      homeOrgId: homeOrgV1Res.ok ? homeOrgV1Res.value : null,
+      homeOrgId: homeOrgUid(v1HomeOrg),
     },
     v2: {
       enabled: enableV2,
@@ -367,7 +571,7 @@ export const getDiagnosticsResponse = async () => {
       isGovernanceBody: configV2.IS_GOVERNANCE_BODY === true,
       apiKeyConfigured: !!(configV2.CADT_API_KEY && configV2.CADT_API_KEY !== ''),
       governanceBodyId: configV2.GOVERNANCE?.GOVERNANCE_BODY_ID || null,
-      homeOrgId: homeOrgV2Res.ok ? homeOrgV2Res.value : null,
+      homeOrgId: homeOrgUid(v2HomeOrg),
     },
   };
 
@@ -446,6 +650,29 @@ export const getDiagnosticsResponse = async () => {
     const subscriptionsValue = subscriptionsRes.ok
       ? subscriptionsRes.value
       : { available: false, subscriptions: [], truncated: false, totalSubscriptions: 0, error: subscriptionsRes.error };
+
+    // Owned-store cross-reference: detect the "datalayer/chia wallet forgot
+    // about a store CADT owns" failure mode. The pure helper handles all
+    // null/missing cases (no home org, RPC failure, lazy stores not yet
+    // created). V2 governance store IDs are gated on
+    // MetaV2.mainGoveranceBodyId being present -- that key is set ONLY by
+    // the create paths, never by GovernanceV2.subscribeToGovernanceBody, so
+    // its presence is the binary "this node IS the V2 governance body"
+    // signal. V1 has no subscribe path, so both V1 governance keys are
+    // always owned when present.
+    const v2IsGovernanceBody = !!(metaV2MainGovBodyRes.ok && metaV2MainGovBodyRes.value);
+    const ownedStoreView = collectOwnedStoreExpectations({
+      ownedStoresResult: ownedStoresRes.ok ? ownedStoresRes.value : null,
+      v1HomeOrg,
+      v2HomeOrg,
+      v1GovernanceBodyStoreId: metaV1MainGovBodyRes.ok ? metaV1MainGovBodyRes.value : null,
+      v1GovernanceVersionStoreId: metaV1GovBodyRes.ok ? metaV1GovBodyRes.value : null,
+      v2GovernanceBodyStoreId: v2IsGovernanceBody ? metaV2MainGovBodyRes.value : null,
+      v2GovernanceVersionStoreId:
+        v2IsGovernanceBody && metaV2GovBodyRes.ok ? metaV2GovBodyRes.value : null,
+    });
+    const ownedStoresError = ownedStoresRes.ok ? null : ownedStoresRes.error;
+
     return {
       rpcUrl: appConfig.DATALAYER_URL || null,
       reachable,
@@ -453,6 +680,10 @@ export const getDiagnosticsResponse = async () => {
       totalSubscriptions: subscriptionsValue.totalSubscriptions,
       truncated: subscriptionsValue.truncated,
       ...(subscriptionsValue.error ? { subscriptionsError: subscriptionsValue.error } : {}),
+      ownedStores: ownedStoreView.ownedStores,
+      totalOwnedStores: ownedStoreView.totalOwnedStores,
+      expectedOwnedStores: ownedStoreView.expectedOwnedStores,
+      ...(ownedStoresError ? { ownedStoresError } : {}),
     };
   })();
 
@@ -545,6 +776,11 @@ export const getDiagnosticsResponse = async () => {
     if (datalayerSection.subscriptions?.some((s) => s.synced === false)) {
       dlStatus.escalate('warning', 'One or more DataLayer subscriptions are not synced');
     }
+    // Critical when CADT believes it owns a store the datalayer has lost
+    // track of -- that store cannot be written to and usually requires
+    // operator intervention (the chia wallet occasionally "forgets" a
+    // store it created).
+    escalateLostOwnedStores(dlStatus, datalayerSection.expectedOwnedStores);
     Object.assign(datalayerSection, dlStatus.result());
   }
 
@@ -644,5 +880,7 @@ export const __test = {
   collectSubscriptions,
   buildTrustedPeerView,
   normalizeNodeId,
+  collectOwnedStoreExpectations,
+  escalateLostOwnedStores,
   StatusAccumulator,
 };
