@@ -865,6 +865,13 @@ init_chia() {
 
 setup_chia_keys_generate() {
   info "Generating new Chia wallet key..."
+
+  if [[ "$ASSUME_YES" == true && -z "$MNEMONIC_OUTPUT_FILE" ]]; then
+    chia keys generate -l "CADT"
+    success "Chia key generated and added to keychain"
+    return 0
+  fi
+
   local mnemonic
   mnemonic=$(chia keys generate_and_print 2>/dev/null | tr -d '\r')
   [[ -n "$mnemonic" ]] || die "Failed to generate mnemonic"
@@ -889,7 +896,12 @@ setup_chia_keys_generate() {
     done
   fi
 
-  printf '%s\n' "$mnemonic" | chia keys add
+  local tmpkey
+  tmpkey=$(mktemp)
+  printf '%s\n' "$mnemonic" >"$tmpkey"
+  chmod 600 "$tmpkey"
+  chia keys add -f "$tmpkey" -l "CADT"
+  rm -f "$tmpkey"
   success "Chia key added to keychain"
 }
 
@@ -905,7 +917,12 @@ setup_chia_keys_import() {
     die "--import-key-from-file is required with --yes for key import"
   fi
   [[ -n "$mnemonic" ]] || die "Empty mnemonic"
-  printf '%s\n' "$mnemonic" | chia keys add
+  local tmpkey
+  tmpkey=$(mktemp)
+  printf '%s\n' "$mnemonic" >"$tmpkey"
+  chmod 600 "$tmpkey"
+  chia keys add -f "$tmpkey" -l "CADT"
+  rm -f "$tmpkey"
   success "Chia key imported"
 }
 
