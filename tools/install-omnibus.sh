@@ -312,6 +312,15 @@ info() {
   echo -e "${C_CYAN}==>${C_RESET} ${C_BOLD}$*${C_RESET}"
 }
 
+phase() {
+  local label="$1"
+  echo ""
+  echo -e "${C_BOLD}${C_BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}"
+  echo -e "${C_BOLD}${C_BLUE}  $label${C_RESET}"
+  echo -e "${C_BOLD}${C_BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}"
+  echo ""
+}
+
 success() {
   echo -e "${C_GREEN}✓${C_RESET} $*"
 }
@@ -1141,13 +1150,13 @@ BANNER
   require_sudo
   setup_logging
 
-  info "Phase 0: Preflight checks"
+  phase "Phase 0: Preflight checks"
   check_os
   check_architecture
   check_min_specs
   check_existing_install
 
-  info "Phase 1: Configuration"
+  phase "Phase 1: Configuration"
   # Resolve versions from flags without prompts when all set
   local tmpjson
   tmpjson=$(mktemp)
@@ -1190,26 +1199,26 @@ BANNER
     echo "API_KEY=${CADT_API_KEY}" >>"$GITHUB_ENV"
   fi
 
-  info "Phase 2: Installing packages"
+  phase "Phase 2: Installing packages"
   install_prerequisites
   setup_apt_repos
   install_packages
 
-  info "Phase 3: Initializing Chia"
+  phase "Phase 3: Initializing Chia"
   init_chia
 
-  info "Phase 4: Starting Chia services"
+  phase "Phase 4: Starting Chia services"
   start_chia_services
   local net
   net=$(get_chia_network_dir)
 
-  info "Phase 5: Configuring nginx"
+  phase "Phase 5: Configuring nginx"
   configure_nginx_datalayer "$net"
 
-  info "Phase 6: Configuring and starting CADT"
+  phase "Phase 6: Configuring and starting CADT"
   start_cadt_and_wait
 
-  info "Phase 7: Complete"
+  phase "Phase 7: Complete"
   print_final_summary
 
   cleanup_background_processes
