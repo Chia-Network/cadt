@@ -1003,7 +1003,7 @@ EOF
   sudo rm -f /etc/nginx/sites-enabled/default
   sudo ln -sf /etc/nginx/sites-available/cadt-datalayer /etc/nginx/sites-enabled/cadt-datalayer
   sudo nginx -t
-  sudo systemctl enable --now nginx
+  sudo systemctl enable nginx >>"$LOG_FILE" 2>&1
   sudo systemctl reload nginx
 
   sudo systemctl start "chia-data-layer@${USER}"
