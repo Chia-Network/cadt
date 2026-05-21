@@ -58,6 +58,31 @@ const testFiles = [
   'aef-t5-authorized-entities-validation.live.spec.js',
 ];
 
+/** DELETE phase: dependents first so referential delete guards succeed */
+const deletePhaseTestFiles = [
+  'unit-label-validation.live.spec.js',
+  'stakeholder-projects-validation.live.spec.js',
+  'aef-t5-authorized-entities-validation.live.spec.js',
+  'aef-t4-holdings-validation.live.spec.js',
+  'aef-t3-actions-validation.live.spec.js',
+  'aef-t2-authorizations-validation.live.spec.js',
+  'unit-validation.live.spec.js',
+  'issuance-validation.live.spec.js',
+  'verification-validation.live.spec.js',
+  'project-methodology-validation.live.spec.js',
+  'location-validation.live.spec.js',
+  'estimation-validation.live.spec.js',
+  'rating-validation.live.spec.js',
+  'co-benefit-validation.live.spec.js',
+  'validation-validation.live.spec.js',
+  'project-validation.live.spec.js',
+  'methodology-validation.live.spec.js',
+  'program-validation.live.spec.js',
+  'stakeholder-validation.live.spec.js',
+  'label-validation.live.spec.js',
+  'aef-t1-submission-validation.live.spec.js',
+];
+
 async function runMochaTests(grepPattern, phaseName, filesToRun = null) {
   return new Promise((resolve, reject) => {
     const files = filesToRun || testFiles;
@@ -400,8 +425,13 @@ async function main() {
     await runMochaTests('Step 7: PUT Request Tests', 'PUT Operations');
     await commitAndWait('PUT');
 
-    // Phase 5: DELETE tests
-    await runMochaTests('Step 9: DELETE Request Tests', 'DELETE Operations');
+    // Phase 4.5: DELETE reference guards (requires committed graph from PUT phase)
+    await runMochaTests('Step 8: DELETE Reference Guard Tests', 'DELETE Reference Guards', [
+      'delete-reference-guards.live.spec.js',
+    ]);
+
+    // Phase 5: DELETE tests (dependents first — shared entities last)
+    await runMochaTests('Step 9: DELETE Request Tests', 'DELETE Operations', deletePhaseTestFiles);
     await commitAndWait('DELETE');
 
     console.log('\n=== All phases complete ===\n');

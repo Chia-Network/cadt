@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { StagingV2, UnitV2, IssuanceV2, VerificationV2, MethodologyV2, ProjectMethodologyV2, ProjectV2, ValidationV2, ProgramV2, UnitLabelV2, LabelV2 } from '../../../src/models/v2/index.js';
+import { StagingV2, UnitV2, IssuanceV2, VerificationV2, MethodologyV2, ProjectMethodologyV2, ProjectV2, ValidationV2, ProgramV2, UnitLabelV2, LabelV2, AefT5AuthorizedEntitiesV2, AefT1SubmissionV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import TaskManager from '../../../src/tasks/index.js';
 import { getConfig, getConfigV2 } from '../../../src/utils/config-loader.js';
@@ -1085,6 +1085,58 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
 
       expect(unitDelete).to.exist;
       expect(unitLabelDelete).to.exist;
+    });
+
+    it('should return 409 when AEF-T5 authorized entity references unit', async function () {
+      const homeOrgId = await getV2HomeOrgId();
+      const chain = await createV2TestProgramChain({ testId: `UNIT-AEF5-${uuidv4().slice(0, 8)}` });
+      const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+        unitSerialId: `SER-AEF5-${uuidv4().slice(0, 8)}`,
+        unitStartBlock: '1',
+        unitEndBlock: '100',
+        unitCount: 50,
+        unitType: 'Avoidance - nature',
+        unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitMetric: 'tCO2e',
+        cadTrustIssuanceId: chain.issuance.cadTrustIssuanceId,
+        orgUid: homeOrgId,
+      }));
+      const t1 = await AefT1SubmissionV2.create({
+        cadTrustAefT1SubmissionId: uuidv4(),
+        aefT1SubmissionParty: 'Guard party',
+        aefT1SubmissionVersion: '1.0',
+        aefT1SubmissionReportYear: 2024,
+        aefT1SubmissionSubmissionDate: '2024-01-15',
+      });
+      await AefT5AuthorizedEntitiesV2.create({
+        cadTrustAefT5AuthorizedEntitiesId: uuidv4(),
+        aefT5AuthorizedEntitiesAuthorizationDate: '2024-01-15',
+        aefT5AuthorizedEntitiesName: 'Guard entity',
+        aefT5AuthorizedEntitiesId: `AE-G-${uuidv4().slice(0, 6)}`,
+        aefT5AuthorizedEntitiesCooperativeApproachId: `CA-G-${uuidv4().slice(0, 6)}`,
+        cadTrustAefT1SubmissionId: t1.cadTrustAefT1SubmissionId,
+        cadTrustUnitId: unit.cadTrustUnitId,
+        cadTrustProjectId: chain.project.cadTrustProjectId,
+      });
+
+      const response = await supertest(app)
+        .delete(`/v2/unit/${unit.cadTrustUnitId}`)
+        .expect(409);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.equal('Referenced records must be removed before deletion');
+      expect(response.body.references.map((r) => r.table)).to.include('aef_t5_authorized_entities');
+
+      const stagingDeletes = await StagingV2.findAll({
+        where: { table: 'unit', action: 'DELETE' },
+        raw: true,
+      });
+      const forThisUnit = stagingDeletes.find((row) => {
+        const data = JSON.parse(row.data);
+        return data[0]?.cad_trust_unit_id === unit.cadTrustUnitId;
+      });
+      expect(forThisUnit).to.be.undefined;
     });
   });
 

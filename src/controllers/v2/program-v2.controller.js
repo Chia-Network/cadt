@@ -265,12 +265,9 @@ export const destroy = async (req, res) => {
       });
     }
 
-    const force = req.query.force === 'true';
-    if (!force) {
-      const refResult = await checkReferences('program', id);
-      if (refResult.hasReferences) {
-        return res.status(409).json(buildReferenceConflictBody('program', refResult));
-      }
+    const refResult = await checkReferences('program', id);
+    if (refResult.hasReferences) {
+      return res.status(409).json(buildReferenceConflictBody('program', refResult));
     }
 
     await StagingV2.create({
