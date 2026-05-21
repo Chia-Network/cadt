@@ -123,6 +123,9 @@ apply_config_defaults() {
   [[ -z "$DATALAYER_PORT" ]] && DATALAYER_PORT=80
   [[ -z "$KEY_MODE" ]] && KEY_MODE=generate
   [[ -z "$READ_ONLY" ]] && READ_ONLY=false
+  if [[ -z "$CADT_API_KEY" && "$READ_ONLY" != true ]]; then
+    CADT_API_KEY=$(openssl rand -hex 24)
+  fi
 }
 
 is_dpkg_package_installed() {

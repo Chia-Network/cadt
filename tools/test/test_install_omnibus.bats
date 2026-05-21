@@ -125,12 +125,36 @@ wait_for_pid_exit() {
   DATALAYER_PORT=""
   KEY_MODE=""
   READ_ONLY=""
+  CADT_API_KEY=""
 
   apply_config_defaults
 
   [[ "$DATALAYER_PORT" == "80" ]]
   [[ "$KEY_MODE" == "generate" ]]
   [[ "$READ_ONLY" == "false" ]]
+  [[ -n "$CADT_API_KEY" ]]
+}
+
+@test "apply_config_defaults skips API key generation in read-only mode" {
+  DATALAYER_PORT=""
+  KEY_MODE=""
+  READ_ONLY="true"
+  CADT_API_KEY=""
+
+  apply_config_defaults
+
+  [[ -z "$CADT_API_KEY" ]]
+}
+
+@test "apply_config_defaults preserves explicit API key" {
+  DATALAYER_PORT=""
+  KEY_MODE=""
+  READ_ONLY=""
+  CADT_API_KEY="user-provided-key"
+
+  apply_config_defaults
+
+  [[ "$CADT_API_KEY" == "user-provided-key" ]]
 }
 
 @test "is_dpkg_package_installed detects installed dpkg rows" {
