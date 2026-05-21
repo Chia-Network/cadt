@@ -36,29 +36,11 @@ import { projectV2Schema } from '../../validations/v2/project-v2.validations.js'
 import { formatModelAssociationName } from '../../utils/model-utils.js';
 import { resolveOrgUid } from '../../utils/owner-utils.js';
 import { getProjectCascadeUnits, stageProjectChildDeletes } from '../../utils/v2-cascade-delete.js';
-import { checkReferences, buildReferenceConflictBody } from '../../utils/v2-reference-guards.js';
+import { checkReferences, buildReferenceConflictBody, checkUnitReferencesForIds } from '../../utils/v2-reference-guards.js';
 
 const checkProjectCascadeUnitReferences = async (projectId) => {
   const units = await getProjectCascadeUnits(projectId);
-  const referencesByTable = new Map();
-
-  for (const unit of units) {
-    const unitRefResult = await checkReferences('unit', unit.cadTrustUnitId);
-    for (const reference of unitRefResult.references) {
-      const existing = referencesByTable.get(reference.table);
-      if (existing) {
-        existing.count += reference.count;
-      } else {
-        referencesByTable.set(reference.table, { ...reference });
-      }
-    }
-  }
-
-  const references = [...referencesByTable.values()];
-  return {
-    hasReferences: references.length > 0,
-    references,
-  };
+  return checkUnitReferencesForIds(units.map((unit) => unit.cadTrustUnitId));
 };
 
 export const create = async (req, res) => {

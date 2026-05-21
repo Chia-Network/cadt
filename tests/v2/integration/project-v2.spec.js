@@ -2247,6 +2247,12 @@ Test Registry,REQ-001,${testProgram.cadTrustProgramId}`;
           projectRegistryName: 'Test Registry',
           projectId: 'UPD-REQ-001',
           projectName: 'Full Project',
+          projectLink: 'https://example.com/update-required',
+          projectSector: ['Agriculture'],
+          projectType: ['Landfill gas'],
+          projectStatus: 'Listed',
+          projectStatusDate: '2024-01-01',
+          projectUnitMetric: 'tCO2e',
           orgUid: homeOrgId,
         }));
 
