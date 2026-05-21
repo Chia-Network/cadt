@@ -975,7 +975,7 @@ server {
     root ${dst};
     autoindex off;
 
-    server_name _;
+    server_name ${DATALAYER_HOST};
 
     expires 30d;
     add_header Pragma "public";
