@@ -645,15 +645,15 @@ verify_apt_package_version() {
 }
 
 install_prerequisites() {
-  info "Installing prerequisites..."
-  sudo apt-get update -qq
+  spinner_start "Installing prerequisites"
+  sudo apt-get update -qq >>"$LOG_FILE" 2>&1
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    curl ca-certificates gnupg jq openssl python3 python3-yaml
-  success "Prerequisites installed"
+    curl ca-certificates gnupg jq openssl python3 python3-yaml >>"$LOG_FILE" 2>&1
+  spinner_stop 0
 }
 
 setup_apt_repos() {
-  info "Configuring Chia apt repositories..."
+  spinner_start "Configuring Chia apt repositories"
   curl -fsSL "$CHIA_GPG_URL" | sudo gpg --batch --yes --dearmor -o /usr/share/keyrings/chia.gpg
   local arch
   arch=$(dpkg --print-architecture)
@@ -669,12 +669,11 @@ setup_apt_repos() {
   fi
   echo "${signed} https://repo.chia.net/chia-tools/debian/ stable main" |
     sudo tee /etc/apt/sources.list.d/chia-tools.list >/dev/null
-  sudo apt-get update -qq
-  success "Apt repositories configured"
+  sudo apt-get update -qq >>"$LOG_FILE" 2>&1
+  spinner_stop 0
 }
 
 install_packages() {
-  info "Installing chia-blockchain-cli, chia-tools, cadt, and nginx..."
   verify_apt_package_version chia-blockchain-cli "$CHIA_APT_VER"
   verify_apt_package_version chia-tools "$TOOLS_APT_VER"
   verify_apt_package_version cadt "$CADT_APT_VER"
@@ -686,9 +685,21 @@ install_packages() {
   [[ -n "$TOOLS_APT_VER" ]] && tools_spec="${tools_spec}=${TOOLS_APT_VER}"
   [[ -n "$CADT_APT_VER" ]] && cadt_spec="${cadt_spec}=${CADT_APT_VER}"
 
-  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    "$chia_spec" "$tools_spec" "$cadt_spec" nginx
-  success "Packages installed"
+  spinner_start "Installing chia-blockchain-cli (${CHIA_APT_VER:-latest})"
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "$chia_spec" >>"$LOG_FILE" 2>&1
+  spinner_stop 0
+
+  spinner_start "Installing chia-tools (${TOOLS_APT_VER:-latest})"
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "$tools_spec" >>"$LOG_FILE" 2>&1
+  spinner_stop 0
+
+  spinner_start "Installing cadt (${CADT_APT_VER:-latest})"
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "$cadt_spec" >>"$LOG_FILE" 2>&1
+  spinner_stop 0
+
+  spinner_start "Installing nginx"
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y nginx >>"$LOG_FILE" 2>&1
+  spinner_stop 0
 }
 
 run_prompts() {
