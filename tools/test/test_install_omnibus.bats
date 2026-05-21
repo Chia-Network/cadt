@@ -122,21 +122,18 @@ wait_for_pid_exit() {
 }
 
 @test "apply_config_defaults sets optional non-interactive defaults" {
-  DATALAYER_PORT=""
   KEY_MODE=""
   READ_ONLY=""
   CADT_API_KEY=""
 
   apply_config_defaults
 
-  [[ "$DATALAYER_PORT" == "80" ]]
   [[ "$KEY_MODE" == "generate" ]]
   [[ "$READ_ONLY" == "false" ]]
   [[ -n "$CADT_API_KEY" ]]
 }
 
 @test "apply_config_defaults skips API key generation in read-only mode" {
-  DATALAYER_PORT=""
   KEY_MODE=""
   READ_ONLY="true"
   CADT_API_KEY=""
@@ -147,7 +144,6 @@ wait_for_pid_exit() {
 }
 
 @test "apply_config_defaults preserves explicit API key" {
-  DATALAYER_PORT=""
   KEY_MODE=""
   READ_ONLY=""
   CADT_API_KEY="user-provided-key"
@@ -268,14 +264,13 @@ EOF
     --network=testneta \
     --chia-version=stable \
     --datalayer-host=127.0.0.1 \
-    --datalayer-port=8080 \
     --generate-key \
     --yes \
     --min-disk-gb=10
   [[ "$NETWORK" == "testneta" ]]
   [[ "$CHIA_VERSION_CHOICE" == "stable" ]]
   [[ "$DATALAYER_HOST" == "127.0.0.1" ]]
-  [[ "$DATALAYER_PORT" == "8080" ]]
+  [[ "$DATALAYER_PORT" == "80" ]]
   [[ "$KEY_MODE" == "generate" ]]
   [[ "$ASSUME_YES" == true ]]
   [[ "$MIN_DISK_GIB" == "10" ]]

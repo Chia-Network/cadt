@@ -38,7 +38,6 @@ jobs:
             --chia-tools-version=stable \
             --cadt-version=prerelease \
             --datalayer-host=127.0.0.1 \
-            --datalayer-port=80 \
             --generate-key \
             --mnemonic-output-file=/dev/null \
             --api-key="${API_KEY}" \
@@ -95,7 +94,6 @@ jobs:
             --chia-tools-version=stable \
             --cadt-version=prerelease \
             --datalayer-host=127.0.0.1 \
-            --datalayer-port=80 \
             --generate-key \
             --mnemonic-output-file=/dev/null \
             --min-disk-gb=10 2>&1 | tee /tmp/rerun.log

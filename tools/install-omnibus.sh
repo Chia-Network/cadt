@@ -30,7 +30,7 @@ CHIA_VERSION_CHOICE=""
 CHIA_TOOLS_VERSION_CHOICE=""
 CADT_VERSION_CHOICE=""
 DATALAYER_HOST=""
-DATALAYER_PORT=""
+DATALAYER_PORT=80
 READ_ONLY=""
 CADT_API_KEY=""
 KEY_MODE="" # generate | import
@@ -120,7 +120,6 @@ validate_network() {
 }
 
 apply_config_defaults() {
-  [[ -z "$DATALAYER_PORT" ]] && DATALAYER_PORT=80
   [[ -z "$KEY_MODE" ]] && KEY_MODE=generate
   [[ -z "$READ_ONLY" ]] && READ_ONLY=false
   if [[ -z "$CADT_API_KEY" && "$READ_ONLY" != true ]]; then
@@ -234,13 +233,6 @@ parse_args() {
         DATALAYER_HOST="$2"
         shift
         ;;
-      --datalayer-port=*)
-        DATALAYER_PORT="${1#*=}"
-        ;;
-      --datalayer-port)
-        DATALAYER_PORT="$2"
-        shift
-        ;;
       --read-only)
         READ_ONLY=true
         ;;
@@ -347,7 +339,6 @@ Options:
   --chia-tools-version=stable|<stable-tag>
   --cadt-version=stable|prerelease|<tag>
   --datalayer-host=<hostname-or-ip>
-  --datalayer-port=<port>          (default: 80)
   --read-only                      observer mode
   --api-key=<key>
   --generate-key                   generate a new Chia key
@@ -760,10 +751,6 @@ run_prompts() {
   if [[ "$WARN_DNS" -eq 1 ]]; then
     warn "DNS for '${DATALAYER_HOST}' must point to this machine so others can fetch your DataLayer files."
     confirm "Continue with hostname '${DATALAYER_HOST}'?" || die "Aborted."
-  fi
-
-  if [[ -z "$DATALAYER_PORT" ]]; then
-    prompt_default DATALAYER_PORT "HTTP port for DataLayer file server" "80"
   fi
 
   if [[ -z "$KEY_MODE" ]]; then
