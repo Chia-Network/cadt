@@ -928,6 +928,7 @@ setup_chia_keys_import() {
 
 start_chia_services() {
   info "Starting Chia services (full node, wallet, data layer)..."
+  sudo systemctl daemon-reload
   sudo systemctl enable --now \
     "chia-full-node@${USER}" \
     "chia-wallet@${USER}" \
