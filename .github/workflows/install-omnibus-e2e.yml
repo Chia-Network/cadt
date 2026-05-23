@@ -37,7 +37,7 @@ jobs:
             --chia-version=stable \
             --chia-tools-version=stable \
             --cadt-version=prerelease \
-            --datalayer-host=127.0.0.1 \
+            --public-address=127.0.0.1 \
             --generate-key \
             --mnemonic-output-file=/dev/null \
             --api-key="${API_KEY}" \
@@ -53,21 +53,45 @@ jobs:
           done
           sudo systemctl is-active nginx
 
-      - name: Assert nginx serves datalayer dir
-        run: |
-          code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:80/)
-          [[ "$code" == "404" || "$code" == "200" || "$code" == "403" ]]
-
-      - name: Assert CADT API responds
+      - name: Assert nginx proxies CADT API
         run: |
           for _ in $(seq 1 40); do
-            if curl -fsS -H "x-api-key: ${API_KEY}" http://localhost:31310/v1/health >/dev/null 2>&1; then
+            code=$(curl -s -o /dev/null -w '%{http_code}' -H "x-api-key: ${API_KEY}" http://127.0.0.1/v1/health)
+            if [[ "$code" == "200" ]]; then
               exit 0
             fi
             sleep 5
           done
-          sudo journalctl -u "cadt@${USER}" --no-pager -n 500
+          echo "Nginx proxy to CADT failed (last HTTP code: ${code})"
+          sudo nginx -T
+          sudo journalctl -u "cadt@${USER}" --no-pager -n 200
           exit 1
+
+      - name: Assert datalayer path serves via nginx
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1/data/)
+          [[ "$code" == "404" || "$code" == "200" || "$code" == "403" ]]
+
+      - name: Assert CADT API responds on localhost:31310
+        run: |
+          curl -fsS -H "x-api-key: ${API_KEY}" http://localhost:31310/v1/health
+
+      - name: Assert CADT bound to 127.0.0.1
+        run: |
+          python3 -c "
+          import yaml
+          c = yaml.safe_load(open('${HOME}/.chia/mainnet/cadt/config.yaml'))
+          assert c['APP']['BIND_ADDRESS'] == '127.0.0.1', f\"Got: {c['APP'].get('BIND_ADDRESS')}\"
+          "
+
+      - name: Assert DataLayer URL uses /data path
+        run: |
+          python3 -c "
+          import yaml
+          c = yaml.safe_load(open('${HOME}/.chia/mainnet/cadt/config.yaml'))
+          url = c['APP']['DATALAYER_FILE_SERVER_URL']
+          assert url == 'http://127.0.0.1/data', f'Got: {url}'
+          "
 
       - name: Assert testneta governance ID written
         run: |
@@ -93,7 +117,7 @@ jobs:
             --chia-version=stable \
             --chia-tools-version=stable \
             --cadt-version=prerelease \
-            --datalayer-host=127.0.0.1 \
+            --public-address=127.0.0.1 \
             --generate-key \
             --mnemonic-output-file=/dev/null \
             --min-disk-gb=10 2>&1 | tee /tmp/rerun.log
@@ -107,6 +131,60 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: install-log-${{ matrix.os }}
+          path: /tmp/cadt-install-*.log
+          if-no-files-found: ignore
+
+  local-only:
+    name: local-only mode
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Run installer with --local-only
+        run: |
+          API_KEY="$(openssl rand -hex 24)"
+          echo "API_KEY=${API_KEY}" >> "$GITHUB_ENV"
+          bash tools/install-omnibus.sh \
+            --yes \
+            --network=testneta \
+            --chia-version=stable \
+            --chia-tools-version=stable \
+            --cadt-version=prerelease \
+            --public-address=127.0.0.1 \
+            --local-only \
+            --generate-key \
+            --mnemonic-output-file=/dev/null \
+            --api-key="${API_KEY}" \
+            --min-disk-gb=10
+
+      - name: Assert CADT API responds on localhost:31310 directly
+        run: |
+          for _ in $(seq 1 40); do
+            if curl -fsS -H "x-api-key: ${API_KEY}" http://localhost:31310/v1/health >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 5
+          done
+          exit 1
+
+      - name: Assert nginx does NOT proxy CADT (no location / proxy)
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1/v1/health)
+          [[ "$code" != "200" ]]
+
+      - name: Assert datalayer path still serves via nginx
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1/data/)
+          [[ "$code" == "404" || "$code" == "200" || "$code" == "403" ]]
+
+      - name: Upload install log on failure
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: install-log-local-only
           path: /tmp/cadt-install-*.log
           if-no-files-found: ignore
 

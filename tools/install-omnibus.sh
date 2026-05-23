@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # CADT Omnibus Installer
-# Installs Chia (CLI), chia-tools, CADT, nginx datalayer file server, and configures CADT.
+# Installs Chia (CLI), chia-tools, CADT, nginx reverse proxy, and configures CADT.
 #
 # Usage:
 #   ./tools/install-omnibus.sh [OPTIONS]
@@ -23,14 +23,17 @@ readonly MIN_CPU_CORES=4
 readonly MIN_RAM_KIB=$((7680 * 1024)) # 7.5 GiB
 readonly DEFAULT_MIN_DISK_GIB=300
 readonly SPINNER_CHARS="|/-\\"
+readonly CERTBOT_WEBROOT="/var/www/certbot"
 
 # Configurable via flags
 NETWORK=""
 CHIA_VERSION_CHOICE=""
 CHIA_TOOLS_VERSION_CHOICE=""
 CADT_VERSION_CHOICE=""
-DATALAYER_HOST=""
-DATALAYER_PORT=80
+PUBLIC_ADDRESS=""
+LOCAL_ONLY=false
+ENABLE_HTTPS=false
+CERTBOT_DRY_RUN=false
 READ_ONLY=""
 CADT_API_KEY=""
 KEY_MODE="" # generate | import
@@ -38,12 +41,12 @@ IMPORT_KEY_FILE=""
 MNEMONIC_OUTPUT_FILE=""
 MIN_DISK_GIB="${DEFAULT_MIN_DISK_GIB}"
 ASSUME_YES=false
-WARN_DNS=0
 
 CHIA_APT_VER=""
 TOOLS_APT_VER=""
 CADT_APT_VER=""
 DATALAYER_URL=""
+PUBLIC_URL=""
 LOG_FILE=""
 PRIVATE_FD=3
 
@@ -82,18 +85,29 @@ is_ipv4() {
   [[ "$host" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]
 }
 
-validate_datalayer_host() {
+strip_url_scheme() {
+  local input="$1"
+  input="${input#http://}"
+  input="${input#https://}"
+  input="${input%/}"
+  echo "$input"
+}
+
+is_domain() {
   local host="$1"
-  WARN_DNS=0
-  if is_ipv4 "$host"; then
+  ! is_ipv4 "$host" && [[ "$host" != *:* ]]
+}
+
+validate_public_address() {
+  local addr="$1"
+  [[ -n "$addr" ]] || return 1
+  if is_ipv4 "$addr"; then
     return 0
   fi
-  if [[ "$host" == *:* ]]; then
-    # crude IPv6 bracket check
+  if [[ "$addr" =~ ^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$ ]]; then
     return 0
   fi
-  WARN_DNS=1
-  return 0
+  return 1
 }
 
 meets_min_specs() {
@@ -171,8 +185,23 @@ cadt_health_curl_args() {
   args_ref+=("http://localhost:31310/v1/health")
 }
 
+build_datalayer_url() {
+  local scheme="http"
+  if [[ "$ENABLE_HTTPS" == true ]]; then
+    scheme="https"
+  fi
+  DATALAYER_URL="${scheme}://${PUBLIC_ADDRESS}/data"
+}
+
+build_public_url() {
+  local scheme="http"
+  if [[ "$ENABLE_HTTPS" == true ]]; then
+    scheme="https"
+  fi
+  PUBLIC_URL="${scheme}://${PUBLIC_ADDRESS}"
+}
+
 pick_release_from_json() {
-  # Usage: pick_release_from_json <json_file> <stable|prerelease|index>
   local json_file="$1" mode="$2"
   if [[ ! -f "$json_file" ]]; then
     return 1
@@ -226,12 +255,21 @@ parse_args() {
         CADT_VERSION_CHOICE="$2"
         shift
         ;;
-      --datalayer-host=*)
-        DATALAYER_HOST="${1#*=}"
+      --public-address=*)
+        PUBLIC_ADDRESS=$(strip_url_scheme "${1#*=}")
         ;;
-      --datalayer-host)
-        DATALAYER_HOST="$2"
+      --public-address)
+        PUBLIC_ADDRESS=$(strip_url_scheme "$2")
         shift
+        ;;
+      --local-only)
+        LOCAL_ONLY=true
+        ;;
+      --https)
+        ENABLE_HTTPS=true
+        ;;
+      --certbot-dry-run)
+        CERTBOT_DRY_RUN=true
         ;;
       --read-only)
         READ_ONLY=true
@@ -338,7 +376,10 @@ Options:
   --chia-version=stable|<stable-tag>
   --chia-tools-version=stable|<stable-tag>
   --cadt-version=stable|prerelease|<tag>
-  --datalayer-host=<hostname-or-ip>
+  --public-address=<domain-or-ip>  public address for this server
+  --local-only                     skip CADT API proxy (datalayer files still served)
+  --https                          enable HTTPS with Let's Encrypt certbot
+  --certbot-dry-run                run certbot in dry-run mode (for testing)
   --read-only                      observer mode
   --api-key=<key>
   --generate-key                   generate a new Chia key
@@ -637,7 +678,9 @@ verify_apt_package_version() {
 
 install_prerequisites() {
   spinner_start "Installing prerequisites"
+  # shellcheck disable=SC2024
   sudo apt-get update -qq >>"$LOG_FILE" 2>&1
+  # shellcheck disable=SC2024
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
     curl ca-certificates gnupg jq openssl python3 python3-yaml >>"$LOG_FILE" 2>&1
   spinner_stop 0
@@ -660,6 +703,7 @@ setup_apt_repos() {
   fi
   echo "${signed} https://repo.chia.net/chia-tools/debian/ stable main" |
     sudo tee /etc/apt/sources.list.d/chia-tools.list >/dev/null
+  # shellcheck disable=SC2024
   sudo apt-get update -qq >>"$LOG_FILE" 2>&1
   spinner_stop 0
 }
@@ -677,20 +721,84 @@ install_packages() {
   [[ -n "$CADT_APT_VER" ]] && cadt_spec="${cadt_spec}=${CADT_APT_VER}"
 
   spinner_start "Installing chia-blockchain-cli (${CHIA_APT_VER:-latest})"
+  # shellcheck disable=SC2024
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "$chia_spec" >>"$LOG_FILE" 2>&1
   spinner_stop 0
 
   spinner_start "Installing chia-tools (${TOOLS_APT_VER:-latest})"
+  # shellcheck disable=SC2024
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "$tools_spec" >>"$LOG_FILE" 2>&1
   spinner_stop 0
 
   spinner_start "Installing cadt (${CADT_APT_VER:-latest})"
+  # shellcheck disable=SC2024
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "$cadt_spec" >>"$LOG_FILE" 2>&1
   spinner_stop 0
 
   spinner_start "Installing nginx"
+  # shellcheck disable=SC2024
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y nginx >>"$LOG_FILE" 2>&1
   spinner_stop 0
+}
+
+prompt_public_address() {
+  if [[ -n "$PUBLIC_ADDRESS" ]]; then
+    return 0
+  fi
+
+  echo ""
+  info "Public address for CADT and DataLayer file serving:"
+  echo "  Enter a domain name (e.g. cadt.example.com)"
+  echo "  Or press Enter to use this machine's public IP address"
+  echo ""
+  local input=""
+  read -r -p "Domain or IP: " input </dev/tty
+
+  input=$(strip_url_scheme "$input")
+
+  if [[ -z "$input" ]]; then
+    local detected_ip=""
+    spinner_start "Trying to get IP address automatically"
+    detected_ip=$(curl -4 --max-time 8 -fsSL https://ip.chia.net 2>/dev/null || echo "")
+    spinner_stop 0
+
+    if [[ -n "$detected_ip" ]] && is_ipv4 "$detected_ip"; then
+      local ip_ok=""
+      read -r -p "Detected IP: ${detected_ip} — is this correct? [Y/n]: " ip_ok </dev/tty
+      if [[ -z "$ip_ok" || "${ip_ok,,}" == "y" || "${ip_ok,,}" == "yes" ]]; then
+        PUBLIC_ADDRESS="$detected_ip"
+      fi
+    fi
+
+    if [[ -z "$PUBLIC_ADDRESS" ]]; then
+      while true; do
+        read -r -p "Enter this machine's public IP address: " input </dev/tty
+        input=$(strip_url_scheme "$input")
+        if is_ipv4 "$input"; then
+          PUBLIC_ADDRESS="$input"
+          break
+        fi
+        echo "  Invalid IP address. Please enter a valid IPv4 address (e.g. 203.0.113.10)"
+      done
+    fi
+  else
+    PUBLIC_ADDRESS="$input"
+  fi
+
+  validate_public_address "$PUBLIC_ADDRESS" || die "Invalid public address: $PUBLIC_ADDRESS"
+
+  if is_ipv4 "$PUBLIC_ADDRESS"; then
+    echo ""
+    warn "This should be a static IP address, such as an AWS Elastic IP address."
+    echo ""
+  fi
+
+  if is_domain "$PUBLIC_ADDRESS" && [[ "$ENABLE_HTTPS" != true ]]; then
+    if confirm "Enable HTTPS with Let's Encrypt for ${PUBLIC_ADDRESS}?"; then
+      ENABLE_HTTPS=true
+      warn "Port 80 and 443 must be open and reachable from the internet for certificate issuance."
+    fi
+  fi
 }
 
 run_prompts() {
@@ -742,16 +850,7 @@ run_prompts() {
   rm -f "$tmpjson"
   validate_supported_apt_versions
 
-  if [[ -z "$DATALAYER_HOST" ]]; then
-    local default_ip=""
-    default_ip=$(curl -fsSL --max-time 10 https://api.ipify.org 2>/dev/null || echo "127.0.0.1")
-    prompt_default DATALAYER_HOST "DataLayer public hostname or IP" "$default_ip"
-  fi
-  validate_datalayer_host "$DATALAYER_HOST"
-  if [[ "$WARN_DNS" -eq 1 ]]; then
-    warn "DNS for '${DATALAYER_HOST}' must point to this machine so others can fetch your DataLayer files."
-    confirm "Continue with hostname '${DATALAYER_HOST}'?" || die "Aborted."
-  fi
+  prompt_public_address
 
   if [[ -z "$KEY_MODE" ]]; then
     echo ""
@@ -797,6 +896,7 @@ run_prompts() {
   fi
 
   build_datalayer_url
+  build_public_url
 
   if ! $ASSUME_YES; then
     echo ""
@@ -805,21 +905,15 @@ run_prompts() {
     echo "  chia-blockchain-cli:  ${CHIA_APT_VER:-latest}"
     echo "  chia-tools:           ${TOOLS_APT_VER:-latest}"
     echo "  cadt:                 ${CADT_APT_VER:-latest}"
+    echo "  Public address:       ${PUBLIC_ADDRESS}"
     echo "  DataLayer URL:        ${DATALAYER_URL}"
+    echo "  HTTPS:                ${ENABLE_HTTPS}"
+    echo "  Local-only:           ${LOCAL_ONLY}"
     echo "  Key:                  ${KEY_MODE}"
     echo "  Read-only:            ${READ_ONLY}"
     echo "  CADT API key:         $([[ -n "$CADT_API_KEY" ]] && echo '(set)' || echo '(none)')"
     echo ""
     confirm "Proceed with installation?" || die "Aborted by user."
-  fi
-}
-
-build_datalayer_url() {
-  local host="$DATALAYER_HOST" port="$DATALAYER_PORT"
-  if [[ "$port" == "80" ]]; then
-    DATALAYER_URL="http://${host}"
-  else
-    DATALAYER_URL="http://${host}:${port}"
   fi
 }
 
@@ -937,12 +1031,12 @@ start_chia_services() {
   spinner_stop 0
 }
 
-configure_nginx_datalayer() {
+setup_datalayer_directory() {
   local net="$1"
   local src="${CHIA_ROOT}/data_layer/db/server_files_location_${net}"
   local dst="/var/www/server_files_location_${net}"
 
-  info "Configuring nginx for DataLayer file serving..."
+  info "Setting up DataLayer file directory..."
 
   sudo systemctl stop "chia-data-layer@${USER}"
 
@@ -967,40 +1061,184 @@ UMask=0022
 EOF
   sudo systemctl daemon-reload
 
-  sudo tee /etc/nginx/sites-available/cadt-datalayer >/dev/null <<EOF
+  success "DataLayer files at ${dst} (symlinked from ${src})"
+}
+
+write_nginx_http_config() {
+  local net="$1"
+  local dst="/var/www/server_files_location_${net}"
+
+  sudo mkdir -p "$CERTBOT_WEBROOT"
+
+  sudo tee /etc/nginx/sites-available/cadt >/dev/null <<EOF
 server {
-    listen ${DATALAYER_PORT} default_server;
-    listen [::]:${DATALAYER_PORT} default_server;
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name ${PUBLIC_ADDRESS};
 
-    root ${dst};
-    autoindex off;
+    location /.well-known/acme-challenge/ {
+        root ${CERTBOT_WEBROOT};
+    }
 
-    server_name ${DATALAYER_HOST};
-
-    expires 30d;
-    add_header Pragma "public";
-    add_header Cache-Control "public";
+    location /data/ {
+        alias ${dst}/;
+        autoindex off;
+        expires 30d;
+        add_header Cache-Control "public";
+    }
+$(if [[ "$LOCAL_ONLY" != true ]]; then
+cat <<PROXY
 
     location / {
-        try_files \$uri =404;
+        proxy_pass http://127.0.0.1:31310;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_http_version 1.1;
+        proxy_read_timeout 90s;
     }
+PROXY
+fi)
 }
 EOF
+}
+
+write_nginx_https_config() {
+  local net="$1"
+  local dst="/var/www/server_files_location_${net}"
+
+  sudo tee /etc/nginx/sites-available/cadt >/dev/null <<EOF
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name ${PUBLIC_ADDRESS};
+
+    location /.well-known/acme-challenge/ {
+        root ${CERTBOT_WEBROOT};
+    }
+
+    location / {
+        return 301 https://\$host\$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name ${PUBLIC_ADDRESS};
+
+    ssl_certificate /etc/letsencrypt/live/${PUBLIC_ADDRESS}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${PUBLIC_ADDRESS}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+    add_header Strict-Transport-Security "max-age=63072000" always;
+
+    location /data/ {
+        alias ${dst}/;
+        autoindex off;
+        expires 30d;
+        add_header Cache-Control "public";
+    }
+$(if [[ "$LOCAL_ONLY" != true ]]; then
+cat <<PROXY
+
+    location / {
+        proxy_pass http://127.0.0.1:31310;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_http_version 1.1;
+        proxy_read_timeout 90s;
+    }
+PROXY
+fi)
+}
+EOF
+}
+
+configure_nginx() {
+  local net="$1"
+
+  info "Configuring nginx..."
+
+  # Phase 1: write HTTP config and start nginx
+  write_nginx_http_config "$net"
 
   sudo rm -f /etc/nginx/sites-enabled/default
-  sudo ln -sf /etc/nginx/sites-available/cadt-datalayer /etc/nginx/sites-enabled/cadt-datalayer
+  sudo ln -sf /etc/nginx/sites-available/cadt /etc/nginx/sites-enabled/cadt
   sudo nginx -t
+  # shellcheck disable=SC2024
   sudo systemctl enable nginx >>"$LOG_FILE" 2>&1
   sudo systemctl reload nginx
+
+  # Phase 2: if HTTPS requested, run certbot then write final config
+  if [[ "$ENABLE_HTTPS" == true ]]; then
+    setup_certbot "$net"
+  fi
 
   sudo systemctl start "chia-data-layer@${USER}"
 
   local code
-  code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:${DATALAYER_PORT}/" || echo "000")
-  if [[ "$code" != "404" && "$code" != "200" && "$code" != "403" ]]; then
-    die "nginx smoke test failed (HTTP ${code})"
+  code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1/data/" || echo "000")
+  if [[ "$code" != "404" && "$code" != "200" && "$code" != "403" && "$code" != "301" ]]; then
+    die "nginx smoke test failed (HTTP ${code} on /data/)"
   fi
-  success "nginx serving DataLayer files at ${DATALAYER_URL}"
+  success "nginx configured (public address: ${PUBLIC_ADDRESS})"
+}
+
+setup_certbot() {
+  local net="$1"
+
+  info "Setting up HTTPS with Let's Encrypt..."
+
+  spinner_start "Installing certbot"
+  # shellcheck disable=SC2024
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y certbot >>"$LOG_FILE" 2>&1
+  spinner_stop 0
+
+  sudo mkdir -p "$CERTBOT_WEBROOT"
+
+  local certbot_args=(
+    certonly
+    --webroot
+    -w "$CERTBOT_WEBROOT"
+    -d "$PUBLIC_ADDRESS"
+    --non-interactive
+    --agree-tos
+    --register-unsafely-without-email
+    --deploy-hook "systemctl reload nginx"
+  )
+
+  if [[ "$CERTBOT_DRY_RUN" == true ]]; then
+    certbot_args+=(--dry-run)
+  fi
+
+  spinner_start "Obtaining SSL certificate"
+  # shellcheck disable=SC2024
+  if sudo certbot "${certbot_args[@]}" >>"$LOG_FILE" 2>&1; then
+    spinner_stop 0
+
+    if [[ "$CERTBOT_DRY_RUN" != true ]]; then
+      write_nginx_https_config "$net"
+      sudo nginx -t
+      sudo systemctl reload nginx
+      success "HTTPS enabled with Let's Encrypt"
+    else
+      success "Certbot dry-run succeeded (HTTPS config not applied)"
+    fi
+  else
+    spinner_stop 1
+    warn "Certbot failed — continuing with HTTP only. Check log for details."
+    ENABLE_HTTPS=false
+    build_datalayer_url
+    build_public_url
+  fi
 }
 
 patch_cadt_config() {
@@ -1029,6 +1267,7 @@ read_only = os.environ["CADT_READ_ONLY"] == "true"
 
 cfg.setdefault("APP", {})["CHIA_NETWORK"] = os.environ["CADT_NETWORK"]
 cfg["APP"]["DATALAYER_FILE_SERVER_URL"] = os.environ["CADT_DATALAYER_URL"]
+cfg["APP"]["BIND_ADDRESS"] = "127.0.0.1"
 
 for section in ("V1", "V2"):
     cfg.setdefault(section, {})
@@ -1109,40 +1348,41 @@ print_final_summary() {
   echo "  Chia sync status:  chia show -s"
   echo ""
   info "Endpoints"
-  echo "  CADT API:          http://localhost:31310"
-  echo "  DataLayer files:   ${DATALAYER_URL}"
-  if [[ "$WARN_DNS" -eq 1 ]]; then
-    warn "Ensure DNS for ${DATALAYER_HOST} points to this machine."
+  if [[ "$LOCAL_ONLY" != true ]]; then
+    echo "  CADT API (public): ${PUBLIC_URL}"
   fi
+  echo "  CADT API (local):  http://localhost:31310"
+  echo "  DataLayer files:   ${DATALAYER_URL}"
   echo "  Network:           ${NETWORK}"
   echo "  Governance ID:     ${governance_id}"
   if [[ -n "$CADT_API_KEY" ]]; then
-    echo "  API key:           (set; shown on terminal only)"
     private_literal "  API key:           ${CADT_API_KEY}"
   else
     echo "  API key:           (not set)"
   fi
   echo ""
+  if is_domain "$PUBLIC_ADDRESS"; then
+    info "DNS"
+    echo "  Ensure DNS for '${PUBLIC_ADDRESS}' points to this machine."
+    echo ""
+  fi
   info "Next steps — home organization"
   echo "  Wait until 'chia show -s' reports synced before creating a home org."
   if [[ "$NETWORK" == "testneta" ]]; then
     echo "  Get test TXCH from the current testneta faucet for your environment."
   fi
+
+  local api_url="http://localhost:31310"
+  if [[ "$LOCAL_ONLY" != true ]]; then
+    api_url="$PUBLIC_URL"
+  fi
   echo "  Create home org (v2):"
-  echo "    curl -X POST http://localhost:31310/v2/organizations \\"
+  echo "    curl -X POST ${api_url}/v2/organizations \\"
   echo "      -H 'Content-Type: application/json' \\"
   if [[ -n "$CADT_API_KEY" ]]; then
     echo "      -H 'x-api-key: <api-key>' \\"
   fi
   echo "      -d '{\"name\":\"My Organization\"}'"
-  echo "  Import existing org:"
-  echo "    curl -X PUT http://localhost:31310/v2/organizations \\"
-  echo "      -H 'Content-Type: application/json' \\"
-  if [[ -n "$CADT_API_KEY" ]]; then
-    echo "      -H 'x-api-key: <api-key>' \\"
-  fi
-  echo "      -d '{\"orgUid\":\"<org-uid>\",\"isHome\":true}'"
-  echo "  Docs: https://github.com/Chia-Network/cadt/blob/develop/docs/cadt_rpc_api_v2.md"
   echo ""
   echo "  Install log: ${LOG_FILE}"
   echo ""
@@ -1192,18 +1432,15 @@ BANNER
   validate_supported_apt_versions
 
   if [[ -z "$NETWORK" || -z "$CHIA_APT_VER" || -z "$TOOLS_APT_VER" || -z "$CADT_APT_VER" ||
-    -z "$DATALAYER_HOST" ]]; then
+    -z "$PUBLIC_ADDRESS" ]]; then
     run_prompts
   else
     validate_supported_apt_versions
     validate_network "$NETWORK"
-    validate_datalayer_host "$DATALAYER_HOST"
-    if [[ "$WARN_DNS" -eq 1 ]]; then
-      warn "DNS for '${DATALAYER_HOST}' must point to this machine so others can fetch your DataLayer files."
-      confirm "Continue with hostname '${DATALAYER_HOST}'?" || die "Aborted."
-    fi
+    validate_public_address "$PUBLIC_ADDRESS" || die "Invalid public address: $PUBLIC_ADDRESS"
     apply_config_defaults
     build_datalayer_url
+    build_public_url
     if ! $ASSUME_YES; then
       echo ""
       confirm "Proceed with installation?" || die "Aborted by user."
@@ -1229,7 +1466,8 @@ BANNER
   net=$(get_chia_network_dir)
 
   phase "Phase 5: Configuring nginx"
-  configure_nginx_datalayer "$net"
+  setup_datalayer_directory "$net"
+  configure_nginx "$net"
 
   phase "Phase 6: Configuring and starting CADT"
   start_cadt_and_wait

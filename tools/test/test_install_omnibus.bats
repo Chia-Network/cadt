@@ -55,16 +55,65 @@ wait_for_pid_exit() {
   [[ -n "$tag" ]]
 }
 
-@test "validate_datalayer_host sets WARN_DNS for hostname" {
-  WARN_DNS=0
-  validate_datalayer_host "datalayer.example.com"
-  [[ "$WARN_DNS" -eq 1 ]]
+@test "strip_url_scheme removes http prefix" {
+  [[ "$(strip_url_scheme "http://example.com")" == "example.com" ]]
 }
 
-@test "validate_datalayer_host does not warn for IPv4" {
-  WARN_DNS=0
-  validate_datalayer_host "203.0.113.10"
-  [[ "$WARN_DNS" -eq 0 ]]
+@test "strip_url_scheme removes https prefix" {
+  [[ "$(strip_url_scheme "https://example.com")" == "example.com" ]]
+}
+
+@test "strip_url_scheme removes trailing slash" {
+  [[ "$(strip_url_scheme "https://example.com/")" == "example.com" ]]
+}
+
+@test "strip_url_scheme passes through bare domain" {
+  [[ "$(strip_url_scheme "example.com")" == "example.com" ]]
+}
+
+@test "strip_url_scheme passes through IP address" {
+  [[ "$(strip_url_scheme "203.0.113.10")" == "203.0.113.10" ]]
+}
+
+@test "is_domain identifies domains correctly" {
+  is_domain "example.com"
+  is_domain "cadt.chia.net"
+  ! is_domain "203.0.113.10"
+  ! is_domain "::1"
+}
+
+@test "validate_public_address accepts valid domains and IPs" {
+  validate_public_address "example.com"
+  validate_public_address "cadt.chia.net"
+  validate_public_address "203.0.113.10"
+  validate_public_address "my-server.example.org"
+  ! validate_public_address ""
+  ! validate_public_address "has spaces.com"
+}
+
+@test "build_datalayer_url produces http URL with /data path" {
+  PUBLIC_ADDRESS="203.0.113.10"
+  ENABLE_HTTPS=false
+  build_datalayer_url
+  [[ "$DATALAYER_URL" == "http://203.0.113.10/data" ]]
+}
+
+@test "build_datalayer_url produces https URL when HTTPS enabled" {
+  PUBLIC_ADDRESS="cadt.example.com"
+  ENABLE_HTTPS=true
+  build_datalayer_url
+  [[ "$DATALAYER_URL" == "https://cadt.example.com/data" ]]
+}
+
+@test "build_public_url produces correct scheme" {
+  PUBLIC_ADDRESS="cadt.example.com"
+  ENABLE_HTTPS=false
+  build_public_url
+  [[ "$PUBLIC_URL" == "http://cadt.example.com" ]]
+
+  ENABLE_HTTPS=true
+  build_public_url
+  [[ "$PUBLIC_URL" == "https://cadt.example.com" ]]
 }
 
 @test "meets_min_specs passes for adequate hardware" {
@@ -248,7 +297,7 @@ EOF
 
   PATH="${bin}:$PATH"
   NETWORK=mainnet
-  DATALAYER_URL="http://127.0.0.1"
+  DATALAYER_URL="http://127.0.0.1/data"
   READ_ONLY=false
   CADT_API_KEY="abc'\\def"
 
@@ -257,23 +306,44 @@ EOF
   [[ "$(cat "${BATS_TEST_TMPDIR}/api_key")" == "$CADT_API_KEY" ]]
 }
 
-@test "parse_args sets network and versions" {
+@test "parse_args sets network, public-address, and flags" {
   NETWORK=""
   CHIA_VERSION_CHOICE=""
+  PUBLIC_ADDRESS=""
+  LOCAL_ONLY=false
+  ENABLE_HTTPS=false
+  CERTBOT_DRY_RUN=false
   parse_args \
     --network=testneta \
     --chia-version=stable \
-    --datalayer-host=127.0.0.1 \
+    --public-address=127.0.0.1 \
     --generate-key \
     --yes \
     --min-disk-gb=10
   [[ "$NETWORK" == "testneta" ]]
   [[ "$CHIA_VERSION_CHOICE" == "stable" ]]
-  [[ "$DATALAYER_HOST" == "127.0.0.1" ]]
-  [[ "$DATALAYER_PORT" == "80" ]]
+  [[ "$PUBLIC_ADDRESS" == "127.0.0.1" ]]
   [[ "$KEY_MODE" == "generate" ]]
   [[ "$ASSUME_YES" == true ]]
   [[ "$MIN_DISK_GIB" == "10" ]]
+}
+
+@test "parse_args strips URL scheme from --public-address" {
+  PUBLIC_ADDRESS=""
+  parse_args --public-address=https://cadt.example.com/
+  [[ "$PUBLIC_ADDRESS" == "cadt.example.com" ]]
+}
+
+@test "parse_args handles --local-only and --https flags" {
+  LOCAL_ONLY=false
+  ENABLE_HTTPS=false
+  CERTBOT_DRY_RUN=false
+  PUBLIC_ADDRESS=""
+  parse_args --public-address=example.com --local-only --https --certbot-dry-run
+  [[ "$LOCAL_ONLY" == true ]]
+  [[ "$ENABLE_HTTPS" == true ]]
+  [[ "$CERTBOT_DRY_RUN" == true ]]
+  [[ "$PUBLIC_ADDRESS" == "example.com" ]]
 }
 
 @test "is_ipv4 recognizes dotted quads" {
