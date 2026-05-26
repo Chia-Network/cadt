@@ -216,12 +216,14 @@ pick_release_from_json() {
 }
 
 parse_args() {
+  _require_arg() { [[ $# -ge 2 ]] || die "$1 requires a value"; }
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --network=*)
         NETWORK="${1#*=}"
         ;;
       --network)
+        _require_arg "$@"
         NETWORK="$2"
         shift
         ;;
@@ -229,6 +231,7 @@ parse_args() {
         CHIA_VERSION_CHOICE="${1#*=}"
         ;;
       --chia-version)
+        _require_arg "$@"
         CHIA_VERSION_CHOICE="$2"
         shift
         ;;
@@ -236,6 +239,7 @@ parse_args() {
         CHIA_TOOLS_VERSION_CHOICE="${1#*=}"
         ;;
       --chia-tools-version)
+        _require_arg "$@"
         CHIA_TOOLS_VERSION_CHOICE="$2"
         shift
         ;;
@@ -243,6 +247,7 @@ parse_args() {
         CADT_VERSION_CHOICE="${1#*=}"
         ;;
       --cadt-version)
+        _require_arg "$@"
         CADT_VERSION_CHOICE="$2"
         shift
         ;;
@@ -250,6 +255,7 @@ parse_args() {
         PUBLIC_ADDRESS=$(strip_url_scheme "${1#*=}")
         ;;
       --public-address)
+        _require_arg "$@"
         PUBLIC_ADDRESS=$(strip_url_scheme "$2")
         shift
         ;;
@@ -269,6 +275,7 @@ parse_args() {
         CADT_API_KEY="${1#*=}"
         ;;
       --api-key)
+        _require_arg "$@"
         CADT_API_KEY="$2"
         shift
         ;;
@@ -280,6 +287,7 @@ parse_args() {
         IMPORT_KEY_FILE="${1#*=}"
         ;;
       --import-key-from-file)
+        _require_arg "$@"
         KEY_MODE=import
         IMPORT_KEY_FILE="$2"
         shift
@@ -288,6 +296,7 @@ parse_args() {
         MNEMONIC_OUTPUT_FILE="${1#*=}"
         ;;
       --mnemonic-output-file)
+        _require_arg "$@"
         MNEMONIC_OUTPUT_FILE="$2"
         shift
         ;;
@@ -295,6 +304,7 @@ parse_args() {
         MIN_DISK_GIB="${1#*=}"
         ;;
       --min-disk-gb)
+        _require_arg "$@"
         MIN_DISK_GIB="$2"
         shift
         ;;
@@ -527,7 +537,9 @@ check_architecture() {
 
 get_free_disk_gib() {
   local path="$1"
-  df -BG "$path" 2>/dev/null | awk 'NR==2 { gsub(/G/,"",$4); print $4 }'
+  local gib
+  gib=$(df -BG "$path" 2>/dev/null | awk 'NR==2 { gsub(/G/,"",$4); print $4 }')
+  echo "${gib:-0}"
 }
 
 check_min_specs() {
@@ -967,10 +979,11 @@ setup_chia_keys_generate() {
 
   local tmpkey
   tmpkey=$(mktemp)
+  # shellcheck disable=SC2064
+  trap "rm -f '$tmpkey'" RETURN
   printf '%s\n' "$mnemonic" >"$tmpkey"
   chmod 600 "$tmpkey"
   chia keys add -f "$tmpkey" -l "CADT"
-  rm -f "$tmpkey"
   success "Chia key added to keychain"
 }
 
@@ -988,10 +1001,11 @@ setup_chia_keys_import() {
   [[ -n "$mnemonic" ]] || die "Empty mnemonic"
   local tmpkey
   tmpkey=$(mktemp)
+  # shellcheck disable=SC2064
+  trap "rm -f '$tmpkey'" RETURN
   printf '%s\n' "$mnemonic" >"$tmpkey"
   chmod 600 "$tmpkey"
   chia keys add -f "$tmpkey" -l "CADT"
-  rm -f "$tmpkey"
   success "Chia key imported"
 }
 
@@ -1218,6 +1232,9 @@ setup_certbot() {
       sudo systemctl reload nginx
       success "HTTPS enabled with Let's Encrypt"
     else
+      ENABLE_HTTPS=false
+      build_datalayer_url
+      build_public_url
       success "Certbot dry-run succeeded (HTTPS config not applied)"
     fi
   else
