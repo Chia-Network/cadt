@@ -827,38 +827,15 @@ run_prompts() {
   fi
   validate_network "$NETWORK"
 
-  local tmpjson
-  tmpjson=$(mktemp)
   if [[ -z "$CHIA_APT_VER" ]]; then
-    if [[ -n "$CHIA_VERSION_CHOICE" ]]; then
-      fetch_releases_json "$GH_API_CHIA" "$tmpjson"
-      resolve_version_choice "$CHIA_VERSION_CHOICE" "$tmpjson" CHIA_APT_VER
-    else
-      CHIA_VERSION_CHOICE=""
-      prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER false
-    fi
+    prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER false
   fi
-
   if [[ -z "$TOOLS_APT_VER" ]]; then
-    if [[ -n "$CHIA_TOOLS_VERSION_CHOICE" ]]; then
-      fetch_releases_json "$GH_API_TOOLS" "$tmpjson"
-      resolve_version_choice "$CHIA_TOOLS_VERSION_CHOICE" "$tmpjson" TOOLS_APT_VER
-    else
-      CHIA_TOOLS_VERSION_CHOICE=""
-      prompt_version_choice "chia-tools" "$GH_API_TOOLS" CHIA_TOOLS_VERSION_CHOICE TOOLS_APT_VER false
-    fi
+    prompt_version_choice "chia-tools" "$GH_API_TOOLS" CHIA_TOOLS_VERSION_CHOICE TOOLS_APT_VER false
   fi
-
   if [[ -z "$CADT_APT_VER" ]]; then
-    if [[ -n "$CADT_VERSION_CHOICE" ]]; then
-      fetch_releases_json "$GH_API_CADT" "$tmpjson"
-      resolve_version_choice "$CADT_VERSION_CHOICE" "$tmpjson" CADT_APT_VER
-    else
-      CADT_VERSION_CHOICE=""
-      prompt_version_choice "cadt" "$GH_API_CADT" CADT_VERSION_CHOICE CADT_APT_VER true
-    fi
+    prompt_version_choice "cadt" "$GH_API_CADT" CADT_VERSION_CHOICE CADT_APT_VER true
   fi
-  rm -f "$tmpjson"
   validate_supported_apt_versions
 
   prompt_public_address
