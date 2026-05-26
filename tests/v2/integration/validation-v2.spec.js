@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { StagingV2, ValidationV2, ProjectV2, ProgramV2 } from '../../../src/models/v2/index.js';
+import { StagingV2, ValidationV2, ProjectV2, ProgramV2, VerificationV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 
 import {
@@ -524,6 +524,34 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
       // Verify staged deletion data
       const stagedData = JSON.parse(stagingRecord.data);
       expect(stagedData[0].cad_trust_validation_id).to.equal(validation.cadTrustValidationId);
+    });
+
+    it('should return 409 when verification still references validation', async function () {
+      const validation = await ValidationV2.create(addUuidIfNeeded('ValidationV2', {
+        validationId: `VAL-DEL-GUARD-${uuidv4().slice(0, 8)}`,
+        validationType: 'Validation of Project Design Document',
+        validationBody: 'Guard body',
+        cadTrustProjectId: testProject.cadTrustProjectId,
+      }));
+      await VerificationV2.create(addUuidIfNeeded('VerificationV2', {
+        verificationId: `VER-VAL-GUARD-${uuidv4().slice(0, 8)}`,
+        verificationBody: 'Guard verifier',
+        cadTrustProjectId: testProject.cadTrustProjectId,
+        cadTrustValidationId: validation.cadTrustValidationId,
+      }));
+
+      const response = await supertest(app)
+        .delete(`/v2/validation/${validation.cadTrustValidationId}`)
+        .expect(409);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.equal('Referenced records must be removed before deletion');
+      expect(response.body.references).to.deep.include({ table: 'verification', count: 1 });
+
+      const stagingDelete = await StagingV2.findOne({
+        where: { table: 'validation', action: 'DELETE' },
+      });
+      expect(stagingDelete).to.be.null;
     });
   });
 });

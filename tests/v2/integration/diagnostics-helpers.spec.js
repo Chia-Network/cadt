@@ -388,3 +388,193 @@ describe('collectSubscriptions', function () {
     expect(result.subscriptions[0].error).to.equal('no sync status returned');
   });
 });
+
+describe('collectOwnedStoreExpectations', function () {
+  const { collectOwnedStoreExpectations } = diagnosticsTest;
+
+  it('returns empty expected list and null ownedStores when nothing is configured', function () {
+    const result = collectOwnedStoreExpectations({
+      ownedStoresResult: null,
+      v1HomeOrg: null,
+      v2HomeOrg: null,
+      v1GovernanceBodyStoreId: null,
+      v2GovernanceBodyStoreId: null,
+      v2GovernanceVersionStoreId: null,
+    });
+    expect(result.ownedStores).to.equal(null);
+    expect(result.totalOwnedStores).to.equal(null);
+    expect(result.expectedOwnedStores).to.deep.equal([]);
+  });
+
+  it('lists V1 home-org stores, skipping null lazy stores', function () {
+    const result = collectOwnedStoreExpectations({
+      ownedStoresResult: { success: true, storeIds: ['org1', 'reg1'] },
+      v1HomeOrg: {
+        orgUid: 'org1',
+        registryId: 'reg1',
+        fileStoreId: null,
+        dataModelVersionStoreId: null,
+      },
+      v2HomeOrg: null,
+      v1GovernanceBodyStoreId: null,
+      v2GovernanceBodyStoreId: null,
+      v2GovernanceVersionStoreId: null,
+    });
+    expect(result.expectedOwnedStores).to.have.length(2);
+    expect(result.expectedOwnedStores.map((e) => e.label)).to.deep.equal([
+      'v1 home org',
+      'v1 registry',
+    ]);
+    expect(result.expectedOwnedStores.every((e) => e.owned === true)).to.equal(true);
+  });
+
+  it('lists V2 home-org stores using snake_case fields', function () {
+    const result = collectOwnedStoreExpectations({
+      ownedStoresResult: { success: true, storeIds: ['orgA', 'regA', 'fsA', 'dmA'] },
+      v1HomeOrg: null,
+      v2HomeOrg: {
+        org_uid: 'orgA',
+        registry_id: 'regA',
+        file_store_subscribed: 'fsA',
+        data_model_version_store_id: 'dmA',
+      },
+      v1GovernanceBodyStoreId: null,
+      v2GovernanceBodyStoreId: null,
+      v2GovernanceVersionStoreId: null,
+    });
+    expect(result.expectedOwnedStores.map((e) => e.label)).to.deep.equal([
+      'v2 home org',
+      'v2 registry',
+      'v2 file store',
+      'v2 data model version store',
+    ]);
+    expect(result.expectedOwnedStores.every((e) => e.owned === true)).to.equal(true);
+  });
+
+  it('flags an expected store as owned=false when datalayer does not list it', function () {
+    const result = collectOwnedStoreExpectations({
+      ownedStoresResult: { success: true, storeIds: ['org1'] },
+      v1HomeOrg: { orgUid: 'org1', registryId: 'reg1' },
+      v2HomeOrg: null,
+      v1GovernanceBodyStoreId: null,
+      v2GovernanceBodyStoreId: null,
+      v2GovernanceVersionStoreId: null,
+    });
+    const byLabel = Object.fromEntries(
+      result.expectedOwnedStores.map((e) => [e.label, e]),
+    );
+    expect(byLabel['v1 home org'].owned).to.equal(true);
+    expect(byLabel['v1 registry'].owned).to.equal(false);
+  });
+
+  it('marks owned as null (unknown) when datalayer RPC failed', function () {
+    const result = collectOwnedStoreExpectations({
+      ownedStoresResult: null,
+      v1HomeOrg: { orgUid: 'org1', registryId: 'reg1' },
+      v2HomeOrg: null,
+      v1GovernanceBodyStoreId: null,
+      v2GovernanceBodyStoreId: null,
+      v2GovernanceVersionStoreId: null,
+    });
+    expect(result.ownedStores).to.equal(null);
+    expect(result.expectedOwnedStores.every((e) => e.owned === null)).to.equal(true);
+  });
+
+  it('marks owned as null when datalayer returned success=false', function () {
+    const result = collectOwnedStoreExpectations({
+      ownedStoresResult: { success: false, storeIds: [] },
+      v1HomeOrg: { orgUid: 'org1' },
+      v2HomeOrg: null,
+      v1GovernanceBodyStoreId: null,
+      v2GovernanceBodyStoreId: null,
+      v2GovernanceVersionStoreId: null,
+    });
+    expect(result.ownedStores).to.equal(null);
+    expect(result.expectedOwnedStores[0].owned).to.equal(null);
+  });
+
+  it('includes governance stores when this node IS the governance body', function () {
+    const result = collectOwnedStoreExpectations({
+      ownedStoresResult: {
+        success: true,
+        storeIds: ['gov-body-v1', 'gov-version-v1', 'gov-body-v2', 'gov-version-v2'],
+      },
+      v1HomeOrg: null,
+      v2HomeOrg: null,
+      v1GovernanceBodyStoreId: 'gov-body-v1',
+      v1GovernanceVersionStoreId: 'gov-version-v1',
+      v2GovernanceBodyStoreId: 'gov-body-v2',
+      v2GovernanceVersionStoreId: 'gov-version-v2',
+    });
+    expect(result.expectedOwnedStores.map((e) => e.label)).to.deep.equal([
+      'v1 governance body',
+      'v1 governance version store',
+      'v2 governance body',
+      'v2 governance version store',
+    ]);
+    expect(result.expectedOwnedStores.every((e) => e.owned === true)).to.equal(true);
+  });
+
+  it('excludes V2 governance keys when caller signals subscriber (mainGoveranceBodyId absent)', function () {
+    // V2 subscribers have governanceBodyId set in MetaV2 (subscribe upserts
+    // it) but no mainGoveranceBodyId. The caller is responsible for passing
+    // null for both v2 fields in that case; the helper just trusts it.
+    const result = collectOwnedStoreExpectations({
+      ownedStoresResult: { success: true, storeIds: [] },
+      v1HomeOrg: null,
+      v2HomeOrg: null,
+      v1GovernanceBodyStoreId: null,
+      v1GovernanceVersionStoreId: null,
+      v2GovernanceBodyStoreId: null, // gated off by caller
+      v2GovernanceVersionStoreId: null, // gated off by caller
+    });
+    expect(result.expectedOwnedStores).to.deep.equal([]);
+  });
+
+  it('combines home-org and governance-body expectations in a single list', function () {
+    const result = collectOwnedStoreExpectations({
+      ownedStoresResult: { success: true, storeIds: ['org', 'reg', 'gov-body'] },
+      v1HomeOrg: { orgUid: 'org', registryId: 'reg' },
+      v2HomeOrg: null,
+      v1GovernanceBodyStoreId: 'gov-body',
+      v2GovernanceBodyStoreId: null,
+      v2GovernanceVersionStoreId: null,
+    });
+    expect(result.expectedOwnedStores.map((e) => e.label)).to.deep.equal([
+      'v1 home org',
+      'v1 registry',
+      'v1 governance body',
+    ]);
+    expect(result.expectedOwnedStores.every((e) => e.owned === true)).to.equal(true);
+  });
+
+  it('reports totalOwnedStores from the actual datalayer-owned list', function () {
+    const result = collectOwnedStoreExpectations({
+      ownedStoresResult: { success: true, storeIds: ['a', 'b', 'c', 'd'] },
+      v1HomeOrg: { orgUid: 'a', registryId: 'b' }, // only 2 expected
+      v2HomeOrg: null,
+      v1GovernanceBodyStoreId: null,
+      v2GovernanceBodyStoreId: null,
+      v2GovernanceVersionStoreId: null,
+    });
+    expect(result.totalOwnedStores).to.equal(4);
+    expect(result.expectedOwnedStores).to.have.length(2);
+  });
+
+  it('skips entries with falsy storeId without throwing', function () {
+    const result = collectOwnedStoreExpectations({
+      ownedStoresResult: { success: true, storeIds: [] },
+      v1HomeOrg: {
+        orgUid: '', // falsy -- should be skipped
+        registryId: 'reg1',
+        fileStoreId: undefined,
+        dataModelVersionStoreId: null,
+      },
+      v2HomeOrg: null,
+      v1GovernanceBodyStoreId: null,
+      v2GovernanceBodyStoreId: null,
+      v2GovernanceVersionStoreId: null,
+    });
+    expect(result.expectedOwnedStores.map((e) => e.label)).to.deep.equal(['v1 registry']);
+  });
+});

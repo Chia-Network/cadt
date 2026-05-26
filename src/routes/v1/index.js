@@ -3,6 +3,7 @@
 import express from 'express';
 import { getWalletHealthResponse } from '../wallet-health.js';
 import { getConfig } from '../../utils/config-loader';
+import { buildHealthDiskSpacePayload } from '../../utils/disk-space.js';
 const V1Router = express.Router();
 
 import {
@@ -19,9 +20,12 @@ import {
 } from './resources';
 
 V1Router.get('/health', (req, res) => {
+  // Non-blocking: see bare /health in src/middleware.js. The shared
+  // helper handles peek + transition log + async refresh.
   res.status(200).json({
     message: 'V1 API is running',
     timestamp: new Date().toISOString(),
+    diskSpace: buildHealthDiskSpacePayload(),
   });
 });
 

@@ -1890,7 +1890,7 @@ Response
 
 **Note**: The ID in the URL path is the `cadTrustMethodologyId`.
 
-**Referential integrity**: If any committed or staged (`INSERT`/`UPDATE`) `project_methodology` records reference this methodology, the request returns `409 Conflict`. Pass `?force=true` to bypass the guard and stage the delete anyway.
+**Referential integrity**: If any committed or staged (`INSERT`/`UPDATE`) `project_methodology` records reference this methodology, the request returns `409 Conflict` until those references are removed. References from any synced registry count the same.
 
 Request
 ```shell
@@ -1910,16 +1910,10 @@ Response (409 — references exist)
 ```json
 {
   "success": false,
-  "message": "Cannot delete methodology: referenced by 2 project-methodology links",
-  "references": [{ "table": "project_methodology", "count": 2 }],
-  "hint": "Remove all references first, or use ?force=true to delete anyway"
+  "message": "Cannot delete methodology: it is still referenced by 2 project-methodology links. Remove those references before deleting this methodology.",
+  "error": "Referenced records must be removed before deletion",
+  "references": [{ "table": "project_methodology", "count": 2 }]
 }
-```
-
-Force delete (bypass guard)
-```shell
-curl --location --request DELETE 'localhost:31310/v2/methodology/9b9bb857-c71b-4649-b805-a289db27dc1c?force=true' \
---header 'Content-Type: application/json'
 ```
 
 ---
@@ -2076,7 +2070,7 @@ Response
 
 **Note**: The ID in the URL path is the `cadTrustProgramId`.
 
-**Referential integrity**: If any committed or staged (`INSERT`/`UPDATE`) `project` records reference this program via `cadTrustProgramId`, the request returns `409 Conflict`. Pass `?force=true` to bypass the guard and stage the delete anyway.
+**Referential integrity**: If any committed or staged (`INSERT`/`UPDATE`) `project` records reference this program via `cadTrustProgramId`, the request returns `409 Conflict` until those references are removed.
 
 Request
 ```shell
@@ -2096,16 +2090,10 @@ Response (409 — references exist)
 ```json
 {
   "success": false,
-  "message": "Cannot delete program: referenced by 3 projects",
-  "references": [{ "table": "project", "count": 3 }],
-  "hint": "Remove all references first, or use ?force=true to delete anyway"
+  "message": "Cannot delete program: it is still referenced by 3 projects. Remove those references before deleting this program.",
+  "error": "Referenced records must be removed before deletion",
+  "references": [{ "table": "project", "count": 3 }]
 }
-```
-
-Force delete (bypass guard)
-```shell
-curl --location --request DELETE 'localhost:31310/v2/program/51ca9638-22b0-4e14-ae7a-c09d23b37b58?force=true' \
---header 'Content-Type: application/json'
 ```
 
 ---
@@ -4118,9 +4106,9 @@ Response
   "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
   "ratingType": "CCQI",
   "ratingName": "Quality Assessment Rating",
-      "ratingValue": "97",
-      "ratingLink": "https://www.example.com/rating-report",
-      "createdAt": "2022-03-11T05:17:55.427Z",
+  "ratingValue": "97",
+  "ratingLink": "https://www.example.com/rating-report",
+  "createdAt": "2022-03-11T05:17:55.427Z",
   "updatedAt": "2022-03-11T05:17:55.427Z"
 }
 ```
@@ -4671,7 +4659,7 @@ Response
 
 **Note**: The ID in the URL path is the `cadTrustStakeholderId`.
 
-**Referential integrity**: If any committed or staged (`INSERT`/`UPDATE`) `stakeholder_projects` records reference this stakeholder, the request returns `409 Conflict`. Pass `?force=true` to bypass the guard and stage the delete anyway.
+**Referential integrity**: If any committed or staged (`INSERT`/`UPDATE`) `stakeholder_projects` records reference this stakeholder, the request returns `409 Conflict` until those references are removed.
 
 Request
 ```shell
@@ -4691,16 +4679,10 @@ Response (409 — references exist)
 ```json
 {
   "success": false,
-  "message": "Cannot delete stakeholder: referenced by 1 stakeholder-project links",
-  "references": [{ "table": "stakeholder_projects", "count": 1 }],
-  "hint": "Remove all references first, or use ?force=true to delete anyway"
+  "message": "Cannot delete stakeholder: it is still referenced by 1 stakeholder-project links. Remove those references before deleting this stakeholder.",
+  "error": "Referenced records must be removed before deletion",
+  "references": [{ "table": "stakeholder_projects", "count": 1 }]
 }
-```
-
-Force delete (bypass guard)
-```shell
-curl --location --request DELETE 'localhost:31310/v2/stakeholder/e880047e-cdf4-45bb-a9df-e706fa427713?force=true' \
---header 'Content-Type: application/json'
 ```
 
 ---
@@ -4999,7 +4981,7 @@ Response
 
 **Note**: The ID in the URL path is the `cadTrustLabelId`.
 
-**Referential integrity**: If any committed or staged (`INSERT`/`UPDATE`) `unit_label` records reference this label, the request returns `409 Conflict`. Pass `?force=true` to bypass the guard and stage the delete anyway.
+**Referential integrity**: If any committed or staged (`INSERT`/`UPDATE`) `unit_label` records reference this label, the request returns `409 Conflict` until those references are removed.
 
 Request
 ```shell
@@ -5019,16 +5001,10 @@ Response (409 — references exist)
 ```json
 {
   "success": false,
-  "message": "Cannot delete label: referenced by 4 unit-label links",
-  "references": [{ "table": "unit_label", "count": 4 }],
-  "hint": "Remove all references first, or use ?force=true to delete anyway"
+  "message": "Cannot delete label: it is still referenced by 4 unit-label links. Remove those references before deleting this label.",
+  "error": "Referenced records must be removed before deletion",
+  "references": [{ "table": "unit_label", "count": 4 }]
 }
-```
-
-Force delete (bypass guard)
-```shell
-curl --location --request DELETE 'localhost:31310/v2/label/dcacd68e-1cfb-4f06-9798-efa0aacda42c?force=true' \
---header 'Content-Type: application/json'
 ```
 
 ---
