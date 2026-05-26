@@ -110,11 +110,11 @@ meets_min_specs() {
 }
 
 is_soft_spec_shortfall() {
-  local cpu="$1" mem_kib="$2" disk_root="$3" disk_home="$4"
+  local cpu="$1" mem_kib="$2" disk_root="$3" disk_home="$4" min_disk="${5:-$MIN_DISK_GIB}"
   [[ "$cpu" -ge "$((MIN_CPU_CORES - 1))" ]] || return 1
   [[ "$mem_kib" -ge "$((MIN_RAM_KIB * 9 / 10))" ]] || return 1
-  [[ "$disk_root" -ge "$((MIN_DISK_GIB * 9 / 10))" ]] || return 1
-  [[ "$disk_home" -ge "$((MIN_DISK_GIB * 9 / 10))" ]] || return 1
+  [[ "$disk_root" -ge "$((min_disk * 9 / 10))" ]] || return 1
+  [[ "$disk_home" -ge "$((min_disk * 9 / 10))" ]] || return 1
   return 0
 }
 
@@ -610,7 +610,7 @@ resolve_version_choice() {
 }
 
 prompt_version_choice() {
-  local label="$1" gh_url="$2" var_choice="$3" var_apt="$4"
+  local label="$1" gh_url="$2" var_choice="$3" var_apt="$4" allow_prerelease="${5:-false}"
   if [[ -n "${!var_apt}" ]]; then
     return 0
   fi
@@ -631,25 +631,44 @@ prompt_version_choice() {
   echo ""
   info "Select ${label} version:"
   echo "  1) Latest stable"
-  echo "  2) Latest pre-release"
-  echo "  3) Pick from list"
+  if [[ "$allow_prerelease" == true ]]; then
+    echo "  2) Latest pre-release"
+    echo "  3) Pick from list"
+  else
+    echo "  2) Pick from list"
+  fi
   local pick
   prompt_default pick "Choice" "1"
 
   local tag=""
-  case "$pick" in
-    1) tag=$(pick_release_from_json "$tmp" stable) ;;
-    2) tag=$(pick_release_from_json "$tmp" prerelease) ;;
-    3)
-      echo ""
-      jq -r '.[] | select(.draft == false) | "\(.tag_name)\t\(if .prerelease then "pre-release" else "stable" end)"' "$tmp" |
-        head -15 | nl -w2 -s') '
-      local num
-      prompt_default num "Enter number" "1"
-      tag=$(pick_release_from_json "$tmp" "$num")
-      ;;
-    *) die "Invalid choice" ;;
-  esac
+  if [[ "$allow_prerelease" == true ]]; then
+    case "$pick" in
+      1) tag=$(pick_release_from_json "$tmp" stable) ;;
+      2) tag=$(pick_release_from_json "$tmp" prerelease) ;;
+      3)
+        echo ""
+        jq -r '.[] | select(.draft == false) | "\(.tag_name)\t\(if .prerelease then "pre-release" else "stable" end)"' "$tmp" |
+          head -15 | nl -w2 -s') '
+        local num
+        prompt_default num "Enter number" "1"
+        tag=$(pick_release_from_json "$tmp" "$num")
+        ;;
+      *) die "Invalid choice" ;;
+    esac
+  else
+    case "$pick" in
+      1) tag=$(pick_release_from_json "$tmp" stable) ;;
+      2)
+        echo ""
+        jq -r '.[] | select(.draft == false and .prerelease == false) | .tag_name' "$tmp" |
+          head -15 | nl -w2 -s') '
+        local num
+        prompt_default num "Enter number" "1"
+        tag=$(pick_release_from_json "$tmp" "$num")
+        ;;
+      *) die "Invalid choice" ;;
+    esac
+  fi
   rm -f "$tmp"
   [[ -n "$tag" ]] || die "No release found for ${label}"
   printf -v "$var_apt" '%s' "$(normalize_apt_version "$tag")"
@@ -815,7 +834,7 @@ run_prompts() {
       resolve_version_choice "$CHIA_VERSION_CHOICE" "$tmpjson" CHIA_APT_VER
     else
       CHIA_VERSION_CHOICE=""
-      prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER
+      prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER false
     fi
   fi
 
@@ -825,7 +844,7 @@ run_prompts() {
       resolve_version_choice "$CHIA_TOOLS_VERSION_CHOICE" "$tmpjson" TOOLS_APT_VER
     else
       CHIA_TOOLS_VERSION_CHOICE=""
-      prompt_version_choice "chia-tools" "$GH_API_TOOLS" CHIA_TOOLS_VERSION_CHOICE TOOLS_APT_VER
+      prompt_version_choice "chia-tools" "$GH_API_TOOLS" CHIA_TOOLS_VERSION_CHOICE TOOLS_APT_VER false
     fi
   fi
 
@@ -835,7 +854,7 @@ run_prompts() {
       resolve_version_choice "$CADT_VERSION_CHOICE" "$tmpjson" CADT_APT_VER
     else
       CADT_VERSION_CHOICE=""
-      prompt_version_choice "cadt" "$GH_API_CADT" CADT_VERSION_CHOICE CADT_APT_VER
+      prompt_version_choice "cadt" "$GH_API_CADT" CADT_VERSION_CHOICE CADT_APT_VER true
     fi
   fi
   rm -f "$tmpjson"
@@ -959,7 +978,7 @@ setup_chia_keys_generate() {
     private_echo "${C_RED}║  WRITE DOWN YOUR 24-WORD MNEMONIC — IT CANNOT BE RECOVERED  ║${C_RESET}"
     private_echo "${C_RED}╚══════════════════════════════════════════════════════════════╝${C_RESET}"
     private_echo ""
-    private_echo "$mnemonic"
+    private_literal "$mnemonic"
     private_echo ""
     local confirm_phrase="I HAVE WRITTEN DOWN MY MNEMONIC"
     local typed=""
