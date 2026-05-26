@@ -664,7 +664,8 @@ prompt_version_choice() {
           head -15 | nl -w2 -s') '
         local num
         prompt_default num "Enter number" "1"
-        tag=$(pick_release_from_json "$tmp" "$num")
+        tag=$(jq -r --argjson idx "$((num - 1))" \
+          '[.[] | select(.draft == false and .prerelease == false)] | .[$idx].tag_name // empty' "$tmp")
         ;;
       *) die "Invalid choice" ;;
     esac
@@ -1097,14 +1098,14 @@ server {
         add_header Cache-Control "public";
     }
 $(if [[ "$LOCAL_ONLY" != true ]]; then
-cat <<PROXY
+cat <<'PROXY'
 
     location / {
         proxy_pass http://127.0.0.1:31310;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
         proxy_http_version 1.1;
         proxy_read_timeout 90s;
     }
@@ -1155,14 +1156,14 @@ server {
         add_header Cache-Control "public";
     }
 $(if [[ "$LOCAL_ONLY" != true ]]; then
-cat <<PROXY
+cat <<'PROXY'
 
     location / {
         proxy_pass http://127.0.0.1:31310;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
         proxy_http_version 1.1;
         proxy_read_timeout 90s;
     }
