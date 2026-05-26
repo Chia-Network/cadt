@@ -68,16 +68,7 @@ fi
 
 normalize_apt_version() {
   local tag="$1"
-  echo "${tag//-rc/~rc}"
-}
-
-denormalize_tag_from_apt() {
-  local ver="$1"
-  if [[ "$ver" =~ ~rc ]]; then
-    echo "${ver/~rc/-rc}"
-  else
-    echo "$ver"
-  fi
+  echo "$tag"
 }
 
 is_ipv4() {
@@ -168,10 +159,10 @@ normalize_mnemonic_file() {
 }
 
 validate_supported_apt_versions() {
-  if [[ "$CHIA_APT_VER" == *~rc* || "$CHIA_APT_VER" == *-rc* ]]; then
+  if [[ "$CHIA_APT_VER" == *-rc* ]]; then
     die "chia-blockchain-cli prerelease apt packages are not supported; choose stable or an explicit stable tag."
   fi
-  if [[ "$TOOLS_APT_VER" == *~rc* || "$TOOLS_APT_VER" == *-rc* ]]; then
+  if [[ "$TOOLS_APT_VER" == *-rc* ]]; then
     die "chia-tools prerelease apt packages are not supported; choose stable or an explicit stable tag."
   fi
 }
@@ -697,7 +688,7 @@ setup_apt_repos() {
     sudo tee /etc/apt/sources.list.d/chia.list >/dev/null
   echo "${signed} https://repo.chia.net/cadt/debian/ stable main" |
     sudo tee /etc/apt/sources.list.d/cadt.list >/dev/null
-  if [[ "$CADT_APT_VER" == *~rc* || "$CADT_APT_VER" == *-rc* ]]; then
+  if [[ "$CADT_APT_VER" == *-rc* ]]; then
     echo "${signed} https://repo.chia.net/cadt-test/debian/ stable main" |
       sudo tee /etc/apt/sources.list.d/cadt-test.list >/dev/null
   fi
