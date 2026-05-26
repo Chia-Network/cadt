@@ -17,9 +17,9 @@ wait_for_pid_exit() {
   return 1
 }
 
-@test "normalize_apt_version leaves release candidate tags unchanged" {
-  [[ "$(normalize_apt_version "2.7.1-rc2")" == "2.7.1-rc2" ]]
-  [[ "$(normalize_apt_version "1.7.26-rc28")" == "1.7.26-rc28" ]]
+@test "normalize_apt_version converts -rc to ~rc for Debian" {
+  [[ "$(normalize_apt_version "2.7.1-rc2")" == "2.7.1~rc2" ]]
+  [[ "$(normalize_apt_version "1.7.26-rc28")" == "1.7.26~rc28" ]]
 }
 
 @test "normalize_apt_version leaves stable tags unchanged" {
@@ -140,9 +140,9 @@ wait_for_pid_exit() {
 }
 
 @test "validate_supported_apt_versions rejects unsupported Chia prereleases" {
-  CHIA_APT_VER="2.7.1-rc2"
+  CHIA_APT_VER="2.7.1~rc2"
   TOOLS_APT_VER="1.2.3"
-  CADT_APT_VER="1.7.26-rc28"
+  CADT_APT_VER="1.7.26~rc28"
 
   run validate_supported_apt_versions
 
@@ -153,7 +153,7 @@ wait_for_pid_exit() {
 @test "validate_supported_apt_versions allows CADT prereleases" {
   CHIA_APT_VER="2.7.1"
   TOOLS_APT_VER="1.2.3"
-  CADT_APT_VER="1.7.26-rc28"
+  CADT_APT_VER="1.7.26~rc28"
 
   validate_supported_apt_versions
 }

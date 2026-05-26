@@ -68,7 +68,7 @@ fi
 
 normalize_apt_version() {
   local tag="$1"
-  echo "$tag"
+  echo "${tag//-rc/~rc}"
 }
 
 denormalize_tag_from_apt() {
@@ -1175,7 +1175,7 @@ configure_nginx() {
   sudo nginx -t
   # shellcheck disable=SC2024
   sudo systemctl enable nginx >>"$LOG_FILE" 2>&1
-  sudo systemctl reload nginx
+  sudo systemctl restart nginx
 
   # Phase 2: if HTTPS requested, run certbot then write final config
   if [[ "$ENABLE_HTTPS" == true ]]; then
@@ -1435,7 +1435,6 @@ BANNER
     -z "$PUBLIC_ADDRESS" ]]; then
     run_prompts
   else
-    validate_supported_apt_versions
     validate_network "$NETWORK"
     validate_public_address "$PUBLIC_ADDRESS" || die "Invalid public address: $PUBLIC_ADDRESS"
     apply_config_defaults
