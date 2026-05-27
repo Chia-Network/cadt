@@ -111,6 +111,21 @@ let mirrorSetupPromise = null;
 // before new operations are applied.
 let reconnectBackfillPromise = null;
 
+// Single in-flight backfillMirror call. Distinct from
+// reconnectBackfillPromise above: that one guards the reconnect-detection
+// path inside safeMirrorDbHandler; this one guards backfillMirror itself
+// against concurrent callers. Both startup (prepareDb) and reconnect
+// (startReconnectBackfill) can fire backfillMirror, and in practice they
+// race at cold start because src/middleware.js eagerly imports the V1
+// models barrel - which runs the per-model associate() methods - which
+// historically called safeMirrorDbHandler at module-load time, triggering
+// a setupNeverRan reconnect in parallel with prepareDb's own backfill.
+// The associate() trigger was removed in this change but the in-flight
+// guard remains as a belt-and-suspenders defence against any other
+// concurrent invocation. Cleared on resolve/reject so reconnects after
+// the first run still re-execute.
+let backfillInFlightPromise = null;
+
 export const mirrorDBEnabled = () => {
   if (mirrorEnabledTestOverride !== null) {
     return mirrorEnabledTestOverride;
@@ -413,6 +428,139 @@ export const initMirrorModel = (initFn) => {
  */
 const BACKFILL_BATCH_SIZE = 1000;
 
+// Sequelize attribute names for the auto-managed updatedAt column. V1
+// models use the default 'updatedAt'; V2 models declare
+// `updatedAt: 'updated_at'` with `underscored: true`, which makes
+// 'updated_at' the rawAttribute key. Probe both candidates so the same
+// gate works against either convention without depending on Sequelize
+// internals (_timestampAttributes is undocumented).
+const UPDATED_AT_ATTR_CANDIDATES = ['updatedAt', 'updated_at'];
+
+/**
+ * Find a Sequelize attribute name for the updatedAt column that is
+ * present on BOTH source and mirror models. Returns the attribute name,
+ * or null when no consistent name exists (either model is missing the
+ * column, or they disagree on naming).
+ *
+ * Disagreement is intentionally treated as "no gate" rather than picking
+ * one side: a mismatched name would force one side's MAX() call to
+ * reference a non-existent column and throw, which would mask a real
+ * drift behind a swallowed error.
+ */
+const matchingUpdatedAtAttr = (source, mirror) => {
+  const sourceAttrs = source.rawAttributes || {};
+  const mirrorAttrs = mirror.rawAttributes || {};
+  for (const attr of UPDATED_AT_ATTR_CANDIDATES) {
+    if (attr in sourceAttrs && attr in mirrorAttrs) {
+      return attr;
+    }
+  }
+  return null;
+};
+
+/**
+ * Cheap "is the mirror table already caught up?" check used by
+ * backfillMirror to short-circuit the bulk-upsert pass when there is
+ * nothing to do. The orphan sweep runs unconditionally BEFORE this
+ * helper so PK-swap drift (count and MAX preserved, row identities
+ * differ) is exposed as a post-sweep count mismatch and falls through
+ * to the upsert. See the call site for the full ordering rationale.
+ *
+ * Returns true ONLY when BOTH conditions hold:
+ *   1. count(source) === count(mirror)
+ *   2. Either both counts are 0 (truly empty on both sides), OR
+ *      max(mirror[updatedAtAttr]) >= max(source[updatedAtAttr])
+ *
+ * Returns false in every other case (including any error), so the
+ * caller falls through to the existing full upsert. Crucially, false
+ * is the safe default: a false negative just causes the existing
+ * (correct) full sync to run, while a false positive would silently
+ * leave the mirror stale. We deliberately bias toward the
+ * cheap-but-fully-correct fall-through.
+ *
+ * Known limitation - non-max-row UPDATE drift: if a row is updated in
+ * source via raw SQL with an updatedAt that's strictly below the
+ * table's existing MAX(updatedAt), the gate can't see the change.
+ * Sequelize-driven UPDATEs auto-bump updatedAt to NOW() (necessarily
+ * greater than any prior MAX), so this only happens via raw SQL that
+ * bypasses the ORM or via clock-skew adjustments. No such code path
+ * exists in CADT today. If composite drift patterns become a concern,
+ * replace this with a SUM(UNIX_TIMESTAMP(updatedAt)) checksum or a
+ * per-table hash digest.
+ */
+const isMirrorInSync = async (source, mirror, name, updatedAtAttr) => {
+  try {
+    const [sourceCount, mirrorCount, sourceMax, mirrorMax] = await Promise.all([
+      source.count(),
+      mirror.count(),
+      source.max(updatedAtAttr),
+      mirror.max(updatedAtAttr),
+    ]);
+
+    if (sourceCount !== mirrorCount) {
+      logger.debug(
+        `Mirror backfill: ${name} - gate failed (count mismatch: source=${sourceCount} mirror=${mirrorCount})`,
+      );
+      return false;
+    }
+
+    if (sourceCount === 0) {
+      logger.debug(
+        `Mirror backfill: ${name} - in sync, skipping (empty on both sides)`,
+      );
+      return true;
+    }
+
+    // Counts agree and are non-zero. A null MAX(updatedAt) at this
+    // point means rows exist with null timestamps - we can't compare
+    // freshness, so fall through to the full sync rather than skip.
+    if (sourceMax == null || mirrorMax == null) {
+      logger.debug(
+        `Mirror backfill: ${name} - gate failed (max(updatedAt) null with ${sourceCount} rows)`,
+      );
+      return false;
+    }
+
+    // Sequelize.max returns either a Date (for DATE columns) or whatever
+    // raw value the dialect returned. Coerce through Date so SQLite string
+    // timestamps and MySQL Date instances compare consistently.
+    const sourceMs = new Date(sourceMax).getTime();
+    const mirrorMs = new Date(mirrorMax).getTime();
+    if (Number.isNaN(sourceMs) || Number.isNaN(mirrorMs)) {
+      logger.debug(
+        `Mirror backfill: ${name} - gate failed (non-parseable max(updatedAt))`,
+      );
+      return false;
+    }
+
+    if (mirrorMs >= sourceMs) {
+      logger.debug(
+        `Mirror backfill: ${name} - in sync, skipping (${sourceCount} rows, max(updatedAt) mirror=${mirrorMs} >= source=${sourceMs})`,
+      );
+      return true;
+    }
+
+    logger.debug(
+      `Mirror backfill: ${name} - gate failed (mirror max(updatedAt)=${mirrorMs} < source=${sourceMs})`,
+    );
+    return false;
+  } catch (error) {
+    // Never block the existing sync path on a gate error - just fall
+    // through to the full upsert.
+    logger.debug(
+      `Mirror backfill: ${name} - gate check failed (${error.message}), falling through to full sync`,
+    );
+    return false;
+  }
+};
+
+// NOTE: when this early-returns for composite PKs, the in-sync gate
+// that runs after it in backfillMirror operates on raw (un-swept)
+// state. mirror-model-init.spec.js currently enforces single-column
+// PKs on every mirror, so this path is unreachable today. If a
+// composite-PK mirror is introduced later, the gate's PK-swap
+// protection no longer applies and the gate would need to be
+// disabled for that table or replaced with a stronger check.
 const sweepMirrorOrphans = async (source, mirror, name) => {
   const pkAttrs = mirror.primaryKeyAttributes;
   if (!pkAttrs || pkAttrs.length !== 1) {
@@ -502,6 +650,31 @@ export const backfillMirror = async () => {
     return;
   }
 
+  // Coalesce concurrent calls. Without this guard, prepareDb's startup
+  // backfill and any other code path that invokes backfillMirror() would
+  // each pull and upsert the entire dataset. The race is observable in
+  // production logs: identical "synced N records" / "MySQL mirror backfill
+  // completed - N records upserted" lines appearing twice with matching
+  // counts on the same boot. The orphan sweep and bulk upsert are
+  // idempotent so the duplicate work is benign correctness-wise, but it
+  // doubles the cold-start time and MySQL write traffic.
+  //
+  // Cleared on settle so subsequent reconnects after the first run still
+  // perform a fresh catch-up.
+  if (backfillInFlightPromise) {
+    return backfillInFlightPromise;
+  }
+
+  backfillInFlightPromise = (async () => {
+    await runBackfillMirror();
+  })().finally(() => {
+    backfillInFlightPromise = null;
+  });
+
+  return backfillInFlightPromise;
+};
+
+const runBackfillMirror = async () => {
   logger.info('Starting MySQL mirror backfill from SQLite...');
 
   try {
@@ -572,6 +745,7 @@ export const backfillMirror = async () => {
 
     let totalSynced = 0;
     let totalOrphansRemoved = 0;
+    let totalGateSkipped = 0;
 
     for (const { source, mirror, name } of mirrorPairs) {
       try {
@@ -586,9 +760,61 @@ export const backfillMirror = async () => {
         }
 
         // Orphan sweep first (mirror snapshot before source snapshot) so
-        // concurrent inserts aren't wrongly classified as orphans.
+        // concurrent inserts aren't wrongly classified as orphans. The
+        // sweep runs UNCONDITIONALLY - before the in-sync gate below -
+        // because the gate's COUNT(*) + MAX(updatedAt) check cannot
+        // distinguish a healthy mirror from one where rows were
+        // delete+inserted with a different PK during an outage (count
+        // and MAX preserved, but the row identities differ). Running
+        // the sweep first makes such drift visible to the gate via the
+        // post-sweep count mismatch, which then falls through to the
+        // full upsert. See PR review for the reproducer.
         const orphansRemoved = await sweepMirrorOrphans(source, mirror, name);
         totalOrphansRemoved += orphansRemoved;
+
+        // Fast in-sync gate (post-sweep). Skip the bulk upsert entirely
+        // when COUNT(*) matches on both sides AND mirror's MAX(updatedAt)
+        // is at least as new as source's. Both queries are index-backed
+        // (PK + updatedAt), so the gate is cheap - vastly cheaper than
+        // the full keyset walk + bulk upsert it bypasses. (The orphan
+        // sweep above still runs on every restart; we only avoid the
+        // expensive per-row data read + MySQL upsert pass when truly
+        // in sync.)
+        //
+        // Correctness invariant: the gate ONLY short-circuits the upsert;
+        // it never substitutes a partial sync for a full one. On any
+        // mismatch (count differs, mirror is missing rows entirely, or
+        // mirror's MAX(updatedAt) is older than source's) we fall through
+        // to the existing full sync, which catches arbitrary gaps
+        // including outage windows where the mirror missed rows.
+        //
+        // Skip the gate (fall through to full sync) when source and mirror
+        // disagree about which timestamp attribute name to use, or when
+        // either lacks an updatedAt timestamp entirely. Both conditions
+        // mean we can't ask a single MAX() question that both sides answer
+        // consistently.
+        //
+        // Known limitation: an in-place UPDATE to a non-max-row whose
+        // newly-bumped updatedAt happens to remain below the table's
+        // existing MAX(updatedAt) would not be detected by the gate.
+        // Sequelize-driven UPDATEs always bump updatedAt to NOW(), which
+        // is necessarily greater than any prior MAX, so this requires
+        // raw-SQL manipulation that bypasses the ORM. No such code path
+        // exists in CADT today; if one is added, switch the gate to a
+        // SUM(UNIX_TIMESTAMP(updatedAt)) checksum.
+        const updatedAtAttr = matchingUpdatedAtAttr(source, mirror);
+        if (updatedAtAttr) {
+          const inSync = await isMirrorInSync(
+            source,
+            mirror,
+            name,
+            updatedAtAttr,
+          );
+          if (inSync) {
+            totalGateSkipped += 1;
+            continue;
+          }
+        }
 
         const updateFields = Object.keys(mirror.rawAttributes).filter(
           (attr) => !mirror.primaryKeyAttributes.includes(attr),
@@ -692,7 +918,7 @@ export const backfillMirror = async () => {
     }
 
     logger.info(
-      `MySQL mirror backfill completed - ${totalSynced} records upserted, ${totalOrphansRemoved} orphan rows removed`,
+      `MySQL mirror backfill completed - ${totalSynced} records upserted, ${totalOrphansRemoved} orphan rows removed, ${totalGateSkipped} tables skipped (already in sync)`,
     );
   } catch (error) {
     logger.error(

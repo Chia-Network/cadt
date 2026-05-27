@@ -138,6 +138,15 @@ let v2MirrorSetupPromise = null;
 // caught-up state before new operations are applied.
 let v2ReconnectBackfillPromise = null;
 
+// Single in-flight backfillMirrorV2 call. Symmetric with V1's
+// backfillInFlightPromise: prevents a race between the prepareV2Db startup
+// backfill and any other caller (reconnect path, test harness) from
+// running two full passes in parallel. V2 hasn't been observed to race in
+// production - V2 models do not call safeMirrorDbHandlerV2 at module-load
+// time the way V1 historically did - but the guard is cheap insurance
+// against future call sites and matches V1's defence in depth.
+let v2BackfillInFlightPromise = null;
+
 export const mirrorDBEnabledV2 = () => {
   // Mirror DB is only enabled if MySQL is actually configured.
   // In test mode without MySQL, mirror operations should be no-ops.
@@ -505,6 +514,22 @@ export const backfillMirrorV2 = async () => {
     return;
   }
 
+  // Coalesce concurrent calls so two callers don't each run a full pass.
+  // See V1's backfillInFlightPromise for the full rationale.
+  if (v2BackfillInFlightPromise) {
+    return v2BackfillInFlightPromise;
+  }
+
+  v2BackfillInFlightPromise = (async () => {
+    await runBackfillMirrorV2();
+  })().finally(() => {
+    v2BackfillInFlightPromise = null;
+  });
+
+  return v2BackfillInFlightPromise;
+};
+
+const runBackfillMirrorV2 = async () => {
   loggerV2.info('[v2]: Starting MySQL mirror backfill from SQLite...');
 
   try {
@@ -622,6 +647,7 @@ export const backfillMirrorV2 = async () => {
 
     let totalSynced = 0;
     let totalOrphansRemoved = 0;
+    let totalGateSkipped = 0;
 
     for (const { source, mirror, name } of mirrorPairs) {
       try {
@@ -636,12 +662,40 @@ export const backfillMirrorV2 = async () => {
           continue;
         }
 
-        // Orphan sweep pass - snapshot mirror PKs BEFORE source PKs so that
-        // rows inserted concurrently (after mirror snapshot) are not wrongly
-        // treated as orphans. See function-level comment for the full
-        // concurrency argument.
+        // Orphan sweep first (mirror snapshot before source snapshot) so
+        // concurrent inserts aren't wrongly classified as orphans. The
+        // sweep runs UNCONDITIONALLY - before the in-sync gate below -
+        // because the gate's COUNT(*) + MAX(updatedAt) check cannot
+        // distinguish a healthy mirror from one where rows were
+        // delete+inserted with a different PK during an outage (count
+        // and MAX preserved, but the row identities differ). Running
+        // the sweep first makes such drift visible to the gate via the
+        // post-sweep count mismatch, which then falls through to the
+        // full upsert. See V1's backfillMirror and PR review for the
+        // reproducer.
         const orphansRemoved = await sweepMirrorOrphansV2(source, mirror, name);
         totalOrphansRemoved += orphansRemoved;
+
+        // Fast in-sync gate (post-sweep). See isMirrorInSyncV2 below
+        // for the full rationale; in short, skip the bulk upsert when
+        // COUNT(*) matches and the mirror's MAX(updatedAt) is at least
+        // as new as source's. Falls through to the full sync on any
+        // mismatch so outage-recovery semantics are preserved. See
+        // V1's backfillMirror for the same correctness invariant and
+        // the known non-max-row-UPDATE limitation.
+        const updatedAtAttr = matchingUpdatedAtAttrV2(source, mirror);
+        if (updatedAtAttr) {
+          const inSync = await isMirrorInSyncV2(
+            source,
+            mirror,
+            name,
+            updatedAtAttr,
+          );
+          if (inSync) {
+            totalGateSkipped += 1;
+            continue;
+          }
+        }
 
         // Determine which fields to update on duplicate key conflict.
         // Include all non-primary-key attributes so the mirror stays in sync
@@ -754,7 +808,7 @@ export const backfillMirrorV2 = async () => {
     }
 
     loggerV2.info(
-      `[v2]: MySQL mirror backfill completed - ${totalSynced} records upserted, ${totalOrphansRemoved} orphan rows removed`,
+      `[v2]: MySQL mirror backfill completed - ${totalSynced} records upserted, ${totalOrphansRemoved} orphan rows removed, ${totalGateSkipped} tables skipped (already in sync)`,
     );
   } catch (error) {
     loggerV2.error(
@@ -762,6 +816,93 @@ export const backfillMirrorV2 = async () => {
     );
     loggerV2.debug(error?.stack || error);
     // Don't throw - allow main database to continue operating
+  }
+};
+
+// V2 mirror models declare `updatedAt: 'updated_at'` with
+// `underscored: true`, which makes 'updated_at' the rawAttribute key
+// rather than the V1 default 'updatedAt'. Probe both so the same gate
+// works regardless of naming convention.
+const UPDATED_AT_ATTR_CANDIDATES_V2 = ['updatedAt', 'updated_at'];
+
+const matchingUpdatedAtAttrV2 = (source, mirror) => {
+  const sourceAttrs = source.rawAttributes || {};
+  const mirrorAttrs = mirror.rawAttributes || {};
+  for (const attr of UPDATED_AT_ATTR_CANDIDATES_V2) {
+    if (attr in sourceAttrs && attr in mirrorAttrs) {
+      return attr;
+    }
+  }
+  return null;
+};
+
+/**
+ * V2 equivalent of isMirrorInSync. Returns true ONLY when source and
+ * mirror have matching COUNT(*) AND either both are empty (count 0) or
+ * mirror's MAX(updatedAt) is at least as new as source's. False
+ * otherwise (and on any error) so the caller falls through to the
+ * existing full-sync path - never substitutes a partial sync for a
+ * full one. See V1's isMirrorInSync for the full correctness argument
+ * and the known non-max-row-UPDATE limitation; both apply here.
+ */
+const isMirrorInSyncV2 = async (source, mirror, name, updatedAtAttr) => {
+  try {
+    const [sourceCount, mirrorCount, sourceMax, mirrorMax] = await Promise.all([
+      source.count(),
+      mirror.count(),
+      source.max(updatedAtAttr),
+      mirror.max(updatedAtAttr),
+    ]);
+
+    if (sourceCount !== mirrorCount) {
+      loggerV2.debug(
+        `[v2]: Mirror backfill: ${name} - gate failed (count mismatch: source=${sourceCount} mirror=${mirrorCount})`,
+      );
+      return false;
+    }
+
+    if (sourceCount === 0) {
+      loggerV2.debug(
+        `[v2]: Mirror backfill: ${name} - in sync, skipping (empty on both sides)`,
+      );
+      return true;
+    }
+
+    // Counts agree and are non-zero. A null MAX(updatedAt) at this
+    // point means rows exist with null timestamps - we can't compare
+    // freshness, so fall through to the full sync rather than skip.
+    if (sourceMax == null || mirrorMax == null) {
+      loggerV2.debug(
+        `[v2]: Mirror backfill: ${name} - gate failed (max(updatedAt) null with ${sourceCount} rows)`,
+      );
+      return false;
+    }
+
+    const sourceMs = new Date(sourceMax).getTime();
+    const mirrorMs = new Date(mirrorMax).getTime();
+    if (Number.isNaN(sourceMs) || Number.isNaN(mirrorMs)) {
+      loggerV2.debug(
+        `[v2]: Mirror backfill: ${name} - gate failed (non-parseable max(updatedAt))`,
+      );
+      return false;
+    }
+
+    if (mirrorMs >= sourceMs) {
+      loggerV2.debug(
+        `[v2]: Mirror backfill: ${name} - in sync, skipping (${sourceCount} rows, max(updatedAt) mirror=${mirrorMs} >= source=${sourceMs})`,
+      );
+      return true;
+    }
+
+    loggerV2.debug(
+      `[v2]: Mirror backfill: ${name} - gate failed (mirror max(updatedAt)=${mirrorMs} < source=${sourceMs})`,
+    );
+    return false;
+  } catch (error) {
+    loggerV2.debug(
+      `[v2]: Mirror backfill: ${name} - gate check failed (${error.message}), falling through to full sync`,
+    );
+    return false;
   }
 };
 
@@ -776,7 +917,12 @@ export const backfillMirrorV2 = async () => {
  * mirror snapshot and IS classified as orphan - correct behavior.
  *
  * Skips tables with composite primary keys (none exist in V2 today; fall
- * back to log-and-continue if one is introduced later).
+ * back to log-and-continue if one is introduced later). NOTE: when this
+ * early-returns for composite PKs, the in-sync gate that runs after it
+ * in backfillMirrorV2 operates on raw (un-swept) state. If a
+ * composite-PK mirror is introduced later, the gate's PK-swap
+ * protection no longer applies and the gate would need to be
+ * disabled for that table or replaced with a stronger check.
  */
 const sweepMirrorOrphansV2 = async (source, mirror, name) => {
   const pkAttrs = mirror.primaryKeyAttributes;
