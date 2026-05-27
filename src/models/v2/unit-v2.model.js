@@ -6,7 +6,7 @@ import * as rxjs from 'rxjs';
 import { v4 as uuidv4 } from 'uuid';
 import { Readable } from 'stream';
 import csv from 'csvtojson';
-import { sequelizeV2, safeMirrorDbHandlerV2 } from '../../database/v2/index.js';
+import { sequelizeV2, mirrorWriteV2 } from '../../database/v2/index.js';
 import { UnitV2Mirror } from './unit-v2.model.mirror.js';
 import StagingV2 from './staging-v2.model.js';
 import OrganizationsV2 from './organizations-v2.model.js';
@@ -68,13 +68,13 @@ class UnitV2 extends Model {
   static getAssociatedModels = () => [{ model: UnitLabelV2, pluralize: true }];
 
   static async create(values, options) {
-    safeMirrorDbHandlerV2(async () => {
+    await mirrorWriteV2(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await UnitV2Mirror.create(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
 
     const createResult = await super.create(values, options);
     const { org_uid } = createResult;
@@ -84,13 +84,13 @@ class UnitV2 extends Model {
   }
 
   static async upsert(values, options) {
-    safeMirrorDbHandlerV2(async () => {
+    await mirrorWriteV2(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await UnitV2Mirror.upsert(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
 
     const upsertResult = await super.upsert(values, options);
     const { org_uid } = values;
@@ -101,13 +101,13 @@ class UnitV2 extends Model {
   }
 
   static async destroy(options) {
-    safeMirrorDbHandlerV2(async () => {
+    await mirrorWriteV2(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await UnitV2Mirror.destroy(mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
 
     UnitV2.changes.next(['units']);
     const result = await super.destroy(options);

@@ -44,6 +44,15 @@ CADT and Chia system usage will depend on many factors, including how busy the b
 
 ARM and x86 systems are supported.  While Windows, MacOS, and all versions of Linux are supported, Ubuntu Linux is the recommended operating system as it is used most in testing and our internal hosting.
 
+#### Disk space guard
+
+CADT defensively rejects write requests when the filesystem holding the V1/V2 SQLite databases drops below a low-space threshold, so a full disk cannot corrupt the database mid-transaction. Operators should monitor for this and free space (or expand the volume) before it triggers.
+
+* When free space falls below **1 GiB** (2³⁰ bytes), CADT logs a warning. Writes are still served.
+* When free space falls below **512 MiB** (2²⁰ × 512 bytes), CADT rejects `POST`, `PUT`, and `PATCH` requests with HTTP `507 Insufficient Storage` and logs an error. `GET` reads and `DELETE` requests are still served so operators can free space without restarting the service. Note that a very large `DELETE` (e.g., a cascading delete that touches many rows) writes to the SQLite WAL during the transaction; if the disk is critically low even an allowed `DELETE` may run out of space before the next checkpoint, so prefer freeing files outside the database first.
+* Log lines are emitted only on **severity transitions** (`ok` → `warn`, `warn` → `block`, recovery to `ok`, etc.) — not on every observation — so monitoring scrapes against `/health` cannot drown out the alert when free space first drops below a threshold.
+* Current status is exposed under the `diskSpace` field on the `/health`, `/v1/health`, and `/v2/health` endpoints for monitoring. The field is `null` until the first probe completes, otherwise an object with `severity` (`ok` / `warn` / `block` / `unknown`), `freeBytes` (the lowest free-space figure observed across the V1/V2 data directories, or `null` when every probe failed), and the `blockBytes` / `warnBytes` thresholds. The 507 response body itself only contains `{message, error: "INSUFFICIENT_DISK_SPACE", success: false}` — exact byte counts are reserved for `/health` so anonymous callers (the disk-space gate runs before the `CADT_API_KEY` check) cannot enumerate operational state.
+
 ### Linux
 
 A binary file that can run on all Linux distributions on x86 hardware can be found for each tagged release named `cadt-linux-x64-<version>.zip`.  This zip file will extract to the `cadt-linux-64` directory by default, where the `cadt` file can be executed to run the API.
@@ -128,7 +137,24 @@ You'll need:
 ​
 - Git
 - [nvm](https://github.com/nvm-sh/nvm) - This app uses `nvm` to align node versions across development, CI and production. If you're working on Windows, you should consider [nvm-windows](https://github.com/coreybutler/nvm-windows)
+- C/C++ build tools for compiling the SQLite native module (see below)
 - A working [Chia installation](https://docs.chia.net/installation/#using-the-cli) running wallet and datalayer (full node recommended)
+
+##### Build Prerequisites
+
+The `sqlite3` npm package is compiled from source during `npm install` to ensure compatibility across platforms. This requires a C/C++ toolchain and Python 3:
+
+**Debian / Ubuntu:**
+
+```
+sudo apt-get install -y build-essential python3
+```
+
+**macOS:**
+
+```
+xcode-select --install
+```
 
 To install from source:
 
@@ -137,6 +163,7 @@ git clone git@github.com:Chia-Network/cadt.git
 cd cadt
 nvm install
 nvm use
+npm install
 npm run start
 ```
 
@@ -238,6 +265,7 @@ In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), CADT will add
 * **APP**: This section contains shared configuration used by both V1 and V2 APIs.
   * **CW_PORT**: CADT port where the API will be available. 31310 by default.
   * **BIND_ADDRESS**: By default, CADT listens on localhost only. To enable remote connections to CADT, change this to `0.0.0.0` to listen on all network interfaces, or to an IP address to listen on a specific network interface.
+  * **TRUST_PROXY**: Number of reverse-proxy hops between the internet and CADT. Used to correctly identify real client IP addresses for rate limiting and logging when CADT is deployed behind one or more proxies. Must be a non-negative integer: set to `0` (the default) when CADT is accessed directly with no proxy in front of it, `1` when behind a single proxy such as nginx or Cloudflare, or `2` when behind two proxies such as Cloudflare in front of nginx (a common cloud/k8s deployment). Booleans (`true`/`false`) and non-numeric strings (e.g. `loopback`) are rejected, log a warning at startup, and fall back to `0`; in particular, never set to `true`, which would trust the user-supplied IP in the `X-Forwarded-For` header and defeat rate limiting.
   * **DATALAYER_URL**: URL and port to connect to the [Chia DataLayer RPC](https://docs.chia.net/datalayer-rpc). If Chia is installed locally with default settings, https://localhost:8562 will work.
   * **WALLET_URL**: URL and port to connect to the [Chia Wallet RPC](https://docs.chia.net/wallet-rpc). If Chia is installed on the same machine as CADT with default settings, https://localhost:9256 will work.
   * **USE_SIMULATOR**: Developer setting to populate CADT from a governance file and enable some extra APIs. Should always be "false" under normal usage.
@@ -251,9 +279,10 @@ In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), CADT will add
   * **AUTO_MIRROR_EXTERNAL_STORES**: When set to true (the default), CADT will automatically create mirrors for each store you are subscribed to. Mirroring all subscriptions using the `DATALAYER_FILE_SERVER_URL` will make the entire CADT network more resilient and distributed. Note: `DATALAYER_FILE_SERVER_URL` must also be set to a valid URL or IP address for mirrors to be created. Both settings are required for external store mirroring to function.
   * **LOG_LEVEL**: Controls verbosity of logging. Common settings are `info` and `debug`. Setting to `silly` will log all queries.
   * **TASKS**: Section for configuring sync intervals.
-    * **GOVERNANCE_SYNC_TASK_INTERVAL**: Syncs new organizations from the governance node. Default 86400 seconds.
-    * **ORGANIZATION_META_SYNC_TASK_INTERVAL**: Syncs organization data from the blockchain. Default 300 seconds.
-    * **PICKLIST_SYNC_TASK_INTERVAL**: Syncs picklist from the governance node. Default 60 seconds.
+    * **GOVERNANCE_SYNC_TASK_INTERVAL**: Syncs picklist, orgList, and glossary from the governance node. Default 30 seconds.
+    * **DEFAULT_ORGANIZATIONS_SYNC_TASK_INTERVAL**: Subscribes to and imports default organizations published by the governance node. Default 30 seconds.
+    * **ORGANIZATION_META_SYNC_TASK_INTERVAL**: Refreshes metadata for already-imported organizations. Default 300 seconds.
+    * **PICKLIST_SYNC_TASK_INTERVAL**: Syncs picklist from the governance node. Default 30 seconds.
     * **MIRROR_CHECK_TASK_INTERVAL**: Checks if our DataLayer is advertising our `DATALAYER_FILE_SERVER_URL` as a mirror for all subscriptions when `AUTO_MIRROR_EXTERNAL_STORES` is true. Default 86460 seconds.
     * **VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL**: Validates the organization table periodically. Default 1800 seconds.
   * **REQUEST_CONTENT_LIMITS**: Section for configuring request size limits to prevent denial-of-service attacks. These limits control the maximum array lengths in API requests.

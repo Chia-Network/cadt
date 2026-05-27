@@ -23,11 +23,18 @@ import {
   syncRegistriesTaskMutexV2,
 } from '../utils/v2-model-utils.js';
 import { SyncMismatchBackoff } from '../utils/sync-mismatch-backoff.js';
+import {
+  ensureV2FtsTriggersDeferred,
+  restoreV2FtsTriggersAndRebuildIfDeferred,
+} from '../utils/fts5-deferral-v2.js';
 
 dotenv.config({ quiet: true });
 const CONFIG = getConfig().APP;
 
 const mismatchBackoff = new SyncMismatchBackoff(loggerV2, '[v2]');
+
+const hasUsableSyncStatus = (syncStatus) =>
+  syncStatus?.generation != null && syncStatus?.target_generation != null;
 
 const task = new Task('sync-registries-v2', async () => {
   loggerV2.debug('[v2]: sync registries v2 task invoked');
@@ -75,8 +82,52 @@ const processJob = async () => {
     raw: true,
   });
 
-  for (const organization of organizations) {
-    await syncOrganizationAuditV2(organization);
+  // FTS5 deferral: see V1 sync-registries.js for the full rationale.
+  // When at least one subscribed org is still mid-catch-up, drop the
+  // project/unit FTS triggers and persist a flag in `meta`. After the
+  // tick finishes and all orgs are caught up, restore the triggers and
+  // rebuild the FTS tables in a single transaction.
+  //
+  // Skip the global drop in NODE_ENV=test: the integration test suite
+  // creates many `subscribed: true, synced: false` org fixtures while
+  // the V2 background sync interval is live, and FTS-dependent specs
+  // assume the project/unit triggers stay installed. The deferral
+  // behaviour itself is exercised by tests/v2/integration/sync-write-perf-v2.spec.js
+  // (which calls the helpers directly and isolates them from sync).
+  const skipFtsDeferralForTests = process.env.NODE_ENV === 'test';
+
+  const anyOrgNeedsCatchup = organizations.some(
+    (organization) => !organization.synced,
+  );
+  if (anyOrgNeedsCatchup && !skipFtsDeferralForTests) {
+    await ensureV2FtsTriggersDeferred();
+  }
+
+  try {
+    for (const organization of organizations) {
+      await syncOrganizationAuditV2(organization);
+    }
+  } finally {
+    // Run the restore decision in `finally` so a thrown sync error doesn't
+    // leave V2 FTS triggers permanently dropped until the next process
+    // restart. The next tick will retry regardless.
+    if (!skipFtsDeferralForTests) {
+      try {
+        const orgsAfter = await OrganizationsV2.findAll({
+          where: { subscribed: true },
+          attributes: ['org_uid', 'synced'],
+          raw: true,
+        });
+        const anyOrgStillCatchingUp = orgsAfter.some((o) => !o.synced);
+        if (!anyOrgStillCatchingUp) {
+          await restoreV2FtsTriggersAndRebuildIfDeferred();
+        }
+      } catch (restoreError) {
+        loggerV2.error(
+          `[v2]: FTS5 restore decision failed at tick end: ${restoreError?.message || restoreError}`,
+        );
+      }
+    }
   }
 };
 
@@ -130,11 +181,11 @@ const truncateStagingV2 = async () => {
 const syncOrganizationAuditV2 = async (organization) => {
   loggerV2.debug(`syncing organization audit for ${organization.name}`);
   try {
-    let afterCommitCallbacks = [];
+    const afterCommitCallbacks = [];
 
     loggerV2.debug('querying organization model for home org');
     const homeOrg = await OrganizationsV2.getHomeOrg();
-    
+
     // Check if registry_id is set
     if (!organization.registry_id) {
       loggerV2.warn(
@@ -142,7 +193,7 @@ const syncOrganizationAuditV2 = async (organization) => {
       );
       return;
     }
-    
+
     loggerV2.debug(`querying datalayer for ${organization.name} root history`);
     const rootHistory = await datalayer.getRootHistory(
       organization.registry_id,
@@ -152,13 +203,13 @@ const syncOrganizationAuditV2 = async (organization) => {
       organization.registry_id,
     );
     const sync_status = syncResult?.sync_status;
-    
+
     // Log diagnostic info for debugging
     loggerV2.debug(
       `[v2]: [SYNC_DIAG] ${organization.name}: registry_id=${organization.registry_id}, ` +
-      `rootHistory.length=${rootHistory?.length || 0}, ` +
-      `sync_status.generation=${sync_status?.generation}, ` +
-      `sync_status.target_generation=${sync_status?.target_generation}`,
+        `rootHistory.length=${rootHistory?.length || 0}, ` +
+        `sync_status.generation=${sync_status?.generation}, ` +
+        `sync_status.target_generation=${sync_status?.target_generation}`,
     );
 
     if (!rootHistory?.length) {
@@ -171,7 +222,7 @@ const syncOrganizationAuditV2 = async (organization) => {
     // For home org, skip the sync_status check - our own data is already local
     // The sync_status might lag behind because datalayer is still processing our own updates
     const isHomeOrg = homeOrg && organization.org_uid === homeOrg.org_uid;
-    
+
     if (
       process.env.NODE_ENV !== 'test' &&
       !isHomeOrg &&
@@ -212,7 +263,6 @@ const syncOrganizationAuditV2 = async (organization) => {
     if (CONFIG.USE_SIMULATOR) {
       console.log('USING MOCK ROOT HISTORY');
       lastRootSavedToAuditTable = rootHistory[0];
-      lastRootSavedToAuditTable.root_hash = lastRootSavedToAuditTable.root_hash;
       lastRootSavedToAuditTable.generation = 0;
     } else {
       loggerV2.debug(
@@ -229,8 +279,6 @@ const syncOrganizationAuditV2 = async (organization) => {
         lastRootSavedToAuditTable.timestamp = Number(
           lastRootSavedToAuditTable?.onchain_confirmation_time_stamp || 0,
         );
-        lastRootSavedToAuditTable.root_hash =
-          lastRootSavedToAuditTable.root_hash;
       }
     }
 
@@ -298,9 +346,9 @@ const syncOrganizationAuditV2 = async (organization) => {
 
     loggerV2.debug(
       `[SYNC DEBUG] ${organization.name}: rootHistory.length=${rootHistory.length}, ` +
-      `auditGeneration=${auditTableHighestProcessedGenerationIndex}, ` +
-      `rootHistoryHighestIndex=${rootHistoryHighestGenerationIndex}, ` +
-      `syncRemaining=${syncRemaining}, isSynced=${isSynced}`,
+        `auditGeneration=${auditTableHighestProcessedGenerationIndex}, ` +
+        `rootHistoryHighestIndex=${rootHistoryHighestGenerationIndex}, ` +
+        `syncRemaining=${syncRemaining}, isSynced=${isSynced}`,
     );
 
     loggerV2.debug(
@@ -345,20 +393,36 @@ const syncOrganizationAuditV2 = async (organization) => {
       `${organization.name} is ${syncRemaining} DataLayer generations away from being fully synced (orgUid ${organization.org_uid}, registryId ${organization.registry_id}).`,
     );
 
-    if (!CONFIG.USE_SIMULATOR) {
-      await new Promise((resolve) => setTimeout(resolve, 30000));
+    loggerV2.debug(
+      `5 Last processed index of ${organization.name}: ${auditTableHighestProcessedGenerationIndex}`,
+    );
+    const lastProcessedRoot = _.get(
+      rootHistory,
+      `[${auditTableHighestProcessedGenerationIndex}]`,
+    );
+    loggerV2.debug(
+      `6 To be processed index of ${organization.name}: ${toBeProcessedDatalayerGenerationIndex}`,
+    );
+    const rootToBeProcessed = _.get(
+      rootHistory,
+      `[${toBeProcessedDatalayerGenerationIndex}]`,
+    );
 
+    loggerV2.debug(
+      `last processed root of ${organization.name}: ${JSON.stringify(lastProcessedRoot)}`,
+    );
+    loggerV2.debug(
+      `root to be processed of ${organization.name}: ${JSON.stringify(rootToBeProcessed)}`,
+    );
+
+    if (!CONFIG.USE_SIMULATOR) {
       // For home org, we can skip sync_status validation since we created the data locally
       // DataLayer may not have processed our own updates yet, which is fine
       if (isHomeOrg) {
         loggerV2.debug(
           `[v2]: Home org sync_status check skipped - data is local (generation=${sync_status?.generation}, target_generation=${sync_status?.target_generation})`,
         );
-      } else if (
-        sync_status &&
-        sync_status?.generation &&
-        sync_status?.target_generation
-      ) {
+      } else if (hasUsableSyncStatus(sync_status)) {
         loggerV2.debug(
           `store ${organization.registry_id} (${organization.name}) is currently at generation ${sync_status.generation} with a target generation of ${sync_status.target_generation}`,
         );
@@ -389,10 +453,13 @@ const syncOrganizationAuditV2 = async (organization) => {
       }
 
       // For home org, we don't need to check if DataLayer has caught up - we created the data
-      if (!isHomeOrg && toBeProcessedDatalayerGenerationIndex > sync_status.generation) {
+      if (
+        !isHomeOrg &&
+        toBeProcessedDatalayerGenerationIndex > sync_status.generation
+      ) {
         const warningMsg = [
-          `Generation ${toBeProcessedDatalayerGenerationIndex + 1} does not exist in ${organization.name} (registry store ${organization.registry_id}) root history`,
-          `DataLayer not yet caught up to generation ${auditTableHighestProcessedGenerationIndex + 1}. The the highest generation datalayer has synced is ${sync_status.generation}.`,
+          `DataLayer has not locally synced generation index ${toBeProcessedDatalayerGenerationIndex} for ${organization.name} (registry store ${organization.registry_id}).`,
+          `The highest generation DataLayer has synced is ${sync_status.generation}.`,
           `This issue is often temporary and could be due to a lag in data propagation.`,
           'Syncing for this organization will be paused until this is resolved.',
           'For ongoing issues, please contact the organization.',
@@ -403,27 +470,12 @@ const syncOrganizationAuditV2 = async (organization) => {
       }
     }
 
-    loggerV2.debug(
-      `5 Last processed index of ${organization.name}: ${auditTableHighestProcessedGenerationIndex}`,
-    );
-    const lastProcessedRoot = _.get(
-      rootHistory,
-      `[${auditTableHighestProcessedGenerationIndex}]`,
-    );
-    loggerV2.debug(
-      `6 To be processed index of ${organization.name}: ${toBeProcessedDatalayerGenerationIndex}`,
-    );
-    const rootToBeProcessed = _.get(
-      rootHistory,
-      `[${toBeProcessedDatalayerGenerationIndex}]`,
-    );
-
-    loggerV2.debug(
-      `last processed root of ${organization.name}: ${JSON.stringify(lastProcessedRoot)}`,
-    );
-    loggerV2.debug(
-      `root to be processed of ${organization.name}: ${JSON.stringify(rootToBeProcessed)}`,
-    );
+    if (!rootToBeProcessed) {
+      loggerV2.warn(
+        `Generation index ${toBeProcessedDatalayerGenerationIndex} does not exist in ${organization.name} (registry store ${organization.registry_id}) root history. Syncing will retry on the next run.`,
+      );
+      return;
+    }
 
     if (!_.get(rootToBeProcessed, 'confirmed')) {
       loggerV2.info(
@@ -439,11 +491,19 @@ const syncOrganizationAuditV2 = async (organization) => {
       `8 To be processed index of ${organization.name}: ${toBeProcessedDatalayerGenerationIndex}`,
     );
 
-    const kvDiff = await datalayer.getRootDiff(
-      organization.registry_id,
-      lastProcessedRoot.root_hash,
-      rootToBeProcessed.root_hash,
-    );
+    let kvDiff;
+    try {
+      kvDiff = await datalayer.getRootDiff(
+        organization.registry_id,
+        lastProcessedRoot.root_hash,
+        rootToBeProcessed.root_hash,
+      );
+    } catch (error) {
+      loggerV2.warn(
+        `DataLayer diff for ${organization.name} generation index ${toBeProcessedDatalayerGenerationIndex} is not ready. Syncing will retry on the next run. Error: ${error.message}`,
+      );
+      return;
+    }
 
     const comment = kvDiff.filter(
       (diff) =>
@@ -473,7 +533,7 @@ const syncOrganizationAuditV2 = async (organization) => {
         orgName: organization.name,
         diffCount: optimizedKvDiff.length,
         isEmpty: _.isEmpty(optimizedKvDiff),
-        sampleDiffs: optimizedKvDiff.slice(0, 3).map(d => ({
+        sampleDiffs: optimizedKvDiff.slice(0, 3).map((d) => ({
           type: d.type,
           key: d.key?.substring(0, 30),
         })),
@@ -487,7 +547,9 @@ const syncOrganizationAuditV2 = async (organization) => {
           type: 'NO CHANGE',
           table: null,
           change: null,
-          onchain_confirmation_time_stamp: rootToBeProcessed.timestamp?.toString() || Math.floor(Date.now() / 1000).toString(),
+          onchain_confirmation_time_stamp:
+            rootToBeProcessed.timestamp?.toString() ||
+            Math.floor(Date.now() / 1000).toString(),
           generation: toBeProcessedDatalayerGenerationIndex,
           comment: '',
           author: '',
@@ -505,6 +567,30 @@ const syncOrganizationAuditV2 = async (organization) => {
         (roots [generation ${lastRootSavedToAuditTable.generation}] ${lastProcessedRoot.root_hash} and [generation ${lastRootSavedToAuditTable.generation + 1}] ${rootToBeProcessed.root_hash})`,
         );
 
+        // Hoist comment / author parsing out of the per-row diff loop. The
+        // comment and author kv-diff entries are shared across every row in
+        // the same generation, so re-running tryParseJSON(decodeHex(...)) per
+        // row is wasted work proportional to diff length.
+        const generationComment = _.get(
+          tryParseJSON(decodeHex(_.get(comment, '[0].value', encodeHex('{}')))),
+          'comment',
+          '',
+        );
+        const generationAuthor = _.get(
+          tryParseJSON(decodeHex(_.get(author, '[0].value', encodeHex('{}')))),
+          'author',
+          '',
+        );
+
+        // Buffer audit rows for a single per-generation bulkCreate at the
+        // end of the loop. One INSERT per kv-diff row was the dominant
+        // write cost on Pi-class hardware during catch-up.
+        const auditRowsForGeneration = [];
+
+        const onchainConfirmationTimestamp =
+          rootToBeProcessed.timestamp?.toString() ||
+          Math.floor(Date.now() / 1000).toString();
+
         for (const diff of optimizedKvDiff) {
           const key = decodeHex(diff.key);
           const modelKey = key.split('|')[0];
@@ -520,22 +606,10 @@ const syncOrganizationAuditV2 = async (organization) => {
             type: diff.type,
             table: modelKey,
             change: diff.value ? decodeHex(diff.value) : null, // DELETE operations don't have a value field
-            onchain_confirmation_time_stamp: rootToBeProcessed.timestamp?.toString() || Math.floor(Date.now() / 1000).toString(),
+            onchain_confirmation_time_stamp: onchainConfirmationTimestamp,
             generation: toBeProcessedDatalayerGenerationIndex,
-            comment: _.get(
-              tryParseJSON(
-                decodeHex(_.get(comment, '[0].value', encodeHex('{}'))),
-              ),
-              'comment',
-              '',
-            ),
-            author: _.get(
-              tryParseJSON(
-                decodeHex(_.get(author, '[0].value', encodeHex('{}'))),
-              ),
-              'author',
-              '',
-            ),
+            comment: generationComment,
+            author: generationAuthor,
           };
 
           if (modelKey && Object.keys(ModelKeysV2).includes(modelKey)) {
@@ -550,9 +624,13 @@ const syncOrganizationAuditV2 = async (organization) => {
                 // Convert snake_case to camelCase
                 return _.camelCase(key);
               });
-              const primaryKeyValue = camelCaseRecord[primaryKeyFieldCamelCase] || record[primaryKeyField];
+              const primaryKeyValue =
+                camelCaseRecord[primaryKeyFieldCamelCase] ||
+                record[primaryKeyField];
 
-              loggerV2.verbose(`UPSERTING (${diff.type}): ${modelKey} - ${primaryKeyValue}`);
+              loggerV2.verbose(
+                `UPSERTING (${diff.type}): ${modelKey} - ${primaryKeyValue}`,
+              );
 
               // Remove updatedAt/updated_at fields if they exist
               // This is because the db will update this field automatically and its not allowed to be null
@@ -600,20 +678,25 @@ const syncOrganizationAuditV2 = async (organization) => {
               // Key format is: "project|{uuid}" or "co_benefit|{uuid}" or "project_methodology|{uuid}"
               const keyParts = key.split('|');
               if (keyParts.length < 2) {
-                loggerV2.error(`Invalid DELETE key format: ${key}. Expected format: "table|id"`);
+                loggerV2.error(
+                  `Invalid DELETE key format: ${key}. Expected format: "table|id"`,
+                );
                 continue;
               }
               const primaryKeyValue = keyParts.slice(1).join('|'); // Handle cases where UUID might contain '|'
 
-              loggerV2.debug(`[v2]: [DELETE SYNC DEBUG] Processing DELETE operation from datalayer`, {
-                modelKey,
-                decodedKey: key,
-                hexKey: diff.key,
-                primaryKeyValue,
-                keyParts,
-                organization: organization.name,
-                generationIndex: toBeProcessedDatalayerGenerationIndex,
-              });
+              loggerV2.debug(
+                `[v2]: [DELETE SYNC DEBUG] Processing DELETE operation from datalayer`,
+                {
+                  modelKey,
+                  decodedKey: key,
+                  hexKey: diff.key,
+                  primaryKeyValue,
+                  keyParts,
+                  organization: organization.name,
+                  generationIndex: toBeProcessedDatalayerGenerationIndex,
+                },
+              );
 
               loggerV2.verbose(`DELETING: ${modelKey} - ${primaryKeyValue}`);
 
@@ -629,9 +712,19 @@ const syncOrganizationAuditV2 = async (organization) => {
             }
           }
 
-          // Create the Audit record
-          loggerV2.debug('writing change record ');
-          await AuditV2.create(auditData, { transaction });
+          auditRowsForGeneration.push(auditData);
+        }
+
+        if (auditRowsForGeneration.length > 0) {
+          loggerV2.debug(
+            `[v2]: bulk-writing ${auditRowsForGeneration.length} audit row(s) for generation ${toBeProcessedDatalayerGenerationIndex}`,
+          );
+          // See V1: batchSize keeps very large generations under the
+          // SQLite SQLITE_MAX_VARIABLE_NUMBER cap.
+          await AuditV2.bulkCreate(auditRowsForGeneration, {
+            transaction,
+            batchSize: 500,
+          });
         }
       }
     };
@@ -766,4 +859,3 @@ const orgGenerationMismatchCheckV2 = async (
 };
 
 export default job;
-

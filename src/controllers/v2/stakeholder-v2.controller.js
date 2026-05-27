@@ -263,12 +263,9 @@ export const deleteStakeholderV2 = async (req, res) => {
       });
     }
 
-    const force = req.query.force === 'true';
-    if (!force) {
-      const refResult = await checkReferences('stakeholder', id);
-      if (refResult.hasReferences) {
-        return res.status(409).json(buildReferenceConflictBody('stakeholder', refResult));
-      }
+    const refResult = await checkReferences('stakeholder', id);
+    if (refResult.hasReferences) {
+      return res.status(409).json(buildReferenceConflictBody('stakeholder', refResult));
     }
 
     await StagingV2.create({

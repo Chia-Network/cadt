@@ -15,16 +15,75 @@ import {
   makeDeleteRequest,
   checkRecordInStaging,
 } from './helpers/api-request-helpers.js';
-import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstRecordIdFromDatabase, getAllRecordIdsFromDatabase } from './helpers/shared-state.js';
+import { addCreatedId, getCreatedIds, shouldAutoCommit, trackBatchVerification, getFirstRecordIdFromDatabase, getAllRecordIdsFromDatabase } from './helpers/shared-state.js';
 import {
   generateProgram,
   generateProgramMinimal,
   generateProgramMaximal,
   generateProgramLongStrings,
   generateProgramForbiddenFields,
-  getLongString,
-  getInvalidPicklistValue,
 } from './data/test-data-generators.js';
+
+const REFERENCE_ERROR_CODE = 'Referenced records must be removed before deletion';
+const deleteTargetProgramIds = new Set();
+
+const getProjectId = (project) => project.cadTrustProjectId || project.cad_trust_project_id;
+const getProgramId = (project) => project.cadTrustProgramId || project.cad_trust_program_id;
+
+const getProjectStagingReferences = async (request) => {
+  const pendingDeleteProjectIds = new Set();
+  const stagedReferencedProgramIds = new Set();
+  const response = await request
+    .get('/v2/staging')
+    .query({ page: 1, limit: 1000, table: 'project', type: 'staged' })
+    .expect(200);
+  const rows = response.body?.data || response.body || [];
+
+  for (const row of rows) {
+    const records = row.diff?.change || [];
+    for (const record of records) {
+      const projectId = getProjectId(record);
+      const programId = getProgramId(record);
+      if (row.action === 'DELETE' && projectId) {
+        pendingDeleteProjectIds.add(projectId);
+      } else if (['INSERT', 'UPDATE'].includes(row.action) && programId) {
+        stagedReferencedProgramIds.add(programId);
+      }
+    }
+  }
+
+  return { pendingDeleteProjectIds, stagedReferencedProgramIds };
+};
+
+const getReferencedProgramIds = async (request) => {
+  const referencedProgramIds = new Set();
+  const { pendingDeleteProjectIds, stagedReferencedProgramIds } = await getProjectStagingReferences(request);
+  for (const programId of stagedReferencedProgramIds) {
+    referencedProgramIds.add(programId);
+  }
+
+  let page = 1;
+  const limit = 1000;
+  let hasMore = true;
+
+  while (hasMore) {
+    const response = await request.get('/v2/project').query({ page, limit }).expect(200);
+    const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);
+    for (const project of data) {
+      const projectId = getProjectId(project);
+      const programId = getProgramId(project);
+      if (programId && !pendingDeleteProjectIds.has(projectId)) {
+        referencedProgramIds.add(programId);
+      }
+    }
+
+    const totalPages = response.body?.pageCount || 1;
+    hasMore = page < totalPages && data.length === limit;
+    page++;
+  }
+
+  return referencedProgramIds;
+};
 
 describe('Program Live API Validation Tests', function () {
   this.timeout(600000); // 10 minute timeout
@@ -261,9 +320,9 @@ describe('Program Live API Validation Tests', function () {
     });
   });
   describe('Step 9: DELETE Request Tests', function () {
-    it('should delete all created programs', async function () {
+    it('should delete unreferenced programs and preserve referenced programs', async function () {
       // Get IDs from createdIds (if available) or query database for existing records
-      let idsToDelete = createdIds.length > 0 ? createdIds : [];
+      let idsToDelete = createdIds.length > 0 ? createdIds : getCreatedIds('program');
       if (idsToDelete.length === 0) {
         // Query database to get all existing records (for DELETE tests running in separate process)
         idsToDelete = await getAllRecordIdsFromDatabase(request, 'program');
@@ -273,11 +332,21 @@ describe('Program Live API Validation Tests', function () {
         // No records to delete, skip test
         return;
       }
+      idsToDelete.forEach((id) => deleteTargetProgramIds.add(id));
+      const expectedReferencedProgramIds = await getReferencedProgramIds(request);
 
       // Delete in reverse order
       for (let i = idsToDelete.length - 1; i >= 0; i--) {
         const id = idsToDelete[i];
-        const response = await makeDeleteRequest(request, '/v2/program', id, { query: { force: 'true' } });
+        const response = await makeDeleteRequest(request, '/v2/program', id);
+        if (expectedReferencedProgramIds.has(id)) {
+          expect(response.success).to.be.false;
+          expect(response.error).to.equal(REFERENCE_ERROR_CODE);
+          expect(response.references).to.be.an('array').that.is.not.empty;
+          expect(response.references.some((ref) => ref.table === 'project' && ref.count > 0)).to.be.true;
+          continue;
+        }
+
         expect(response.success).to.be.true;
 
         if (shouldAutoCommit()) {
@@ -293,11 +362,24 @@ describe('Program Live API Validation Tests', function () {
   });
 
   describe('Step 10: Final Validation', function () {
-    it('should verify all programs are deleted', async function () {
-      const response = await request.get('/v2/program').query({ page: 1, limit: 10 }).expect(200);
-      const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);
-      // Should only have programs that existed before tests
-      expect(data.length).to.equal(0);
+    it('should verify remaining created programs are still referenced', async function () {
+      let idsToCheck = createdIds.length > 0 ? createdIds : getCreatedIds('program');
+      if (idsToCheck.length === 0) {
+        idsToCheck = [...deleteTargetProgramIds];
+      }
+      const referencedProgramIds = await getReferencedProgramIds(request);
+
+      for (const id of idsToCheck) {
+        const response = await request.get(`/v2/program/${id}`);
+        if (response.status === 404) {
+          continue;
+        }
+        expect(response.status).to.equal(200);
+        expect(
+          referencedProgramIds.has(id),
+          `Program ${id} remains without committed or delete-time project references`,
+        ).to.be.true;
+      }
     });
   });
 });

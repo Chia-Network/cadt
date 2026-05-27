@@ -5,7 +5,8 @@ import { Model } from 'sequelize';
 import * as rxjs from 'rxjs';
 import {
   sequelize,
-  safeMirrorDbHandler,
+  mirrorDBEnabled,
+  mirrorWrite,
   sanitizeSqliteFtsQuery,
 } from '../../database';
 import { Label, Issuance, Staging, Organization } from '../../models';
@@ -52,7 +53,11 @@ class Unit extends Model {
       as: 'labels',
     });
 
-    safeMirrorDbHandler(() => {
+    // Mirror associations are pure Sequelize metadata - no DB I/O. Gate
+    // on mirrorDBEnabled() rather than safeMirrorDbHandler() so we don't
+    // authenticate at module load. See projects.model.js for full
+    // rationale (parallel-backfill race).
+    if (mirrorDBEnabled()) {
       UnitMirror.belongsTo(Issuance, {
         sourceKey: 'issuanceId',
         foreignKey: 'issuanceId',
@@ -64,17 +69,17 @@ class Unit extends Model {
         through: 'label_unit',
         as: 'labels',
       });
-    });
+    }
   }
 
   static async create(values, options) {
-    safeMirrorDbHandler(async () => {
+    await mirrorWrite(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await UnitMirror.create(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
 
     const createResult = await super.create(values, options);
     const { orgUid } = createResult;
@@ -85,13 +90,13 @@ class Unit extends Model {
   }
 
   static async upsert(values, options) {
-    safeMirrorDbHandler(async () => {
+    await mirrorWrite(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await UnitMirror.upsert(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
 
     const upsertResult = await super.upsert(values, options);
 
@@ -103,13 +108,13 @@ class Unit extends Model {
   }
 
   static async destroy(options) {
-    safeMirrorDbHandler(async () => {
+    await mirrorWrite(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await UnitMirror.destroy(mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
 
     Unit.changes.next(['units']);
     return super.destroy(options);

@@ -3,7 +3,7 @@
 import { Sequelize, Model } from 'sequelize';
 import _ from 'lodash';
 
-import { sequelizeV2, safeMirrorDbHandlerV2 } from '../../database/v2/index.js';
+import { sequelizeV2, mirrorWriteV2 } from '../../database/v2/index.js';
 import OrganizationsV2Mirror from './organizations-v2.model.mirror.js';
 import datalayer from '../../datalayer';
 import { getStoreData as getRawStoreData } from '../../datalayer/persistance.js';
@@ -70,6 +70,7 @@ import {
   loadCreationState,
   clearCreationState,
   hasInProgressCreation,
+  createIncrementalStateWriter,
 } from '../../utils/organization-creation-state.js';
 
 import ModelTypes from './organizations-v2.modeltypes.js';
@@ -80,65 +81,65 @@ const { isTransientWalletError } = wallet;
 
 class OrganizationsV2 extends Model {
   static async create(values, options) {
-    safeMirrorDbHandlerV2(async () => {
+    await mirrorWriteV2(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await OrganizationsV2Mirror.create(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
     const result = await super.create(values, options);
     if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
 
   static async bulkCreate(values, options) {
-    safeMirrorDbHandlerV2(async () => {
+    await mirrorWriteV2(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await OrganizationsV2Mirror.bulkCreate(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
     const result = await super.bulkCreate(values, options);
     if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
 
   static async update(values, options) {
-    safeMirrorDbHandlerV2(async () => {
+    await mirrorWriteV2(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await OrganizationsV2Mirror.update(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
     const result = await super.update(values, options);
     if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
 
   static async upsert(values, options) {
-    safeMirrorDbHandlerV2(async () => {
+    await mirrorWriteV2(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await OrganizationsV2Mirror.upsert(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
     const result = await super.upsert(values, options);
     if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
 
   static async destroy(options) {
-    safeMirrorDbHandlerV2(async () => {
+    await mirrorWriteV2(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await OrganizationsV2Mirror.destroy(mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
     const result = await super.destroy(options);
     if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
@@ -523,18 +524,39 @@ class OrganizationsV2 extends Model {
     const maxRetries = 10;
     const retryDelayMs = 30000;
 
-    // Create all stores in parallel, each with independent retry logic
+    // Persist each successful store creation immediately so the
+    // /v2/organizations/creation-status endpoint reflects partial progress.
+    // Without this, all 4 stores stay marked pending until the slowest
+    // promise resolves, which makes the live-api "stuck state" detector
+    // fire while the server is still actively making progress.
+    const stateWriter = createIncrementalStateWriter(state, MetaV2);
+
+    // Create all stores in parallel, each with independent retry logic.
+    // The persist call is wrapped in its own try so that a transient
+    // saveCreationState failure (DB busy, sequelize hiccup) does NOT
+    // mask a successful on-chain store creation as a creation failure;
+    // any missing persist will be reconciled in a final save below.
     const createPromises = storesToCreate.map(async (storeType) => {
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-          logState(state, `Creating ${storeType} store (attempt ${attempt}/${maxRetries})`);
+          logState(stateWriter.getCurrent(), `Creating ${storeType} store (attempt ${attempt}/${maxRetries})`);
           const storeId = await datalayer.createDataLayerStoreWithRetry();
-          logState(state, `Created ${storeType} store: ${storeId}`);
+          logState(stateWriter.getCurrent(), `Created ${storeType} store: ${storeId}`);
+          try {
+            await stateWriter.persistStoreCreated(storeType, storeId);
+          } catch (persistError) {
+            logState(
+              stateWriter.getCurrent(),
+              `Created ${storeType} store ${storeId} but failed to persist incremental progress: ` +
+                `${persistError.message}. Store id retained in result; final save will reconcile.`,
+              'warn',
+            );
+          }
           return { storeType, storeId, success: true };
         } catch (error) {
           if (isTransientWalletError(error) && attempt < maxRetries) {
             logState(
-              state,
+              stateWriter.getCurrent(),
               `Transient error creating ${storeType} store ` +
                 `(attempt ${attempt}/${maxRetries}): ${error.message}. ` +
                 `Retrying in ${retryDelayMs / 1000}s...`,
@@ -543,7 +565,7 @@ class OrganizationsV2 extends Model {
             await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
             continue;
           }
-          logState(state, `Failed to create ${storeType} store: ${error.message}`, 'error');
+          logState(stateWriter.getCurrent(), `Failed to create ${storeType} store: ${error.message}`, 'error');
           return { storeType, storeId: null, success: false, error: error.message };
         }
       }
@@ -552,13 +574,21 @@ class OrganizationsV2 extends Model {
 
     const results = await Promise.all(createPromises);
 
-    // Update state with created store IDs
+    // Reconcile: pick up incremental updates that already landed, then
+    // re-apply any successful storeIds whose persist failed mid-flight.
+    // A single final saveCreationState makes sure the persisted view
+    // matches in-memory state before returning.
+    state = stateWriter.getCurrent();
+    let reconcileNeeded = false;
     for (const result of results) {
-      if (result.success) {
+      if (result.success && state.stores[result.storeType].id !== result.storeId) {
         state = markStoreCreated(state, result.storeType, result.storeId);
+        reconcileNeeded = true;
       }
     }
-    await saveCreationState(state, MetaV2);
+    if (reconcileNeeded) {
+      await saveCreationState(state, MetaV2);
+    }
 
     // Check if all stores were created
     const failed = results.filter((r) => !r.success);
@@ -1627,7 +1657,7 @@ class OrganizationsV2 extends Model {
       try {
         const syncStatus = await datalayer.getDataLayerStoreSyncStatus(orgUid);
         if (!isDlStoreSynced(syncStatus?.sync_status)) {
-          loggerV2.info(
+          loggerV2.debug(
             `[v2]: Skipping import of organization ${orgUid} - store not yet synced. Will retry on next task run.`,
           );
           return;
@@ -1689,7 +1719,7 @@ class OrganizationsV2 extends Model {
           singletonStoreId,
         );
         if (!isDlStoreSynced(singletonSyncStatus?.sync_status)) {
-          loggerV2.info(
+          loggerV2.debug(
             `[v2]: Skipping import of organization ${orgUid} - singleton store ${singletonStoreId} not yet synced. Will retry on next task run.`,
           );
           return;

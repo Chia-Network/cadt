@@ -31,6 +31,7 @@ import { unitV2Schema } from '../../validations/v2/unit-v2.validations.js';
 import { genericSortColumnRegex } from '../../utils/string-utils.js';
 import { resolveOrgUid } from '../../utils/owner-utils.js';
 import { stageUnitChildDeletes } from '../../utils/v2-cascade-delete.js';
+import { checkReferences, buildReferenceConflictBody } from '../../utils/v2-reference-guards.js';
 
 // Regex patterns for query parsing
 const genericFilterRegex = /^(\w+):(.+):(\w+)$/;
@@ -798,6 +799,11 @@ export const destroy = async (req, res) => {
         message: 'Unit not found',
         success: false,
       });
+    }
+
+    const refResult = await checkReferences('unit', id);
+    if (refResult.hasReferences) {
+      return res.status(409).json(buildReferenceConflictBody('unit', refResult));
     }
 
     const releaseTransactionMutex =

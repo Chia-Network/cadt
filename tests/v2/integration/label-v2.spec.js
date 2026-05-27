@@ -693,7 +693,7 @@ describe('Label V2 Endpoint Integration Tests', function () {
       expect(response.body.references[0].count).to.equal(1);
     });
 
-    it('should allow delete with ?force=true despite references', async function () {
+    it('should return 409 with ?force=true when references still exist', async function () {
       const homeOrgId = await getV2HomeOrgId();
       const label = await LabelV2.create({
         cadTrustLabelId: uuidv4(),
@@ -711,15 +711,15 @@ describe('Label V2 Endpoint Integration Tests', function () {
       const response = await supertest(app)
         .delete(`/v2/label/${label.cadTrustLabelId}`)
         .query({ force: 'true' })
-        .expect(200);
+        .expect(409);
 
-      expect(response.body.success).to.be.true;
-      expect(response.body.message).to.equal('Label delete staged successfully');
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.equal('Referenced records must be removed before deletion');
 
       const stagingRecord = await StagingV2.findOne({
         where: { table: 'label', action: 'DELETE' },
       });
-      expect(stagingRecord).to.exist;
+      expect(stagingRecord).to.be.null;
     });
   });
 });

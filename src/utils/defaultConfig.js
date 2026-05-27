@@ -2,6 +2,22 @@ export const defaultConfig = {
   APP: {
     CW_PORT: 31310,
     BIND_ADDRESS: 'localhost',
+    /**
+     * Number of reverse-proxy hops between the internet and CADT.
+     * Passed to Express `trust proxy` via `resolveTrustProxyHops`
+     * (src/utils/trust-proxy.js), which requires a non-negative
+     * integer:
+     *   0  – no proxy (default, direct access)
+     *   1  – one hop  (nginx OR Cloudflare-only)
+     *   2  – two hops (Cloudflare → nginx, typical k8s ingress setup)
+     * Setting this correctly lets express-rate-limit see the real
+     * client IP instead of the proxy IP.  Booleans (`true`/`false`)
+     * and non-numeric strings (e.g. `"loopback"`) are explicitly
+     * rejected and fall back to 0 with a warning log; `true` in
+     * particular would trust the user-supplied leftmost IP and defeat
+     * rate limiting.
+     */
+    TRUST_PROXY: 0,
     DATALAYER_URL: 'https://localhost:8562',
     WALLET_URL: 'https://localhost:9256',
     USE_SIMULATOR: false,
@@ -15,12 +31,13 @@ export const defaultConfig = {
     AUTO_MIRROR_EXTERNAL_STORES: true,
     LOG_LEVEL: 'info',
     TASKS: {
-      GOVERNANCE_SYNC_TASK_INTERVAL: 300, // 5 minutes
+      GOVERNANCE_SYNC_TASK_INTERVAL: 30,
+      DEFAULT_ORGANIZATIONS_SYNC_TASK_INTERVAL: 30,
       ORGANIZATION_META_SYNC_TASK_INTERVAL: 300,
-      PICKLIST_SYNC_TASK_INTERVAL: 60,
-      MIRROR_CHECK_TASK_INTERVAL: 300, // 5 minutes - check mirrors frequently
+      PICKLIST_SYNC_TASK_INTERVAL: 30,
+      MIRROR_CHECK_TASK_INTERVAL: 300,
       VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL: 1800,
-      COIN_MANAGEMENT_TASK_INTERVAL: 21600, // 6 hours in seconds
+      COIN_MANAGEMENT_TASK_INTERVAL: 21600,
     },
     /**
      * limits to prevent loop bound DOS attack

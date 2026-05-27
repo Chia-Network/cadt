@@ -48,168 +48,170 @@ describe('Cascade Delete Live API Tests', function () {
     }
     const data = row.diff?.change;
     const parsed = Array.isArray(data) ? data : [data];
-    return parsed[0]?.[key] === value;
+    return parsed.some((p) => p?.[key] === value);
   });
 
-  it('should cascade delete project children through commit', async function () {
-    const programId = await postAndGetId('/v2/program', generateProgram(), 'cadTrustProgramId');
-    const projectId = await postAndGetId('/v2/project', generateProject(programId), 'cadTrustProjectId');
-    const methodologyId = await postAndGetId('/v2/methodology', generateMethodology(), 'cadTrustMethodologyId');
-    const validationId = await postAndGetId('/v2/validation', generateValidation(projectId), 'cadTrustValidationId');
-    const verificationId = await postAndGetId('/v2/verification', generateVerification(projectId, validationId), 'cadTrustVerificationId');
-    const projectMethodologyId = await postAndGetId('/v2/project-methodology', generateProjectMethodology(projectId, methodologyId), 'cadTrustProjectMethodologyId');
-    const issuanceId = await postAndGetId('/v2/issuance', generateIssuance(verificationId, projectMethodologyId), 'cadTrustIssuanceId');
-    const unitId = await postAndGetId('/v2/unit', generateUnit(issuanceId), 'cadTrustUnitId');
-    const labelId = await postAndGetId('/v2/label', generateLabel(), 'cadTrustLabelId');
-    const unitLabelId = await postAndGetId('/v2/unit-label', generateUnitLabel(labelId, unitId), 'cadTrustUnitLabelId');
-    const locationId = await postAndGetId('/v2/location', generateLocation(projectId), 'cadTrustLocationId');
-    const estimationId = await postAndGetId('/v2/estimation', generateEstimation(projectId), 'cadTrustEstimationId');
-    const ratingId = await postAndGetId('/v2/rating', generateRating(projectId), 'cadTrustRatingId');
-    const coBenefitId = await postAndGetId('/v2/co-benefit', generateCoBenefit(projectId), 'cadTrustCoBenefitId');
-    const stakeholderId = await postAndGetId('/v2/stakeholder', generateStakeholder(), 'cadTrustStakeholderId');
-    const stakeholderProjectId = await postAndGetId('/v2/stakeholder-projects', generateStakeholderProjects(stakeholderId, projectId), 'cadTrustStakeholderProjectId');
+  // Graphs A and B are intentionally combined into one it() to share a single
+  // on-chain commit cycle.  Trade-off: a Graph A assertion failure will abort
+  // the test before Graph B executes.  Accepted because the two graphs share
+  // the same commit, and duplicating the commit cycle for isolation would cost
+  // ~2 min per CI run.
+  it('should cascade delete project and sub-entity children through commit', async function () {
+    // === Graph A: full project cascade (project + 11 children) ===
+    const programAId = await postAndGetId('/v2/program', generateProgram(), 'cadTrustProgramId');
+    const projectAId = await postAndGetId('/v2/project', generateProject(programAId), 'cadTrustProjectId');
+    const methodologyAId = await postAndGetId('/v2/methodology', generateMethodology(), 'cadTrustMethodologyId');
+    const validationAId = await postAndGetId('/v2/validation', generateValidation(projectAId), 'cadTrustValidationId');
+    const verificationAId = await postAndGetId('/v2/verification', generateVerification(projectAId, validationAId), 'cadTrustVerificationId');
+    const projectMethodologyAId = await postAndGetId('/v2/project-methodology', generateProjectMethodology(projectAId, methodologyAId), 'cadTrustProjectMethodologyId');
+    const issuanceAId = await postAndGetId('/v2/issuance', generateIssuance(verificationAId, projectMethodologyAId), 'cadTrustIssuanceId');
+    const unitAId = await postAndGetId('/v2/unit', generateUnit(issuanceAId), 'cadTrustUnitId');
+    const labelAId = await postAndGetId('/v2/label', generateLabel(), 'cadTrustLabelId');
+    const unitLabelAId = await postAndGetId('/v2/unit-label', generateUnitLabel(labelAId, unitAId), 'cadTrustUnitLabelId');
+    const locationAId = await postAndGetId('/v2/location', generateLocation(projectAId), 'cadTrustLocationId');
+    const estimationAId = await postAndGetId('/v2/estimation', generateEstimation(projectAId), 'cadTrustEstimationId');
+    const ratingAId = await postAndGetId('/v2/rating', generateRating(projectAId), 'cadTrustRatingId');
+    const coBenefitAId = await postAndGetId('/v2/co-benefit', generateCoBenefit(projectAId), 'cadTrustCoBenefitId');
+    const stakeholderAId = await postAndGetId('/v2/stakeholder', generateStakeholder(), 'cadTrustStakeholderId');
+    const stakeholderProjectAId = await postAndGetId('/v2/stakeholder-projects', generateStakeholderProjects(stakeholderAId, projectAId), 'cadTrustStakeholderProjectId');
 
-    await commitStagedRecords(request, [], true);
-    await waitForPendingCommits(request);
-    await waitForStagingEmpty(request);
+    // === Graph B: three independent sub-entity cascade scenarios ===
+    const programBId = await postAndGetId('/v2/program', generateProgram(), 'cadTrustProgramId');
+    const projectBId = await postAndGetId('/v2/project', generateProject(programBId), 'cadTrustProjectId');
+    const methodologyBId = await postAndGetId('/v2/methodology', generateMethodology(), 'cadTrustMethodologyId');
 
-    await waitForDataToAppear(request, 'project', projectId);
-    await waitForDataToAppear(request, 'unit-label', unitLabelId);
-
-    const deleteResponse = await request.delete(`/v2/project/${projectId}`).expect(200);
-    expect(deleteResponse.body.success).to.equal(true);
-    expect(deleteResponse.body.stagedChildDeletes).to.equal(11);
-
-    const stagingResponse = await request.get('/v2/staging').query({ page: 1, limit: 500 }).expect(200);
-    const stagedRows = stagingResponse.body?.data || [];
-
-    const expectedDeleteRows = [
-      ['location', 'cad_trust_location_id', locationId],
-      ['estimation', 'cad_trust_estimation_id', estimationId],
-      ['rating', 'cad_trust_rating_id', ratingId],
-      ['co_benefit', 'cad_trust_co_benefit_id', coBenefitId],
-      ['validation', 'cad_trust_validation_id', validationId],
-      ['verification', 'cad_trust_verification_id', verificationId],
-      ['project_methodology', 'cad_trust_project_methodology_id', projectMethodologyId],
-      ['stakeholder_projects', 'cad_trust_stakeholder_project_id', stakeholderProjectId],
-      ['issuance', 'cad_trust_issuance_id', issuanceId],
-      ['unit', 'cad_trust_unit_id', unitId],
-      ['unit_label', 'cad_trust_unit_label_id', unitLabelId],
-      ['project', 'cad_trust_project_id', projectId],
-    ];
-
-    for (const [table, key, value] of expectedDeleteRows) {
-      expect(hasStagedDelete(stagedRows, table, key, value), `missing staged delete ${table}:${value}`).to.equal(true);
-    }
-
-    await commitStagedRecords(request, [], true);
-    await waitForPendingCommits(request);
-    await waitForStagingEmpty(request);
-
-    const childrenToVerifyMissing = [
-      ['/v2/location', locationId],
-      ['/v2/estimation', estimationId],
-      ['/v2/rating', ratingId],
-      ['/v2/co-benefit', coBenefitId],
-      ['/v2/validation', validationId],
-      ['/v2/verification', verificationId],
-      ['/v2/project-methodology', projectMethodologyId],
-      ['/v2/stakeholder-projects', stakeholderProjectId],
-      ['/v2/issuance', issuanceId],
-      ['/v2/unit', unitId],
-      ['/v2/unit-label', unitLabelId],
-      ['/v2/project', projectId],
-    ];
-
-    for (const [endpoint, id] of childrenToVerifyMissing) {
-      const response = await request.get(`${endpoint}/${id}`);
-      expect([400, 404]).to.include(response.status);
-    }
-  });
-
-  it('should cascade delete unit_label, issuance children, and verification children through commit', async function () {
-    // Build a shared entity graph once for three cascade-delete scenarios.
-    // This avoids three separate commit cycles that would each add ~2 minutes.
-    const programId = await postAndGetId('/v2/program', generateProgram(), 'cadTrustProgramId');
-    const projectId = await postAndGetId('/v2/project', generateProject(programId), 'cadTrustProjectId');
-    const methodologyId = await postAndGetId('/v2/methodology', generateMethodology(), 'cadTrustMethodologyId');
-
-    // Verification 1 — will be deleted as a mid-chain cascade test
-    const val1Id = await postAndGetId('/v2/validation', generateValidation(projectId), 'cadTrustValidationId');
-    const ver1Id = await postAndGetId('/v2/verification', generateVerification(projectId, val1Id), 'cadTrustVerificationId');
-    const pm1Id = await postAndGetId('/v2/project-methodology', generateProjectMethodology(projectId, methodologyId), 'cadTrustProjectMethodologyId');
+    // Verification 1 — will be deleted to cascade issuance1, unit1, unit_label1
+    const val1Id = await postAndGetId('/v2/validation', generateValidation(projectBId), 'cadTrustValidationId');
+    const ver1Id = await postAndGetId('/v2/verification', generateVerification(projectBId, val1Id), 'cadTrustVerificationId');
+    const pm1Id = await postAndGetId('/v2/project-methodology', generateProjectMethodology(projectBId, methodologyBId), 'cadTrustProjectMethodologyId');
     const iss1Id = await postAndGetId('/v2/issuance', generateIssuance(ver1Id, pm1Id), 'cadTrustIssuanceId');
     const unit1Id = await postAndGetId('/v2/unit', generateUnit(iss1Id), 'cadTrustUnitId');
     const label1Id = await postAndGetId('/v2/label', generateLabel(), 'cadTrustLabelId');
     const ul1Id = await postAndGetId('/v2/unit-label', generateUnitLabel(label1Id, unit1Id), 'cadTrustUnitLabelId');
 
-    // Issuance 2 — will be deleted standalone
-    const val2Id = await postAndGetId('/v2/validation', generateValidation(projectId), 'cadTrustValidationId');
-    const ver2Id = await postAndGetId('/v2/verification', generateVerification(projectId, val2Id), 'cadTrustVerificationId');
+    // Issuance 2 — will be deleted to cascade unit2 + unit_label2
+    const val2Id = await postAndGetId('/v2/validation', generateValidation(projectBId), 'cadTrustValidationId');
+    const ver2Id = await postAndGetId('/v2/verification', generateVerification(projectBId, val2Id), 'cadTrustVerificationId');
     const iss2Id = await postAndGetId('/v2/issuance', generateIssuance(ver2Id, pm1Id), 'cadTrustIssuanceId');
     const unit2Id = await postAndGetId('/v2/unit', generateUnit(iss2Id), 'cadTrustUnitId');
     const label2Id = await postAndGetId('/v2/label', generateLabel(), 'cadTrustLabelId');
     const ul2Id = await postAndGetId('/v2/unit-label', generateUnitLabel(label2Id, unit2Id), 'cadTrustUnitLabelId');
 
-    // Unit 3 — will test bare unit → unit_label cascade
-    const val3Id = await postAndGetId('/v2/validation', generateValidation(projectId), 'cadTrustValidationId');
-    const ver3Id = await postAndGetId('/v2/verification', generateVerification(projectId, val3Id), 'cadTrustVerificationId');
+    // Unit 3 — will be deleted to cascade unit_label3
+    const val3Id = await postAndGetId('/v2/validation', generateValidation(projectBId), 'cadTrustValidationId');
+    const ver3Id = await postAndGetId('/v2/verification', generateVerification(projectBId, val3Id), 'cadTrustVerificationId');
     const iss3Id = await postAndGetId('/v2/issuance', generateIssuance(ver3Id, pm1Id), 'cadTrustIssuanceId');
     const unit3Id = await postAndGetId('/v2/unit', generateUnit(iss3Id), 'cadTrustUnitId');
     const label3Id = await postAndGetId('/v2/label', generateLabel(), 'cadTrustLabelId');
     const ul3Id = await postAndGetId('/v2/unit-label', generateUnitLabel(label3Id, unit3Id), 'cadTrustUnitLabelId');
 
-    // Commit the full graph in one cycle
+    // --- Commit cycle 1: commit both graphs in one pass ---
     await commitStagedRecords(request, [], true);
     await waitForPendingCommits(request);
     await waitForStagingEmpty(request);
+
+    await waitForDataToAppear(request, 'project', projectAId);
+    await waitForDataToAppear(request, 'unit-label', unitLabelAId);
     await waitForDataToAppear(request, 'unit-label', ul3Id);
 
-    // --- Scenario A: Delete unit3 → should cascade unit_label ---
+    // --- Graph A deletes: delete projectA → cascades 11 children ---
+    const deleteResponse = await request.delete(`/v2/project/${projectAId}`).expect(200);
+    expect(deleteResponse.body.success).to.equal(true);
+    expect(deleteResponse.body.stagedChildDeletes).to.equal(11);
+
+    const stagingResponseA = await request.get('/v2/staging').query({ page: 1, limit: 500 }).expect(200);
+    const stagedRowsA = stagingResponseA.body?.data || [];
+
+    const expectedDeleteRowsA = [
+      ['location', 'cad_trust_location_id', locationAId],
+      ['estimation', 'cad_trust_estimation_id', estimationAId],
+      ['rating', 'cad_trust_rating_id', ratingAId],
+      ['co_benefit', 'cad_trust_co_benefit_id', coBenefitAId],
+      ['validation', 'cad_trust_validation_id', validationAId],
+      ['verification', 'cad_trust_verification_id', verificationAId],
+      ['project_methodology', 'cad_trust_project_methodology_id', projectMethodologyAId],
+      ['stakeholder_projects', 'cad_trust_stakeholder_project_id', stakeholderProjectAId],
+      ['issuance', 'cad_trust_issuance_id', issuanceAId],
+      ['unit', 'cad_trust_unit_id', unitAId],
+      ['unit_label', 'cad_trust_unit_label_id', unitLabelAId],
+      ['project', 'cad_trust_project_id', projectAId],
+    ];
+
+    for (const [table, key, value] of expectedDeleteRowsA) {
+      expect(hasStagedDelete(stagedRowsA, table, key, value), `missing staged delete ${table}:${value}`).to.equal(true);
+    }
+
+    // Exact row count guards against spurious over-staging (12 = 11 children + project itself)
+    const deleteRowsA = stagedRowsA.filter((r) => r.action === 'DELETE');
+    expect(deleteRowsA.length, 'unexpected extra staged deletes in Graph A').to.equal(12);
+
+    // --- Graph B deletes: unit3, issuance2, verification1 ---
     const unitDelResp = await request.delete(`/v2/unit/${unit3Id}`).expect(200);
     expect(unitDelResp.body.success).to.equal(true);
     expect(unitDelResp.body.stagedChildDeletes).to.equal(1);
 
-    // --- Scenario B: Delete issuance2 → should cascade unit2 + unit_label2 ---
     const issDelResp = await request.delete(`/v2/issuance/${iss2Id}`).expect(200);
     expect(issDelResp.body.success).to.equal(true);
     expect(issDelResp.body.stagedChildDeletes).to.equal(2);
 
-    // --- Scenario C: Delete verification1 → should cascade issuance1, unit1, unit_label1 ---
     const verDelResp = await request.delete(`/v2/verification/${ver1Id}`).expect(200);
     expect(verDelResp.body.success).to.equal(true);
     expect(verDelResp.body.stagedChildDeletes).to.equal(3);
 
-    // Verify all expected staging rows
-    const stagingResponse = await request.get('/v2/staging').query({ page: 1, limit: 500 }).expect(200);
-    const stagedRows = stagingResponse.body?.data || [];
+    const stagingResponseB = await request.get('/v2/staging').query({ page: 1, limit: 500 }).expect(200);
+    const stagedRowsB = stagingResponseB.body?.data || [];
 
-    const expectedStagedDeletes = [
-      // Scenario A
+    const expectedStagedDeletesB = [
+      // unit3 cascade
       ['unit', 'cad_trust_unit_id', unit3Id],
       ['unit_label', 'cad_trust_unit_label_id', ul3Id],
-      // Scenario B
+      // issuance2 cascade
       ['issuance', 'cad_trust_issuance_id', iss2Id],
       ['unit', 'cad_trust_unit_id', unit2Id],
       ['unit_label', 'cad_trust_unit_label_id', ul2Id],
-      // Scenario C
+      // verification1 cascade
       ['verification', 'cad_trust_verification_id', ver1Id],
       ['issuance', 'cad_trust_issuance_id', iss1Id],
       ['unit', 'cad_trust_unit_id', unit1Id],
       ['unit_label', 'cad_trust_unit_label_id', ul1Id],
     ];
 
-    for (const [table, key, value] of expectedStagedDeletes) {
-      expect(hasStagedDelete(stagedRows, table, key, value), `missing staged delete ${table}:${value}`).to.equal(true);
+    for (const [table, key, value] of expectedStagedDeletesB) {
+      expect(hasStagedDelete(stagedRowsB, table, key, value), `missing staged delete ${table}:${value}`).to.equal(true);
     }
 
-    // Commit all deletes in one cycle
+    // Exact row count: 12 from Graph A + 9 from Graph B = 21 DELETE rows total
+    const deleteRowsB = stagedRowsB.filter((r) => r.action === 'DELETE');
+    expect(deleteRowsB.length, 'unexpected extra staged deletes after Graph B').to.equal(21);
+
+    // --- Commit cycle 2: commit all deletes (both graphs) in one pass ---
     await commitStagedRecords(request, [], true);
     await waitForPendingCommits(request);
     await waitForStagingEmpty(request);
 
-    // Verify everything is gone
-    const toVerifyMissing = [
+    // Verify Graph A entities are gone
+    const childrenToVerifyMissingA = [
+      ['/v2/location', locationAId],
+      ['/v2/estimation', estimationAId],
+      ['/v2/rating', ratingAId],
+      ['/v2/co-benefit', coBenefitAId],
+      ['/v2/validation', validationAId],
+      ['/v2/verification', verificationAId],
+      ['/v2/project-methodology', projectMethodologyAId],
+      ['/v2/stakeholder-projects', stakeholderProjectAId],
+      ['/v2/issuance', issuanceAId],
+      ['/v2/unit', unitAId],
+      ['/v2/unit-label', unitLabelAId],
+      ['/v2/project', projectAId],
+    ];
+
+    for (const [endpoint, id] of childrenToVerifyMissingA) {
+      const response = await request.get(`${endpoint}/${id}`);
+      expect([400, 404]).to.include(response.status);
+    }
+
+    // Verify Graph B entities are gone
+    const toVerifyMissingB = [
       ['/v2/unit', unit3Id],
       ['/v2/unit-label', ul3Id],
       ['/v2/issuance', iss2Id],
@@ -221,9 +223,29 @@ describe('Cascade Delete Live API Tests', function () {
       ['/v2/unit-label', ul1Id],
     ];
 
-    for (const [endpoint, id] of toVerifyMissing) {
+    for (const [endpoint, id] of toVerifyMissingB) {
       const resp = await request.get(`${endpoint}/${id}`);
       expect([400, 404]).to.include(resp.status);
+    }
+
+    // Verify non-deleted Graph B siblings are still present (guards against
+    // overly-aggressive cascades that silently delete sibling entities).
+    // val1/val2/val3 are parent validations whose child verifications were
+    // deleted — they must NOT be cascade-deleted upward.
+    const survivingGraphB = [
+      ['/v2/project', projectBId],
+      ['/v2/project-methodology', pm1Id],
+      ['/v2/validation', val1Id],
+      ['/v2/validation', val2Id],
+      ['/v2/validation', val3Id],
+      ['/v2/verification', ver2Id],
+      ['/v2/verification', ver3Id],
+      ['/v2/issuance', iss3Id],
+    ];
+
+    for (const [endpoint, id] of survivingGraphB) {
+      const resp = await request.get(`${endpoint}/${id}`);
+      expect(resp.status, `expected ${endpoint}/${id} to still exist after cascade`).to.equal(200);
     }
   });
 });

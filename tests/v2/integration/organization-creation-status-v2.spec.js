@@ -19,6 +19,7 @@ import {
   markStoreConfirmed,
   markStoreDataWritten,
   STORE_TYPES,
+  createIncrementalStateWriter,
 } from '../../../src/utils/organization-creation-state.js';
 
 const { USE_SIMULATOR } = getConfig().APP;
@@ -175,6 +176,160 @@ describe('Organization Creation Status Tests', function () {
 
       const inProgress = await hasInProgressCreation(MetaV2, 'v2');
       expect(inProgress).to.be.false;
+    });
+  });
+
+  describe('createIncrementalStateWriter', function () {
+    it('should persist each store creation immediately so partial progress is visible', async function () {
+      // Simulates the production race: 4 parallel store-creation promises
+      // resolve at different times, and the live-api stuck-state detector
+      // polls the creation-status endpoint between them. With the writer,
+      // each completion makes the next poll see new progress and reset
+      // the detector's timer.
+      const initialState = createInitialState('Incremental V2 Org', '', 'v2', 'v2');
+      initialState.state = ORG_CREATION_STATES.STORES_CREATING;
+      await saveCreationState(initialState, MetaV2);
+
+      const writer = createIncrementalStateWriter(initialState, MetaV2);
+
+      const storeIds = {
+        [STORE_TYPES.ORG_UID]: 'orgUid-id',
+        [STORE_TYPES.REGISTRY]: 'registry-id',
+        [STORE_TYPES.DATA_MODEL_VERSION]: 'dataModelVersion-id',
+        [STORE_TYPES.FILE_STORE]: 'fileStore-id',
+      };
+      const orderOfCompletion = [
+        STORE_TYPES.REGISTRY,
+        STORE_TYPES.DATA_MODEL_VERSION,
+        STORE_TYPES.ORG_UID,
+        STORE_TYPES.FILE_STORE,
+      ];
+
+      const persistedAfterEach = [];
+      for (const storeType of orderOfCompletion) {
+        await writer.persistStoreCreated(storeType, storeIds[storeType]);
+        const persisted = await loadCreationState(MetaV2, 'v2');
+        persistedAfterEach.push(persisted);
+      }
+
+      // After 1st write the registry is set and the rest are still null.
+      expect(persistedAfterEach[0].stores[STORE_TYPES.REGISTRY].id).to.equal('registry-id');
+      expect(persistedAfterEach[0].stores[STORE_TYPES.ORG_UID].id).to.be.null;
+      expect(persistedAfterEach[0].stores[STORE_TYPES.DATA_MODEL_VERSION].id).to.be.null;
+      expect(persistedAfterEach[0].stores[STORE_TYPES.FILE_STORE].id).to.be.null;
+
+      // After 2nd write registry + dataModelVersion are set.
+      expect(persistedAfterEach[1].stores[STORE_TYPES.REGISTRY].id).to.equal('registry-id');
+      expect(persistedAfterEach[1].stores[STORE_TYPES.DATA_MODEL_VERSION].id).to.equal('dataModelVersion-id');
+      expect(persistedAfterEach[1].stores[STORE_TYPES.ORG_UID].id).to.be.null;
+      expect(persistedAfterEach[1].stores[STORE_TYPES.FILE_STORE].id).to.be.null;
+
+      // After 3rd write three of four are set.
+      expect(persistedAfterEach[2].stores[STORE_TYPES.ORG_UID].id).to.equal('orgUid-id');
+      expect(persistedAfterEach[2].stores[STORE_TYPES.FILE_STORE].id).to.be.null;
+
+      // Final state: all four set, in-memory and persisted match.
+      const final = persistedAfterEach[3];
+      expect(final.stores[STORE_TYPES.ORG_UID].id).to.equal('orgUid-id');
+      expect(final.stores[STORE_TYPES.REGISTRY].id).to.equal('registry-id');
+      expect(final.stores[STORE_TYPES.DATA_MODEL_VERSION].id).to.equal('dataModelVersion-id');
+      expect(final.stores[STORE_TYPES.FILE_STORE].id).to.equal('fileStore-id');
+
+      const current = writer.getCurrent();
+      expect(current.stores[STORE_TYPES.ORG_UID].id).to.equal('orgUid-id');
+      expect(current.stores[STORE_TYPES.REGISTRY].id).to.equal('registry-id');
+      expect(current.stores[STORE_TYPES.DATA_MODEL_VERSION].id).to.equal('dataModelVersion-id');
+      expect(current.stores[STORE_TYPES.FILE_STORE].id).to.equal('fileStore-id');
+    });
+
+    it('should preserve all updates when persistStoreCreated calls are awaited in Promise.all', async function () {
+      // Sanity check that running the four writes in parallel via
+      // Promise.all does not lose any of them and that both the
+      // in-memory and persisted views agree at the end. This isn't a
+      // strict regression guard against removing the mutex (single-
+      // threaded JS plus serialised SQLite writes would still produce
+      // the same final state in many cases), but it does protect
+      // against any future change that reorders the snapshot/persist
+      // steps such that an early failure would leave a fake storeId
+      // in the in-memory state.
+      const initialState = createInitialState('Concurrent V2 Org', '', 'v2', 'v2');
+      initialState.state = ORG_CREATION_STATES.STORES_CREATING;
+      await saveCreationState(initialState, MetaV2);
+
+      const writer = createIncrementalStateWriter(initialState, MetaV2);
+
+      await Promise.all([
+        writer.persistStoreCreated(STORE_TYPES.ORG_UID, 'concurrent-org-uid'),
+        writer.persistStoreCreated(STORE_TYPES.REGISTRY, 'concurrent-registry'),
+        writer.persistStoreCreated(STORE_TYPES.DATA_MODEL_VERSION, 'concurrent-dmv'),
+        writer.persistStoreCreated(STORE_TYPES.FILE_STORE, 'concurrent-filestore'),
+      ]);
+
+      const current = writer.getCurrent();
+      expect(current.stores[STORE_TYPES.ORG_UID].id).to.equal('concurrent-org-uid');
+      expect(current.stores[STORE_TYPES.REGISTRY].id).to.equal('concurrent-registry');
+      expect(current.stores[STORE_TYPES.DATA_MODEL_VERSION].id).to.equal('concurrent-dmv');
+      expect(current.stores[STORE_TYPES.FILE_STORE].id).to.equal('concurrent-filestore');
+
+      const persisted = await loadCreationState(MetaV2, 'v2');
+      expect(persisted.stores[STORE_TYPES.ORG_UID].id).to.equal('concurrent-org-uid');
+      expect(persisted.stores[STORE_TYPES.REGISTRY].id).to.equal('concurrent-registry');
+      expect(persisted.stores[STORE_TYPES.DATA_MODEL_VERSION].id).to.equal('concurrent-dmv');
+      expect(persisted.stores[STORE_TYPES.FILE_STORE].id).to.equal('concurrent-filestore');
+    });
+
+    it('should NOT update stateRef.current when saveCreationState fails', async function () {
+      // Ensures the writer keeps its in-memory state in sync with what
+      // is on disk: if persistence throws, the storeId we just tried to
+      // record is NOT silently kept in stateRef.current. This is what
+      // lets a caller treat a failed persist as "store creation failed"
+      // without leaking a half-applied update.
+      const initialState = createInitialState('Failing Persist Org', '', 'v2', 'v2');
+      initialState.state = ORG_CREATION_STATES.STORES_CREATING;
+      await saveCreationState(initialState, MetaV2);
+
+      const writer = createIncrementalStateWriter(initialState, MetaV2);
+
+      const failingMeta = {
+        findOne: async () => { throw new Error('simulated DB outage'); },
+        update: async () => { throw new Error('simulated DB outage'); },
+        create: async () => { throw new Error('simulated DB outage'); },
+      };
+      const failingWriter = createIncrementalStateWriter(initialState, failingMeta);
+
+      try {
+        await failingWriter.persistStoreCreated(STORE_TYPES.ORG_UID, 'should-not-leak');
+        expect.fail('persistStoreCreated should have thrown');
+      } catch (e) {
+        expect(e.message).to.include('simulated DB outage');
+      }
+
+      // In-memory state must not contain the un-persisted storeId.
+      expect(failingWriter.getCurrent().stores[STORE_TYPES.ORG_UID].id).to.be.null;
+
+      // Original successful writer is unaffected.
+      await writer.persistStoreCreated(STORE_TYPES.ORG_UID, 'good-id');
+      expect(writer.getCurrent().stores[STORE_TYPES.ORG_UID].id).to.equal('good-id');
+      const persisted = await loadCreationState(MetaV2, 'v2');
+      expect(persisted.stores[STORE_TYPES.ORG_UID].id).to.equal('good-id');
+    });
+
+    it('should also work for V1 (Meta model)', async function () {
+      const initialState = createInitialState('Incremental V1 Org', '', 'v1', 'v1');
+      initialState.state = ORG_CREATION_STATES.STORES_CREATING;
+      await saveCreationState(initialState, Meta);
+
+      const writer = createIncrementalStateWriter(initialState, Meta);
+
+      await writer.persistStoreCreated(STORE_TYPES.ORG_UID, 'v1-org-uid');
+      let persisted = await loadCreationState(Meta, 'v1');
+      expect(persisted.stores[STORE_TYPES.ORG_UID].id).to.equal('v1-org-uid');
+      expect(persisted.stores[STORE_TYPES.REGISTRY].id).to.be.null;
+
+      await writer.persistStoreCreated(STORE_TYPES.REGISTRY, 'v1-registry');
+      persisted = await loadCreationState(Meta, 'v1');
+      expect(persisted.stores[STORE_TYPES.ORG_UID].id).to.equal('v1-org-uid');
+      expect(persisted.stores[STORE_TYPES.REGISTRY].id).to.equal('v1-registry');
     });
   });
 

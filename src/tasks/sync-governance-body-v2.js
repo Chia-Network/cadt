@@ -26,11 +26,11 @@ const task = new Task('sync-governance-meta-v2', async () => {
     await assertDataLayerAvailable();
     await assertWalletIsSynced();
 
-    loggerV2.info('[v2]: Syncing V2 governance data');
+    loggerV2.debug('[v2]: Syncing V2 governance data');
     const { GOVERNANCE_BODY_ID } = CONFIG_V2.GOVERNANCE;
 
     if (GOVERNANCE_BODY_ID) {
-      loggerV2.info(
+      loggerV2.debug(
         `[v2]: Governance Config Found ${GOVERNANCE_BODY_ID}`,
       );
 
@@ -54,7 +54,7 @@ const task = new Task('sync-governance-meta-v2', async () => {
   } catch (error) {
     loggerV2.error(
       `[v2]: Cannot download Governance data, Retrying in ${
-        CONFIG?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 300
+        CONFIG?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 30
       } seconds. Error: ${error.message}`,
     );
   }
@@ -62,7 +62,7 @@ const task = new Task('sync-governance-meta-v2', async () => {
 
 const job = new SimpleIntervalJob(
   {
-    seconds: CONFIG?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 300,
+    seconds: CONFIG?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 30,
     runImmediately: true,
   },
   task,

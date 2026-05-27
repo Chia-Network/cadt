@@ -51,6 +51,7 @@ import {
   loadCreationState,
   clearCreationState,
   hasInProgressCreation,
+  createIncrementalStateWriter,
 } from '../../utils/organization-creation-state.js';
 import { mirrorOrgStores } from '../../tasks/mirror-check.js';
 import { updateOrgLockStatus } from '../../utils/org-operation-lock.js';
@@ -497,18 +498,39 @@ class Organization extends Model {
     const maxRetries = 10;
     const retryDelayMs = 30000;
 
-    // Create all stores in parallel, each with independent retry logic
+    // Persist each successful store creation immediately so the
+    // /v1/organizations/creation-status endpoint reflects partial progress.
+    // Without this, all 4 stores stay marked pending until the slowest
+    // promise resolves, which makes the live-api "stuck state" detector
+    // fire while the server is still actively making progress.
+    const stateWriter = createIncrementalStateWriter(state, Meta);
+
+    // Create all stores in parallel, each with independent retry logic.
+    // The persist call is wrapped in its own try so that a transient
+    // saveCreationState failure (DB busy, sequelize hiccup) does NOT
+    // mask a successful on-chain store creation as a creation failure;
+    // any missing persist will be reconciled in a final save below.
     const createPromises = storesToCreate.map(async (storeType) => {
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-          logState(state, `Creating ${storeType} store (attempt ${attempt}/${maxRetries})`);
+          logState(stateWriter.getCurrent(), `Creating ${storeType} store (attempt ${attempt}/${maxRetries})`);
           const storeId = await datalayer.createDataLayerStoreWithRetry();
-          logState(state, `Created ${storeType} store: ${storeId}`);
+          logState(stateWriter.getCurrent(), `Created ${storeType} store: ${storeId}`);
+          try {
+            await stateWriter.persistStoreCreated(storeType, storeId);
+          } catch (persistError) {
+            logState(
+              stateWriter.getCurrent(),
+              `Created ${storeType} store ${storeId} but failed to persist incremental progress: ` +
+                `${persistError.message}. Store id retained in result; final save will reconcile.`,
+              'warn',
+            );
+          }
           return { storeType, storeId, success: true };
         } catch (error) {
           if (isTransientWalletError(error) && attempt < maxRetries) {
             logState(
-              state,
+              stateWriter.getCurrent(),
               `Transient error creating ${storeType} store ` +
                 `(attempt ${attempt}/${maxRetries}): ${error.message}. ` +
                 `Retrying in ${retryDelayMs / 1000}s...`,
@@ -517,7 +539,7 @@ class Organization extends Model {
             await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
             continue;
           }
-          logState(state, `Failed to create ${storeType} store: ${error.message}`, 'error');
+          logState(stateWriter.getCurrent(), `Failed to create ${storeType} store: ${error.message}`, 'error');
           return { storeType, storeId: null, success: false, error: error.message };
         }
       }
@@ -526,13 +548,21 @@ class Organization extends Model {
 
     const results = await Promise.all(createPromises);
 
-    // Update state with created store IDs
+    // Reconcile: pick up incremental updates that already landed, then
+    // re-apply any successful storeIds whose persist failed mid-flight.
+    // A single final saveCreationState makes sure the persisted view
+    // matches in-memory state before returning.
+    state = stateWriter.getCurrent();
+    let reconcileNeeded = false;
     for (const result of results) {
-      if (result.success) {
+      if (result.success && state.stores[result.storeType].id !== result.storeId) {
         state = markStoreCreated(state, result.storeType, result.storeId);
+        reconcileNeeded = true;
       }
     }
-    await saveCreationState(state, Meta);
+    if (reconcileNeeded) {
+      await saveCreationState(state, Meta);
+    }
 
     // Check if all stores were created
     const failed = results.filter((r) => !r.success);

@@ -6,7 +6,8 @@ import * as rxjs from 'rxjs';
 
 import {
   sequelize,
-  safeMirrorDbHandler,
+  mirrorDBEnabled,
+  mirrorWrite,
   sanitizeSqliteFtsQuery,
 } from '../../database';
 
@@ -97,7 +98,26 @@ class Project extends Model {
       foreignKey: 'warehouseProjectId',
     });
 
-    safeMirrorDbHandler(() => {
+    // Sequelize associations are pure schema metadata - they configure
+    // foreign-key behaviour on the model class and never touch the
+    // database. We must wire them up regardless of whether the MySQL
+    // mirror backend is currently reachable, so the only valid gate is
+    // "is the mirror configured at all" (mirrorDBEnabled).
+    //
+    // The previous safeMirrorDbHandler() wrapper here was the trigger
+    // for a parallel-backfill race observed in production: middleware.js
+    // statically imports the V1 models barrel, which runs every
+    // associate() at module-load time, which used to call
+    // sequelizeMirror.authenticate() via safeMirrorDbHandler. In a fresh
+    // MySQL-configured boot, that first authenticate hit the
+    // `setupNeverRan` branch in safeMirrorDbHandler and kicked off a
+    // startReconnectBackfill() concurrently with prepareDb's own
+    // backfill, doubling cold-start MySQL write traffic (each "synced N
+    // records" line appeared twice, with matching totals, on the same
+    // boot). Doing pure metadata wiring without an authenticate fixes
+    // the trigger; the in-flight guard in backfillMirror remains as
+    // belt-and-suspenders.
+    if (mirrorDBEnabled()) {
       ProjectMirror.hasMany(ProjectLocation, {
         foreignKey: 'warehouseProjectId',
       });
@@ -119,17 +139,17 @@ class Project extends Model {
       ProjectMirror.hasMany(Rating, {
         foreignKey: 'warehouseProjectId',
       });
-    });
+    }
   }
 
   static async create(values, options) {
-    safeMirrorDbHandler(async () => {
+    await mirrorWrite(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await ProjectMirror.create(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
 
     const createResult = await super.create(values, options);
 
@@ -141,27 +161,27 @@ class Project extends Model {
   }
 
   static async destroy(options) {
-    await safeMirrorDbHandler(async () => {
+    await mirrorWrite(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
 
       await ProjectMirror.destroy(mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
 
     Project.changes.next(['projects']);
     return super.destroy(options);
   }
 
   static async upsert(values, options) {
-    safeMirrorDbHandler(async () => {
+    await mirrorWrite(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await ProjectMirror.upsert(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
     const upsertResult = await super.upsert(values, options);
 
     const { orgUid } = values;

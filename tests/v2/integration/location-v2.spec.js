@@ -1,8 +1,14 @@
 import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
-import { resetV2DataTables, createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
-import { ProgramV2, ProjectV2, LocationV2 } from '../../../src/models/v2/index.js';
+import { v4 as uuidv4 } from 'uuid';
+import {
+  resetV2DataTables,
+  createV2TestHomeOrg,
+  getV2HomeOrgId,
+  createV2TestProgramChain,
+} from '../utils/v2-test-helpers.js';
+import { ProgramV2, ProjectV2, LocationV2, IssuanceV2, StagingV2 } from '../../../src/models/v2/index.js';
 
 describe('V2 Location API - Basic CRUD Tests', function () {
   let testProgram;
@@ -437,6 +443,38 @@ describe('V2 Location API - Basic CRUD Tests', function () {
 
       expect(response.body.success).to.be.true;
       expect(response.body.message).to.equal('Location deleted successfully');
+    });
+
+    it('should return 409 when issuance references location', async function () {
+      const chain = await createV2TestProgramChain({ testId: `LOC-REF-${uuidv4().slice(0, 8)}` });
+      const location = await LocationV2.create({
+        cadTrustLocationId: uuidv4(),
+        locationCountry: 'DE',
+        locationRegion: 'BY',
+        cadTrustProjectId: chain.project.cadTrustProjectId,
+      });
+      await IssuanceV2.update(
+        { cadTrustLocationId: location.cadTrustLocationId },
+        { where: { cadTrustIssuanceId: chain.issuance.cadTrustIssuanceId } },
+      );
+
+      const response = await supertest(app)
+        .delete(`/v2/location/${location.cadTrustLocationId}`)
+        .expect(409);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.equal('Referenced records must be removed before deletion');
+      expect(response.body.references).to.deep.include({ table: 'issuance', count: 1 });
+
+      const stagingDeletes = await StagingV2.findAll({
+        where: { table: 'location', action: 'DELETE' },
+        raw: true,
+      });
+      const forThisLocation = stagingDeletes.find((row) => {
+        const data = JSON.parse(row.data);
+        return data[0]?.cad_trust_location_id === location.cadTrustLocationId;
+      });
+      expect(forThisLocation).to.be.undefined;
     });
   });
 });

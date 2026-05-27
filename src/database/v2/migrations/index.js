@@ -46,6 +46,9 @@ import DropGovernanceFromMirrorV2 from './20250219120000-drop-governance-from-mi
 // V2 Owner Field Migration
 import AddOrgUidToStandaloneTablesV2 from './20260220120000-add-org-uid-to-standalone-tables-v2.js';
 
+// V2 Sync Performance: composite audit indexes for the per-tick generation lookup
+import AddAuditSyncIndexesV2 from './20260301120000-add-audit-sync-indexes-v2.js';
+
 export const migrations = [
   {
     migration: CreateStagingV2,
@@ -182,5 +185,9 @@ export const migrations = [
   {
     migration: AddOrgUidToStandaloneTablesV2,
     name: '20260220120000-add-org-uid-to-standalone-tables-v2',
+  },
+  {
+    migration: AddAuditSyncIndexesV2,
+    name: '20260301120000-add-audit-sync-indexes-v2',
   },
 ];

@@ -51,7 +51,9 @@ const getHomeOrg = async () => {
   }
 
   // Neither V1 nor V2 is enabled or orgs don't exist
-  logger.debug('[persistance]: No home org found - V1 and V2 both disabled or no orgs exist');
+  logger.debug(
+    '[persistance]: No home org found - V1 and V2 both disabled or no orgs exist',
+  );
   return null;
 };
 
@@ -107,7 +109,9 @@ const getMirrors = async (storeId) => {
 
   // In simulator mode, return empty array (no mirrors in simulator)
   if (CONFIG.USE_SIMULATOR || CONFIG.USE_DEVELOPMENT_MODE) {
-    logger.debug(`[MIRROR_DEBUG] Simulator mode - returning empty mirrors array`);
+    logger.debug(
+      `[MIRROR_DEBUG] Simulator mode - returning empty mirrors array`,
+    );
     return [];
   }
 
@@ -210,8 +214,8 @@ const checkWalletBalanceForMirror = async (coinAmount, fee) => {
       if (isSplitInProgress()) {
         logger.warn(
           `Wallet balance temporarily reduced by coin split in progress ` +
-          `(have ${balanceMojos} mojos, need ${coinAmount} mojos). ` +
-          `Skipping mirror creation - will retry after split confirms.`,
+            `(have ${balanceMojos} mojos, need ${coinAmount} mojos). ` +
+            `Skipping mirror creation - will retry after split confirms.`,
         );
       } else {
         logger.error(
@@ -307,7 +311,7 @@ const addMirrorInner = async (storeId, url, forceAddMirror) => {
   );
 
   if (mirror) {
-    logger.info(`Mirror already available for ${storeId} at ${url}`);
+    logger.verbose(`Mirror already available for ${storeId} at ${url}`);
     logger.silly('[MIRROR_DEBUG] Mirror already exists, returning true');
     return true;
   }
@@ -318,7 +322,9 @@ const addMirrorInner = async (storeId, url, forceAddMirror) => {
 
   // In simulator mode, return success without making RPC call
   if (CONFIG.USE_SIMULATOR || CONFIG.USE_DEVELOPMENT_MODE) {
-    logger.debug(`[MIRROR_DEBUG] Simulator mode - returning success for addMirror`);
+    logger.debug(
+      `[MIRROR_DEBUG] Simulator mode - returning success for addMirror`,
+    );
     return true;
   }
 
@@ -448,10 +454,15 @@ const getRootDiff = async (storeId, root1, root2) => {
       return _.get(data, 'diff', []);
     }
 
-    return [];
+    throw new Error(
+      data.error ||
+        `DataLayer get_kv_diff failed for store ${storeId} between roots ${root1} and ${root2}`,
+    );
   } catch (error) {
-    logger.error(error);
-    return [];
+    logger.error(
+      `DataLayer get_kv_diff failed for store ${storeId} between roots ${root1} and ${root2}: ${error.message}`,
+    );
+    throw error;
   }
 };
 
@@ -692,7 +703,11 @@ const getRoots = async (storeIds) => {
   }
 };
 
-const pushChangeListToDataLayer = async (storeId, changelist, { skipTransactionWait = false } = {}) => {
+const pushChangeListToDataLayer = async (
+  storeId,
+  changelist,
+  { skipTransactionWait = false } = {},
+) => {
   let attempts = 0;
   const maxAttempts = 5;
 
@@ -706,30 +721,33 @@ const pushChangeListToDataLayer = async (storeId, changelist, { skipTransactionW
       }
 
       // Log the changelist being sent (with decoded keys/values for readability)
-      logger.debug(`[DATALAYER_RPC] Sending changelist to storeId: ${storeId}`, {
-        storeId,
-        changelistSize: changelist.length,
-        changelist: changelist.map((change) => {
-          const decoded = {
-            action: change.action,
-            key: change.key ? decodeHex(change.key) : change.key,
-          };
-          if (change.value) {
-            try {
-              decoded.value = decodeHex(change.value);
-              // Try to parse as JSON for better readability
+      logger.debug(
+        `[DATALAYER_RPC] Sending changelist to storeId: ${storeId}`,
+        {
+          storeId,
+          changelistSize: changelist.length,
+          changelist: changelist.map((change) => {
+            const decoded = {
+              action: change.action,
+              key: change.key ? decodeHex(change.key) : change.key,
+            };
+            if (change.value) {
               try {
-                decoded.valueParsed = JSON.parse(decoded.value);
-              } catch {
-                // Not JSON, that's fine
+                decoded.value = decodeHex(change.value);
+                // Try to parse as JSON for better readability
+                try {
+                  decoded.valueParsed = JSON.parse(decoded.value);
+                } catch {
+                  // Not JSON, that's fine
+                }
+              } catch (e) {
+                decoded.value = change.value; // Keep hex if decode fails
               }
-            } catch (e) {
-              decoded.value = change.value; // Keep hex if decode fails
             }
-          }
-          return decoded;
-        }),
-      });
+            return decoded;
+          }),
+        },
+      );
 
       const url = `${CONFIG.DATALAYER_URL}/batch_update`;
       const { cert, key, timeout } = getBaseOptions();
@@ -766,7 +784,9 @@ const pushChangeListToDataLayer = async (storeId, changelist, { skipTransactionW
       // Wait for confirmation then retry the push instead of failing to writeService.
       if (
         data.error &&
-        data.error.includes('Already have a pending root waiting for confirmation')
+        data.error.includes(
+          'Already have a pending root waiting for confirmation',
+        )
       ) {
         logger.info(
           `Pending root for store ${storeId}; waiting for confirmation then retrying (attempt ${attempts + 1}/${maxAttempts})`,
@@ -831,21 +851,26 @@ const pushChangeListToDataLayer = async (storeId, changelist, { skipTransactionW
       // All data in CADT must come from datalayer, so DELETE operations should always find the keys
       // If keys are not found, it indicates a key format mismatch that needs to be fixed
       if (data.error && data.error.includes('unknown key')) {
-        const isDeleteOnlyChangelist = changelist.every(change => change.action === 'delete');
+        const isDeleteOnlyChangelist = changelist.every(
+          (change) => change.action === 'delete',
+        );
 
         // Log detailed information about the keys we're trying to delete
-        const deleteKeys = changelist.map(change => ({
+        const deleteKeys = changelist.map((change) => ({
           hex: change.key,
           decoded: decodeHex(change.key),
         }));
 
-        logger.error(`[DELETE KEY MISMATCH ERROR] Unknown key error for ${isDeleteOnlyChangelist ? 'DELETE-only' : ''} changelist`, {
-          storeId,
-          deleteKeysCount: deleteKeys.length,
-          deleteKeys,
-          error: data.error,
-          traceback: data.traceback,
-        });
+        logger.error(
+          `[DELETE KEY MISMATCH ERROR] Unknown key error for ${isDeleteOnlyChangelist ? 'DELETE-only' : ''} changelist`,
+          {
+            storeId,
+            deleteKeysCount: deleteKeys.length,
+            deleteKeys,
+            error: data.error,
+            traceback: data.traceback,
+          },
+        );
 
         if (isDeleteOnlyChangelist) {
           logger.error(
@@ -942,7 +967,7 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
   }
 
   if (subscriptions.includes(storeId)) {
-    logger.info(`Already subscribed to: ${storeId}`);
+    logger.debug(`Already subscribed to: ${storeId}`);
     return true;
   }
 
@@ -1208,7 +1233,8 @@ const getDataLayerStoreSyncStatus = async (storeId) => {
       sync_status: {
         generation: 10000,
         target_generation: 10000,
-        target_root_hash: '0000000000000000000000000000000000000000000000000000000000000000',
+        target_root_hash:
+          '0000000000000000000000000000000000000000000000000000000000000000',
       },
     };
   }

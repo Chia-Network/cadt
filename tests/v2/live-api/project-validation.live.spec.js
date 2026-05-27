@@ -294,7 +294,7 @@ describe('Project Live API Validation Tests', function () {
       // Required fields must always be included; optional fields can be null (matching V1 behavior)
       const updateData = {
         projectRegistryName: record.projectRegistryName,
-        projectId: `UPDATED-${Date.now()}`,
+        projectId: `TEST-UPDATED-${Date.now()}`,
         projectName: 'Updated Project Name',
         projectCreditingProgram: record.projectCreditingProgram ?? null,
         projectLink: record.projectLink ?? null,
