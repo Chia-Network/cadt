@@ -256,7 +256,7 @@ class StagingV2 extends Model {
   ) {
     if (unresolvedFields.length > 0) {
       throw new Error(
-        `Restricted data: cannot determine the owner of this ${table} record from ${unresolvedFields.join(', ')}. Only the home organization can modify this record.`,
+        `Restricted data: cannot determine the owner of this ${table} record from ${unresolvedFields.join(', ')}. Only the home organization that created this record can modify it.`,
       );
     }
 
@@ -264,7 +264,7 @@ class StagingV2 extends Model {
       if (!requireOwner) return;
 
       throw new Error(
-        `Restricted data: cannot determine the owner of this ${table} record. Only the home organization can modify this record.`,
+        `Restricted data: cannot determine the owner of this ${table} record. Only the home organization that created this record can modify it.`,
       );
     }
 
@@ -276,7 +276,7 @@ class StagingV2 extends Model {
 
     if (!homeOrg || nonHomeOrgUid) {
       throw new Error(
-        `Restricted data: cannot modify this ${table} record with orgUid '${nonHomeOrgUid}'. Only the home organization can modify this record.`,
+        `Restricted data: cannot modify this ${table} record with orgUid '${nonHomeOrgUid}'. Only the home organization that created this record can modify it.`,
       );
     }
   }
@@ -328,7 +328,7 @@ class StagingV2 extends Model {
         );
         if (!existingRecord && !payloadHasOwnershipFields) {
           throw new Error(
-            `Restricted data: cannot determine the owner of this ${values.table} record. Only the home organization can modify this record.`,
+            `Restricted data: cannot determine the owner of this ${values.table} record. Only the home organization that created this record can modify it.`,
           );
         }
 
