@@ -21,6 +21,7 @@ import { OrganizationsV2 } from './models/v2/index.js';
 import { logger } from './config/logger.js';
 import { sendReadOnlyError } from './utils/read-only-response.js';
 import { getRateLimitRetryAfterSeconds } from './utils/rate-limit.js';
+import { resolveTrustProxyHops } from './utils/trust-proxy.js';
 import {
   checkDiskSpace,
   logDiskSpaceStatus,
@@ -64,7 +65,12 @@ const app = express();
 // This also silences the express-rate-limit ValidationError that fires
 // when X-Forwarded-For is present but trust proxy is disabled.
 // Never use `true`; it trusts the user-supplied leftmost IP.
-const trustProxy = parseInt(getConfig().APP.TRUST_PROXY ?? 0, 10);
+//
+// resolveTrustProxyHops enforces the non-negative integer contract and
+// logs a warning for any other value so that booleans / typos / strings
+// like "loopback" don't silently disable proxy trust via NaN (see
+// src/utils/trust-proxy.js for the rationale).
+const trustProxy = resolveTrustProxyHops(getConfig().APP.TRUST_PROXY);
 app.set('trust proxy', trustProxy);
 
 app.use(
