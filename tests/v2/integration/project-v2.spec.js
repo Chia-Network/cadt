@@ -852,6 +852,87 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       expect(stagedData[0].org_uid).to.equal(actualHomeOrgId);
     });
 
+    it('should reject update for a project owned by another organization', async function () {
+      const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+        projectRegistryName: 'Other Registry',
+        projectId: 'OTHER-UPDATE-001',
+        projectName: 'Other Org Project',
+        orgUid: 'other-org-uid-12345',
+      }));
+
+      const updateData = {
+        projectRegistryName: 'Updated Registry',
+        projectId: 'OTHER-UPDATE-001',
+        projectName: 'Should Not Update',
+        projectLink: 'https://example.com/project',
+        projectSector: ['Agriculture'],
+        projectType: ['Solar'],
+        projectStatus: 'Listed',
+        projectStatusDate: '2024-01-01',
+        projectUnitMetric: 'tCO2e',
+      };
+
+      const response = await supertest(app)
+        .put(`/v2/project/${project.cadTrustProjectId}`)
+        .send(updateData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('Restricted data');
+
+      const stagingRecord = await StagingV2.findOne({
+        where: {
+          table: 'project',
+          action: 'UPDATE',
+        },
+      });
+      expect(stagingRecord).to.not.exist;
+    });
+
+    it('should reject project update that retargets to another organization program', async function () {
+      const homeOrgId = await getV2HomeOrgId();
+      const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+        projectRegistryName: 'Home Registry',
+        projectId: 'HOME-RETARGET-001',
+        projectName: 'Home Project',
+        orgUid: homeOrgId,
+      }));
+      const otherProgram = await ProgramV2.create({
+        cadTrustProgramId: uuidv4(),
+        programName: 'Other Org Program',
+        programRegistry: 'Other Registry',
+        programRegistryActivityId: 'OTHER-PROGRAM-001',
+        orgUid: 'other-org-uid-12345',
+      });
+
+      const response = await supertest(app)
+        .put(`/v2/project/${project.cadTrustProjectId}`)
+        .send({
+          projectRegistryName: 'Home Registry',
+          projectId: 'HOME-RETARGET-001',
+          projectName: 'Should Not Retarget',
+          projectLink: 'https://example.com/project',
+          projectSector: ['Agriculture'],
+          projectType: ['Solar'],
+          projectStatus: 'Listed',
+          projectStatusDate: '2024-01-01',
+          projectUnitMetric: 'tCO2e',
+          cadTrustProgramId: otherProgram.cadTrustProgramId,
+        })
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('Restricted data');
+
+      const stagingRecord = await StagingV2.findOne({
+        where: {
+          table: 'project',
+          action: 'UPDATE',
+        },
+      });
+      expect(stagingRecord).to.not.exist;
+    });
+
     it('should reject project update with forbidden orgUid field', async function () {
       const homeOrgId = await getV2HomeOrgId();
       const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
@@ -971,6 +1052,30 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       // Verify staged deletion data
       const stagedData = JSON.parse(stagingRecord.data);
       expect(stagedData[0].cad_trust_project_id).to.equal(project.cadTrustProjectId);
+    });
+
+    it('should reject delete for a project owned by another organization', async function () {
+      const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+        projectRegistryName: 'Other Registry',
+        projectId: 'OTHER-DELETE-001',
+        projectName: 'Other Org Project',
+        orgUid: 'other-org-uid-12345',
+      }));
+
+      const response = await supertest(app)
+        .delete(`/v2/project/${project.cadTrustProjectId}`)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('Restricted data');
+
+      const stagingRecord = await StagingV2.findOne({
+        where: {
+          table: 'project',
+          action: 'DELETE',
+        },
+      });
+      expect(stagingRecord).to.not.exist;
     });
 
     it('should cascade-stage deletes for project child records', async function () {

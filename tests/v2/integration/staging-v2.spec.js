@@ -923,6 +923,85 @@ describe('V2 Staging Integration Tests', function () {
       expect(parsedData[0].program_name).to.equal('Updated Name');
     });
 
+    it('should reject editRecord that retargets an update to another organization record', async function () {
+      const otherProject = await ProjectV2.create({
+        cadTrustProjectId: uuidv4(),
+        orgUid: 'other-org-uid-12345',
+        projectRegistryName: 'Other Registry',
+        projectId: 'OTHER-STAGING-EDIT-001',
+        projectName: 'Other Org Project',
+      });
+      const stagingUuid = uuidv4();
+      await StagingV2.create({
+        uuid: stagingUuid,
+        table: 'project',
+        action: 'UPDATE',
+        data: JSON.stringify([{
+          cad_trust_project_id: projectId,
+          project_name: 'Allowed Home Org Update',
+        }]),
+        committed: false,
+        failed_commit: false,
+        is_transfer: false,
+      });
+
+      const response = await supertest(app)
+        .put('/v2/staging')
+        .send({
+          uuid: stagingUuid,
+          data: [{
+            cad_trust_project_id: otherProject.cadTrustProjectId,
+            project_name: 'Should Not Retarget',
+          }],
+        })
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('Restricted data');
+
+      const unchangedRecord = await StagingV2.findOne({
+        where: { uuid: stagingUuid },
+      });
+      const parsedData = JSON.parse(unchangedRecord.data);
+      expect(parsedData[0].cad_trust_project_id).to.equal(projectId);
+    });
+
+    it('should reject editRecord that retargets an update to an unresolved owner', async function () {
+      const stagingUuid = uuidv4();
+      await StagingV2.create({
+        uuid: stagingUuid,
+        table: 'project',
+        action: 'UPDATE',
+        data: JSON.stringify([{
+          cad_trust_project_id: projectId,
+          project_name: 'Allowed Home Org Update',
+        }]),
+        committed: false,
+        failed_commit: false,
+        is_transfer: false,
+      });
+
+      const response = await supertest(app)
+        .put('/v2/staging')
+        .send({
+          uuid: stagingUuid,
+          data: [{
+            cad_trust_project_id: uuidv4(),
+            project_name: 'Should Not Retarget',
+          }],
+        })
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('Restricted data');
+
+      const unchangedRecord = await StagingV2.findOne({
+        where: { uuid: stagingUuid },
+      });
+      const parsedData = JSON.parse(unchangedRecord.data);
+      expect(parsedData[0].cad_trust_project_id).to.equal(projectId);
+    });
+
     it('should reject editRecord when data is not an array (DoS prevention)', async function () {
       const programData = await generateV2ProgramData();
       const stagingUuid = uuidv4();

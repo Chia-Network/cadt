@@ -16,7 +16,6 @@ import {
   createXlsFromSequelizeResults,
   transformFullXslsToChangeList,
 } from '../../utils/xls.js';
-import { formatModelAssociationName } from '../../utils/model-utils.js';
 import { getV2PrimaryKeyField } from '../../utils/v2-primary-key-utils.js';
 
 import ModelTypes from './staging-v2.modeltypes.js';
@@ -52,6 +51,7 @@ class StagingV2 extends Model {
   static changes = new rxjs.Subject();
 
   static async create(values, options) {
+    await StagingV2.assertMutationOwnedByHomeOrg(values, options);
     StagingV2.changes.next(['staging']);
     const result = await super.create(values, options);
 
@@ -64,6 +64,9 @@ class StagingV2 extends Model {
   }
 
   static async bulkCreate(values, options) {
+    for (const value of values) {
+      await StagingV2.assertMutationOwnedByHomeOrg(value, options);
+    }
     StagingV2.changes.next(['staging']);
     const result = await super.bulkCreate(values, options);
 
@@ -84,6 +87,7 @@ class StagingV2 extends Model {
   }
 
   static async upsert(values, options) {
+    await StagingV2.assertMutationOwnedByHomeOrg(values, options);
     StagingV2.changes.next(['staging']);
     const result = await super.upsert(values, options);
 
@@ -94,12 +98,256 @@ class StagingV2 extends Model {
   }
 
   static async update(values, options) {
+    await StagingV2.assertUpdatedMutationOwnedByHomeOrg(values, options);
     const result = await super.update(values, options);
 
     // Small delay for WAL visibility
     if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
 
     return result;
+  }
+
+  static async assertUpdatedMutationOwnedByHomeOrg(values, options) {
+    const canRetargetMutation =
+      Object.prototype.hasOwnProperty.call(values ?? {}, 'data') ||
+      Object.prototype.hasOwnProperty.call(values ?? {}, 'table') ||
+      Object.prototype.hasOwnProperty.call(values ?? {}, 'action') ||
+      Object.prototype.hasOwnProperty.call(values ?? {}, 'is_transfer');
+
+    if (!canRetargetMutation || !options?.where) return;
+
+    const stagingRecords = await StagingV2.findAll({
+      where: options.where,
+      transaction: options?.transaction,
+    });
+
+    for (const stagingRecord of stagingRecords) {
+      await StagingV2.assertMutationOwnedByHomeOrg({
+        uuid: values.uuid ?? stagingRecord.uuid,
+        table: values.table ?? stagingRecord.table,
+        action: values.action ?? stagingRecord.action,
+        data: values.data ?? stagingRecord.data,
+        is_transfer: values.is_transfer ?? stagingRecord.is_transfer,
+      }, options);
+    }
+  }
+
+  static getMutationGuardModelMap() {
+    return {
+      program: ProgramV2,
+      methodology: MethodologyV2,
+      project: ProjectV2,
+      validation: ValidationV2,
+      verification: VerificationV2,
+      issuance: IssuanceV2,
+      unit: UnitV2,
+      location: LocationV2,
+      estimation: EstimationV2,
+      rating: RatingV2,
+      co_benefit: CoBenefitV2,
+      project_methodology: ProjectMethodologyV2,
+      stakeholder: StakeholderV2,
+      stakeholder_projects: StakeholderProjectV2,
+      label: LabelV2,
+      unit_label: UnitLabelV2,
+      aef_t1_submission: AefT1SubmissionV2,
+      aef_t5_authorized_entities: AefT5AuthorizedEntitiesV2,
+      aef_t2_authorizations: AefT2AuthorizationsV2,
+      aef_t3_actions: AefT3ActionsV2,
+      aef_t4_holdings: AefT4HoldingsV2,
+    };
+  }
+
+  static getOwnershipParentModels() {
+    return [
+      ['cadTrustProjectId', ProjectV2],
+      ['cadTrustUnitId', UnitV2],
+      ['cadTrustProgramId', ProgramV2],
+      ['cadTrustMethodologyId', MethodologyV2],
+      ['cadTrustValidationId', ValidationV2],
+      ['cadTrustVerificationId', VerificationV2],
+      ['cadTrustIssuanceId', IssuanceV2],
+      ['cadTrustLocationId', LocationV2],
+      ['cadTrustStakeholderId', StakeholderV2],
+      ['cadTrustLabelId', LabelV2],
+      ['cadTrustProjectMethodologyId', ProjectMethodologyV2],
+      ['cadTrustAefT1SubmissionId', AefT1SubmissionV2],
+      ['cadTrustAefT5AuthorizedEntitiesId', AefT5AuthorizedEntitiesV2],
+      ['cadTrustAefT2AuthorizationsId', AefT2AuthorizationsV2],
+    ];
+  }
+
+  static getRecordField(record, fieldName) {
+    const plainRecord = typeof record?.get === 'function'
+      ? record.get({ plain: true })
+      : record?.dataValues ?? record;
+
+    return plainRecord?.[fieldName] ?? plainRecord?.[_.snakeCase(fieldName)];
+  }
+
+  static hasOwnershipFields(record, table) {
+    const primaryKeyField = getV2PrimaryKeyField(table);
+    const primaryKeyApiField = primaryKeyField?.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+
+    return Boolean(
+      StagingV2.getRecordField(record, 'orgUid') ||
+      StagingV2.getOwnershipParentModels()
+        .filter(([fieldName]) => fieldName !== primaryKeyApiField)
+        .some(([fieldName]) => (
+          StagingV2.getRecordField(record, fieldName) !== undefined
+        )),
+    );
+  }
+
+  static async collectOwnerOrgUids(
+    record,
+    options = {},
+    visited = new Set(),
+    depth = 0,
+    includeParentsForDirectOwner = false,
+    unresolvedFields = [],
+    excludedFields = new Set(),
+  ) {
+    if (!record || depth > 10) return [];
+
+    const orgUid = StagingV2.getRecordField(record, 'orgUid');
+    if (orgUid && !includeParentsForDirectOwner) return [orgUid];
+
+    const ownerOrgUids = orgUid ? [orgUid] : [];
+    for (const [fieldName, ModelClass] of StagingV2.getOwnershipParentModels()) {
+      if (excludedFields.has(fieldName)) continue;
+
+      const parentId = StagingV2.getRecordField(record, fieldName);
+      if (!parentId) continue;
+
+      const visitedKey = `${ModelClass.name}:${parentId}`;
+      if (visited.has(visitedKey)) continue;
+      visited.add(visitedKey);
+
+      const parentRecord = await ModelClass.findByPk(parentId, {
+        transaction: options?.transaction,
+      });
+      if (!parentRecord) {
+        unresolvedFields.push(fieldName);
+        continue;
+      }
+
+      ownerOrgUids.push(
+        ...(await StagingV2.collectOwnerOrgUids(
+          parentRecord,
+          options,
+          visited,
+          depth + 1,
+          includeParentsForDirectOwner,
+          unresolvedFields,
+          new Set(),
+        )),
+      );
+    }
+
+    return [...new Set(ownerOrgUids)];
+  }
+
+  static async assertOwnerOrgUidsAreHome(
+    ownerOrgUids,
+    table,
+    requireOwner = false,
+    unresolvedFields = [],
+  ) {
+    if (unresolvedFields.length > 0) {
+      throw new Error(
+        `Restricted data: cannot determine the owner of this ${table} record from ${unresolvedFields.join(', ')}. Only the home organization can modify this record.`,
+      );
+    }
+
+    if (ownerOrgUids.length === 0) {
+      if (!requireOwner) return;
+
+      throw new Error(
+        `Restricted data: cannot determine the owner of this ${table} record. Only the home organization can modify this record.`,
+      );
+    }
+
+    const homeOrg = await OrganizationsV2.findOne({
+      where: { is_home: true },
+      raw: true,
+    });
+    const nonHomeOrgUid = ownerOrgUids.find((orgUid) => orgUid !== homeOrg?.org_uid);
+
+    if (!homeOrg || nonHomeOrgUid) {
+      throw new Error(
+        `Restricted data: cannot modify this ${table} record with orgUid '${nonHomeOrgUid}'. Only the home organization can modify this record.`,
+      );
+    }
+  }
+
+  static async assertMutationOwnedByHomeOrg(values, options) {
+    if (!['UPDATE', 'DELETE'].includes(values?.action) || values?.is_transfer) {
+      return;
+    }
+
+    const ModelClass = StagingV2.getMutationGuardModelMap()[values.table];
+    if (!ModelClass) return;
+
+    const primaryKeyField = getV2PrimaryKeyField(values.table);
+    if (!primaryKeyField) return;
+    const primaryKeyApiField = primaryKeyField.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+
+    const parsedData = Array.isArray(values.data)
+      ? values.data
+      : JSON.parse(values.data || '[]');
+    const records = Array.isArray(parsedData) ? parsedData : [parsedData];
+
+    for (const recordData of records) {
+      const primaryKeyValue =
+        recordData[primaryKeyField] ??
+        recordData[primaryKeyApiField] ??
+        values.uuid;
+
+      const existingRecord = primaryKeyValue
+        ? await ModelClass.findByPk(primaryKeyValue, {
+            transaction: options?.transaction,
+          })
+        : null;
+
+      if (existingRecord) {
+        await StagingV2.assertOwnerOrgUidsAreHome(
+          await StagingV2.collectOwnerOrgUids(existingRecord, options),
+          values.table,
+          true,
+        );
+      } else if (values.action !== 'UPDATE') {
+        continue;
+      }
+
+      if (values.action === 'UPDATE') {
+        const unresolvedFields = [];
+        const payloadHasOwnershipFields = StagingV2.hasOwnershipFields(
+          recordData,
+          values.table,
+        );
+        if (!existingRecord && !payloadHasOwnershipFields) {
+          throw new Error(
+            `Restricted data: cannot determine the owner of this ${values.table} record. Only the home organization can modify this record.`,
+          );
+        }
+
+        await StagingV2.assertOwnerOrgUidsAreHome(
+          await StagingV2.collectOwnerOrgUids(
+            recordData,
+            options,
+            new Set(),
+            0,
+            true,
+            unresolvedFields,
+            new Set([primaryKeyApiField]),
+          ),
+          values.table,
+          payloadHasOwnershipFields,
+          unresolvedFields,
+        );
+      }
+    }
   }
 
   /**
@@ -316,7 +564,7 @@ class StagingV2 extends Model {
       // Fetch original record if model mapping exists
       const modelInfo = tableToModelMap[table];
       if (modelInfo) {
-        const [ModelClass, primaryKeyField, hasAssociations] = modelInfo;
+        const [ModelClass, primaryKeyField] = modelInfo;
         let original;
 
         try {
@@ -364,6 +612,7 @@ class StagingV2 extends Model {
   static async pushToDataLayer(tableToPush, comment, author, ids = []) {
     const commitStartTime = Date.now();
     const memoryBefore = process.memoryUsage();
+    let stagedRecords = [];
     const monitor = {
       rpcCount: 0,
       modelTimings: {},
@@ -391,7 +640,7 @@ class StagingV2 extends Model {
         ...(ids && Array.isArray(ids) && ids.length > 0 ? { uuid: { [Op.in]: ids } } : {}),
       };
 
-      const stagedRecords = await StagingV2.findAll({
+      stagedRecords = await StagingV2.findAll({
         where: whereClause,
         raw: true,
       });
