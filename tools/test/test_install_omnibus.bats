@@ -832,6 +832,29 @@ Note that this key has not been added to the keychain. Run chia keys add"
   [[ -z "$out" ]]
 }
 
+@test "setup_chia_keys_generate failure surfaces descriptive die, not ERR trap" {
+  # Simulate a broken `chia` binary that exits non-zero with no stdout.
+  # Without `|| true` on the command sub, the pipeline failure would trip
+  # the ERR trap with "Install failed at line N" instead of our descriptive
+  # "Failed to generate mnemonic" message.
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  cat >"${bin}/chia" <<'EOF'
+#!/usr/bin/env bash
+exit 2
+EOF
+  chmod +x "${bin}/chia"
+  PATH="${bin}:$PATH"
+  ASSUME_YES=true
+  MNEMONIC_OUTPUT_FILE=""
+
+  run setup_chia_keys_generate
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"Failed to generate mnemonic"* ]]
+  # Negative assertion: the generic ERR-trap message must not appear.
+  ! grep -q "Install failed at line" <<<"$output"
+}
+
 @test "validate_min_disk_gb accepts integers and rejects non-numeric" {
   MIN_DISK_GIB=300
   validate_min_disk_gb

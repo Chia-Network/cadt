@@ -1201,9 +1201,11 @@ run_prompts() {
 }
 
 get_chia_network_dir() {
-  local net
+  local net=""
+  # `|| true` so a missing `selected_network:` line (grep exit 1 under
+  # pipefail) doesn't ERR-trap — we already have a $NETWORK fallback below.
   if [[ -f "${CHIA_ROOT}/config/config.yaml" ]]; then
-    net=$(grep -E '^selected_network:' "${CHIA_ROOT}/config/config.yaml" | awk '{print $2}')
+    net=$(grep -E '^selected_network:' "${CHIA_ROOT}/config/config.yaml" | awk '{print $2}' || true)
   fi
   net="${net:-$NETWORK}"
   echo "$net"
@@ -1261,7 +1263,11 @@ setup_chia_keys_generate() {
   info "Generating new Chia wallet key..."
 
   local raw mnemonic
-  raw=$(chia keys generate_and_print 2>/dev/null | tr -d '\r')
+  # `|| true` so a non-zero exit from `chia keys generate_and_print` (e.g.,
+  # locked keychain, missing chia binary) falls through to our descriptive
+  # die below instead of tripping the ERR trap with a generic line-number
+  # failure. Same pattern as verify_or_fallback_apt_version.
+  raw=$(chia keys generate_and_print 2>/dev/null | tr -d '\r' || true)
   [[ -n "$raw" ]] || die "Failed to generate mnemonic (chia keys generate_and_print produced no output)"
   mnemonic=$(printf '%s\n' "$raw" | extract_mnemonic_line)
   [[ -n "$mnemonic" ]] || die "Could not parse 24-word mnemonic from chia keys output"
