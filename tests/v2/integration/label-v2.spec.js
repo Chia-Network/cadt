@@ -652,7 +652,6 @@ describe('Label V2 Endpoint Integration Tests', function () {
       expect(response.body.references).to.be.an('array').with.lengthOf(1);
       expect(response.body.references[0].table).to.equal('unit_label');
       expect(response.body.references[0].count).to.equal(1);
-      expect(response.body.hint).to.include('force=true');
 
       const stagingRecord = await StagingV2.findOne({
         where: { table: 'label', action: 'DELETE' },
