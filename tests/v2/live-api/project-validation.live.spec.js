@@ -46,6 +46,15 @@ const findNonHomeProject = async (request, homeOrgId) => {
   return null;
 };
 
+const requireNonHomeProject = async (request, homeOrgId) => {
+  const nonHomeProject = await findNonHomeProject(request, homeOrgId);
+  expect(
+    nonHomeProject,
+    'Expected at least one synced project from another subscribed organization',
+  ).to.exist;
+  return nonHomeProject;
+};
+
 const buildProjectUpdateData = (record, overrides = {}) => ({
   projectRegistryName: record.projectRegistryName,
   projectId: record.projectId,
@@ -218,10 +227,7 @@ describe('Project Live API Validation Tests', function () {
   });
   describe('Step 7: PUT Request Tests', function () {
     it('should reject updating a project not owned by the home organization', async function () {
-      const nonHomeProject = await findNonHomeProject(request, homeOrgId);
-      if (!nonHomeProject) {
-        this.skip();
-      }
+      const nonHomeProject = await requireNonHomeProject(request, homeOrgId);
 
       const updateData = buildProjectUpdateData(nonHomeProject, {
         projectName: `Should Not Update ${Date.now()}`,
@@ -353,6 +359,11 @@ describe('Project Live API Validation Tests', function () {
       }
     });
 
+    it('should include synced project data from another organization', async function () {
+      const nonHomeProject = await requireNonHomeProject(request, homeOrgId);
+      expect(nonHomeProject.orgUid).to.not.equal(homeOrgId);
+    });
+
     it('should support search functionality', async function () {
       // Test search if supported by endpoint
       const response = await request
@@ -365,10 +376,7 @@ describe('Project Live API Validation Tests', function () {
   });
   describe('Step 9: DELETE Request Tests', function () {
     it('should reject deleting a project not owned by the home organization', async function () {
-      const nonHomeProject = await findNonHomeProject(request, homeOrgId);
-      if (!nonHomeProject) {
-        this.skip();
-      }
+      const nonHomeProject = await requireNonHomeProject(request, homeOrgId);
 
       try {
         const response = await request
