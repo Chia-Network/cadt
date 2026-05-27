@@ -49,7 +49,8 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Install test dependencies
-        run: sudo apt-get update && sudo apt-get install -y bats jq
+        # python3-yaml is required so patch_cadt_config bats tests don't skip.
+        run: sudo apt-get update && sudo apt-get install -y bats jq python3-yaml
 
       - name: Run bats
         run: bats tools/test/test_install_omnibus.bats

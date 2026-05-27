@@ -8,6 +8,9 @@
 #
 # Run as a non-root user with sudo access. See --help for flags.
 
+# -E: ERR trap inherited by subshells/functions; -e: exit on error;
+# -u: unset variables are errors; pipefail: pipeline exit status reflects
+# the first failing command (not just the last).
 set -Eeuo pipefail
 
 readonly SCRIPT_VERSION="1.0.0"
@@ -18,7 +21,9 @@ readonly GH_API_CHIA="https://api.github.com/repos/Chia-Network/chia-blockchain/
 readonly GH_API_TOOLS="https://api.github.com/repos/Chia-Network/chia-tools/releases"
 readonly GH_API_CADT="https://api.github.com/repos/Chia-Network/cadt/releases"
 readonly CHIA_ROOT="${HOME}/.chia/mainnet"
-readonly CADT_CONFIG="${CHIA_ROOT}/cadt/config.yaml"
+# Default-if-unset so tests can point this at a fixture by pre-setting
+# CADT_CONFIG before sourcing. Not made `readonly` for the same reason.
+: "${CADT_CONFIG:=${CHIA_ROOT}/cadt/config.yaml}"
 readonly MIN_CPU_CORES=4
 readonly MIN_RAM_KIB=$((7680 * 1024)) # 7.5 GiB
 readonly DEFAULT_MIN_DISK_GIB=300
@@ -48,7 +53,14 @@ CADT_APT_VER=""
 DATALAYER_URL=""
 PUBLIC_URL=""
 LOG_FILE=""
+# FD 3 holds the original terminal stdout after setup_logging dup's FD 1
+# to the tee'd install log. Mnemonics and the final API key are emitted
+# via private_echo/private_literal on FD 3 so they never pass through tee.
 PRIVATE_FD=3
+
+# Temp files (mnemonic, fetched release JSON) registered here are removed on
+# exit — including die/on_error paths where RETURN traps don't fire.
+TMP_FILES=()
 
 # Colors (disabled when not a tty)
 if [[ -t 1 ]]; then
@@ -66,14 +78,15 @@ fi
 
 # --- Testable helpers (sourced by bats with INSTALL_OMNIBUS_LIB_ONLY=1) ---
 
-normalize_apt_version() {
-  local tag="$1"
-  echo "$tag"
-}
-
 is_ipv4() {
   local host="$1"
-  [[ "$host" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]
+  [[ "$host" =~ ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$ ]] || return 1
+  local octet
+  for octet in "${BASH_REMATCH[@]:1:4}"; do
+    # Base-10 forced so leading zeros (e.g. "010") don't trigger octal parse errors.
+    ((10#$octet >= 0 && 10#$octet <= 255)) || return 1
+  done
+  return 0
 }
 
 strip_url_scheme() {
@@ -124,14 +137,6 @@ validate_network() {
     die "Invalid network: $network"
 }
 
-apply_config_defaults() {
-  [[ -z "$KEY_MODE" ]] && KEY_MODE=generate
-  [[ -z "$READ_ONLY" ]] && READ_ONLY=false
-  if [[ -z "$CADT_API_KEY" && "$READ_ONLY" != true ]]; then
-    CADT_API_KEY=$(openssl rand -hex 24)
-  fi
-}
-
 is_dpkg_package_installed() {
   local pkg="$1"
   dpkg -l "$pkg" 2>/dev/null | grep -q '^ii[[:space:]]'
@@ -159,6 +164,8 @@ normalize_mnemonic_file() {
 }
 
 validate_supported_apt_versions() {
+  # Chia CLI and chia-tools apt repos publish stable only; the cadt-test repo
+  # is the one place where -rc packages are available (toggled in setup_apt_repos).
   if [[ "$CHIA_APT_VER" == *-rc* ]]; then
     die "chia-blockchain-cli prerelease apt packages are not supported; choose stable or an explicit stable tag."
   fi
@@ -169,7 +176,9 @@ validate_supported_apt_versions() {
 
 cadt_health_curl_args() {
   local -n args_ref="$1"
-  args_ref=(-fsS)
+  # connect-timeout + max-time prevent a stuck TCP connect from blowing the
+  # caller's poll budget (we expect this to fail fast while CADT comes up).
+  args_ref=(-fsS --connect-timeout 5 --max-time 10)
   if [[ -n "$CADT_API_KEY" ]]; then
     args_ref+=(-H "x-api-key: ${CADT_API_KEY}")
   fi
@@ -215,6 +224,76 @@ pick_release_from_json() {
   esac
 }
 
+validate_min_disk_gb() {
+  # Catch non-numeric values up front so check_min_specs doesn't blow up
+  # inside an arithmetic context.
+  [[ "$MIN_DISK_GIB" =~ ^[0-9]+$ ]] || die "--min-disk-gb must be a non-negative integer (got: $MIN_DISK_GIB)"
+}
+
+validate_yes_args() {
+  [[ "$ASSUME_YES" == true ]] || return 0
+  local missing=()
+  [[ -z "$NETWORK" ]] && missing+=("--network")
+  [[ -z "$PUBLIC_ADDRESS" ]] && missing+=("--public-address")
+
+  if [[ "$KEY_MODE" == "import" ]]; then
+    # Catch a missing/unreadable import path now, before apt mutates anything.
+    if [[ -z "$IMPORT_KEY_FILE" ]]; then
+      missing+=("--import-key-from-file")
+    elif [[ ! -f "$IMPORT_KEY_FILE" ]]; then
+      die "--yes: import key file not found: $IMPORT_KEY_FILE"
+    fi
+  else
+    # generate (default): without an output file the 24-word seed is unrecoverable.
+    if [[ -z "$MNEMONIC_OUTPUT_FILE" ]]; then
+      missing+=("--mnemonic-output-file (or --import-key-from-file)")
+    else
+      validate_mnemonic_output_file_path "$MNEMONIC_OUTPUT_FILE"
+    fi
+  fi
+
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    die "--yes requires: ${missing[*]} (no safe defaults; abort before mutating the system)"
+  fi
+}
+
+validate_mnemonic_output_file_path() {
+  local path="$1"
+  # Reject sinks (/dev/null, /dev/stdout, pipes, etc.) — they would silently
+  # destroy the mnemonic. Only a regular-file destination is safe.
+  if [[ -L "$path" ]]; then
+    die "--mnemonic-output-file must not be a symlink: $path"
+  fi
+  if [[ -e "$path" && ! -f "$path" ]]; then
+    die "--mnemonic-output-file must be a regular file (got special file: $path)"
+  fi
+  local parent
+  parent=$(dirname "$path")
+  [[ -d "$parent" ]] || die "--mnemonic-output-file: parent directory does not exist: $parent"
+  [[ -w "$parent" ]] || die "--mnemonic-output-file: parent directory not writable: $parent"
+}
+
+write_mnemonic_to_output_file() {
+  # Atomic write that doesn't follow symlinks: write to a sibling tmpfile then
+  # rename. rename(2) replaces a symlink at the destination rather than
+  # writing through it, so a TOCTOU race that swaps in a symlink between
+  # validate_mnemonic_output_file_path and this call cannot redirect the seed.
+  local mnemonic="$1" target="$2"
+  if [[ -L "$target" ]]; then
+    die "--mnemonic-output-file: refusing to write to symlink: $target"
+  fi
+  if [[ -e "$target" && ! -f "$target" ]]; then
+    die "--mnemonic-output-file: refusing to write to special file: $target"
+  fi
+  local dir tmp
+  dir=$(dirname "$target")
+  tmp=$(mktemp "${dir}/.mnemonic.XXXXXX") || die "Could not create temp file in ${dir}"
+  register_tmp_file "$tmp"
+  chmod 600 "$tmp"
+  printf '%s\n' "$mnemonic" >"$tmp"
+  mv -f -- "$tmp" "$target"
+}
+
 parse_args() {
   _require_arg() { [[ $# -ge 2 ]] || die "$1 requires a value"; }
   while [[ $# -gt 0 ]]; do
@@ -232,6 +311,7 @@ parse_args() {
         ;;
       --chia-version)
         _require_arg "$@"
+        # shellcheck disable=SC2034 # read indirectly via ${!var_choice}
         CHIA_VERSION_CHOICE="$2"
         shift
         ;;
@@ -240,6 +320,7 @@ parse_args() {
         ;;
       --chia-tools-version)
         _require_arg "$@"
+        # shellcheck disable=SC2034 # read indirectly via ${!var_choice}
         CHIA_TOOLS_VERSION_CHOICE="$2"
         shift
         ;;
@@ -248,6 +329,7 @@ parse_args() {
         ;;
       --cadt-version)
         _require_arg "$@"
+        # shellcheck disable=SC2034 # read indirectly via ${!var_choice}
         CADT_VERSION_CHOICE="$2"
         shift
         ;;
@@ -331,6 +413,7 @@ parse_args() {
 
 die() {
   cleanup_background_processes
+  cleanup_tmp_files
   echo -e "${C_RED}ERROR:${C_RESET} $*" >&2
   exit 1
 }
@@ -384,15 +467,31 @@ Options:
   --read-only                      observer mode
   --api-key=<key>
   --generate-key                   generate a new Chia key
-  --import-key-from-file=<path>  import mnemonic from file
-  --mnemonic-output-file=<path>  write generated mnemonic here (not logged)
-  --min-disk-gb=<n>              minimum free disk GiB (default: 300)
-  --yes, -y                        skip confirmation prompts
+  --import-key-from-file=<path>    import mnemonic from file
+  --mnemonic-output-file=<path>    write generated mnemonic here (not logged)
+  --min-disk-gb=<n>                minimum free disk GiB (default: 300; flag name
+                                   is gb but the value is GiB)
+  --yes, -y                        skip confirmation prompts (see below)
   --help, -h
+
+Non-interactive (--yes) requires explicit values for fields with no safe
+default. Aborts before any system mutation if anything below is missing:
+
+  --network=...
+  --public-address=...
+  one of:
+    --import-key-from-file=<path>     (preferred: bring your own seed)
+    --mnemonic-output-file=<path>     (with --generate-key; cannot be /dev/null)
+
+Optional flags fall back to defaults under --yes (latest stable for each
+component, auto-generated API key, read-write mode).
 EOF
 }
 
 cleanup_background_processes() {
+  # Kill spinner first: a dying spinner can corrupt the next error line
+  # with a stray \r. Then stop the sudo keepalive so no further sudo -n
+  # calls happen during cleanup.
   if [[ -n "${SPINNER_PID:-}" ]]; then
     kill "$SPINNER_PID" 2>/dev/null || true
     wait "$SPINNER_PID" 2>/dev/null || true
@@ -405,9 +504,30 @@ cleanup_background_processes() {
   fi
 }
 
+register_tmp_file() {
+  TMP_FILES+=("$1")
+}
+
+cleanup_tmp_files() {
+  local f
+  # Guard against unset/empty when the array hasn't been added to.
+  for f in "${TMP_FILES[@]+"${TMP_FILES[@]}"}"; do
+    if [[ -n "$f" && -e "$f" ]]; then
+      rm -f "$f" 2>/dev/null || true
+    fi
+  done
+  TMP_FILES=()
+}
+
+on_exit() {
+  cleanup_background_processes
+  cleanup_tmp_files
+}
+
 on_error() {
   local line="$1"
   cleanup_background_processes
+  cleanup_tmp_files
   echo -e "\n${C_RED}Install failed at line ${line}.${C_RESET}" >&2
   if [[ -n "${LOG_FILE:-}" ]]; then
     echo -e "${C_DIM}See log: ${LOG_FILE}${C_RESET}" >&2
@@ -418,6 +538,9 @@ on_error() {
 
 if [[ "${INSTALL_OMNIBUS_LIB_ONLY:-0}" != 1 ]]; then
   trap 'on_error ${LINENO}' ERR
+  # EXIT fires regardless of success/failure path so registered temp files
+  # (mnemonics, fetched release JSON) always get scrubbed.
+  trap on_exit EXIT
 fi
 
 spinner_start() {
@@ -451,6 +574,12 @@ spinner_stop() {
 prompt_default() {
   local var_name="$1" prompt="$2" default="$3"
   local input
+  # Honor --yes only when a default is available; otherwise we must still ask
+  # so a required field isn't silently set to "".
+  if [[ "$ASSUME_YES" == true && -n "$default" ]]; then
+    printf -v "$var_name" '%s' "$default"
+    return 0
+  fi
   if [[ -n "$default" ]]; then
     read -r -p "${prompt} [${default}]: " input </dev/tty
     input="${input:-$default}"
@@ -470,7 +599,9 @@ confirm() {
   [[ "${ans,,}" == "y" || "${ans,,}" == "yes" ]]
 }
 
-require_sudo() {
+refuse_root() {
+  # Root is the most fundamental misuse — surface it before flag validation
+  # so users see "do not run as root" instead of "missing --network".
   if [[ "$EUID" -eq 0 ]]; then
     cat >&2 <<'EOF'
 
@@ -488,6 +619,9 @@ Chia and CADT must run as a regular user (systemd units use cadt@USERNAME).
 EOF
     exit 1
   fi
+}
+
+require_sudo() {
   if ! sudo -n true 2>/dev/null; then
     info "sudo access required; you may be prompted for your password once."
     sudo -v
@@ -553,20 +687,32 @@ check_min_specs() {
 
   if meets_min_specs "$cpu" "$mem_kib" "$disk_root" "$MIN_DISK_GIB" &&
     meets_min_specs "$cpu" "$mem_kib" "$disk_home" "$MIN_DISK_GIB"; then
-    success "Meets minimum requirements (${MIN_DISK_GIB} GiB disk, ${MIN_CPU_CORES} CPUs, 8 GiB RAM)"
+    success "Meets minimum requirements (${MIN_DISK_GIB} GiB disk, ${MIN_CPU_CORES} CPUs, 7.5 GiB RAM)"
     return 0
   fi
 
-  if is_soft_spec_shortfall "$cpu" "$mem_kib" "$disk_root" "$disk_home" &&
-    confirm "System is slightly below recommended specs. Continue anyway?"; then
-    warn "Continuing with below-minimum hardware."
-    return 0
+  if is_soft_spec_shortfall "$cpu" "$mem_kib" "$disk_root" "$disk_home"; then
+    if [[ "$ASSUME_YES" == true ]]; then
+      # --yes still accepts soft shortfall, but the warning must be visible
+      # since confirm() doesn't print anything.
+      warn "System is slightly below recommended specs; --yes accepting and continuing."
+      return 0
+    fi
+    if confirm "System is slightly below recommended specs. Continue anyway?"; then
+      warn "Continuing with below-minimum hardware."
+      return 0
+    fi
   fi
 
-  die "System does not meet minimum requirements: ${MIN_CPU_CORES} CPUs, 8 GiB RAM, ${MIN_DISK_GIB} GiB free disk on / and \$HOME."
+  die "System does not meet minimum requirements: ${MIN_CPU_CORES} CPUs, 7.5 GiB RAM, ${MIN_DISK_GIB} GiB free disk on / and \$HOME."
 }
 
 check_existing_install() {
+  # Each artifact below catches a different prior-install shape:
+  #   dpkg rows  → official apt packages from a previous omnibus run
+  #   /opt trees → tarball or manual installs not visible to dpkg
+  #   ~/.chia    → `chia init` (or partial install) already ran for this user
+  #   systemd    → enabled units that would conflict with new service files
   local found=false
   for pkg in chia-blockchain-cli cadt chia-tools; do
     if is_dpkg_package_installed "$pkg"; then
@@ -580,11 +726,15 @@ check_existing_install() {
     warn "Found existing Chia config at ${CHIA_ROOT}/config/config.yaml"
     found=true
   fi
-  if systemctl list-unit-files 'chia-*@*.service' 2>/dev/null | grep -q enabled; then
+  # systemctl list-unit-files prints "UNIT STATE PRESET"; match column 2 only
+  # so that disabled units with VENDOR_PRESET=enabled don't trigger a false positive.
+  if systemctl list-unit-files 'chia-*@*.service' --no-legend 2>/dev/null |
+    awk '$2 == "enabled" { f=1 } END { exit !f }'; then
     warn "Found enabled chia systemd units"
     found=true
   fi
-  if systemctl list-unit-files 'cadt@*.service' 2>/dev/null | grep -q enabled; then
+  if systemctl list-unit-files 'cadt@*.service' --no-legend 2>/dev/null |
+    awk '$2 == "enabled" { f=1 } END { exit !f }'; then
     warn "Found enabled cadt systemd units"
     found=true
   fi
@@ -600,7 +750,11 @@ fetch_releases_json() {
   if [[ -n "${GH_TOKEN:-}" ]]; then
     auth=(-H "Authorization: Bearer ${GH_TOKEN}")
   fi
-  curl -fsSL "${auth[@]}" "$url" -o "$dest"
+  # Request the largest page size GitHub supports so a long RC stream
+  # doesn't bury the latest stable beyond the default first page.
+  local sep="?"
+  [[ "$url" == *\?* ]] && sep="&"
+  curl -fsSL "${auth[@]}" "${url}${sep}per_page=100" -o "$dest"
 }
 
 resolve_version_choice() {
@@ -618,7 +772,7 @@ resolve_version_choice() {
       ;;
   esac
   [[ -n "$tag" ]] || die "Could not resolve version for choice: $choice"
-  printf -v "$var_name" '%s' "$(normalize_apt_version "$tag")"
+  printf -v "$var_name" '%s' "$tag"
 }
 
 prompt_version_choice() {
@@ -630,6 +784,7 @@ prompt_version_choice() {
   if [[ -n "$current" ]]; then
     local tmp
     tmp=$(mktemp)
+    register_tmp_file "$tmp"
     fetch_releases_json "$gh_url" "$tmp"
     resolve_version_choice "$current" "$tmp" "$var_apt"
     rm -f "$tmp"
@@ -638,6 +793,7 @@ prompt_version_choice() {
 
   local tmp
   tmp=$(mktemp)
+  register_tmp_file "$tmp"
   fetch_releases_json "$gh_url" "$tmp"
 
   echo ""
@@ -659,10 +815,16 @@ prompt_version_choice() {
       2) tag=$(pick_release_from_json "$tmp" prerelease) ;;
       3)
         echo ""
+        local listed=0
+        listed=$(jq -r '[.[] | select(.draft == false)] | length' "$tmp")
+        ((listed > 15)) && listed=15
         jq -r '.[] | select(.draft == false) | "\(.tag_name)\t\(if .prerelease then "pre-release" else "stable" end)"' "$tmp" |
           head -15 | nl -w2 -s') '
         local num
-        prompt_default num "Enter number" "1"
+        prompt_default num "Enter number (1-${listed})" "1"
+        if ! [[ "$num" =~ ^[0-9]+$ ]] || ((num < 1 || num > listed)); then
+          die "Invalid selection: ${num}. Choose between 1 and ${listed}."
+        fi
         tag=$(pick_release_from_json "$tmp" "$num")
         ;;
       *) die "Invalid choice" ;;
@@ -672,10 +834,16 @@ prompt_version_choice() {
       1) tag=$(pick_release_from_json "$tmp" stable) ;;
       2)
         echo ""
+        local listed=0
+        listed=$(jq -r '[.[] | select(.draft == false and .prerelease == false)] | length' "$tmp")
+        ((listed > 15)) && listed=15
         jq -r '.[] | select(.draft == false and .prerelease == false) | .tag_name' "$tmp" |
           head -15 | nl -w2 -s') '
         local num
-        prompt_default num "Enter number" "1"
+        prompt_default num "Enter number (1-${listed})" "1"
+        if ! [[ "$num" =~ ^[0-9]+$ ]] || ((num < 1 || num > listed)); then
+          die "Invalid selection: ${num}. Choose between 1 and ${listed}."
+        fi
         tag=$(jq -r --argjson idx "$((num - 1))" \
           '[.[] | select(.draft == false and .prerelease == false)] | .[$idx].tag_name // empty' "$tmp")
         ;;
@@ -684,7 +852,7 @@ prompt_version_choice() {
   fi
   rm -f "$tmp"
   [[ -n "$tag" ]] || die "No release found for ${label}"
-  printf -v "$var_apt" '%s' "$(normalize_apt_version "$tag")"
+  printf -v "$var_apt" '%s' "$tag"
   success "${label}: ${tag} (apt: ${!var_apt})"
 }
 
@@ -700,21 +868,49 @@ verify_apt_package_version() {
 }
 
 install_prerequisites() {
-  spinner_start "Installing prerequisites"
+  # Skip the apt round trip (and pre-confirm system mutation) when the user
+  # already has everything we need. Most Ubuntu installs ship these but minimal
+  # cloud images may be missing python3-yaml/gnupg/jq/ca-certificates.
+  local missing=()
+  command -v curl >/dev/null 2>&1 || missing+=(curl)
+  command -v jq >/dev/null 2>&1 || missing+=(jq)
+  command -v openssl >/dev/null 2>&1 || missing+=(openssl)
+  command -v gpg >/dev/null 2>&1 || missing+=(gnupg)
+  command -v python3 >/dev/null 2>&1 || missing+=(python3)
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -c 'import yaml' >/dev/null 2>&1 || missing+=(python3-yaml)
+  else
+    missing+=(python3-yaml)
+  fi
+  # ca-certificates has no PATH binary; dpkg query is the reliable signal.
+  # Skipping it leaves downstream HTTPS (release JSON, GPG keyring, certbot)
+  # to fail with opaque TLS errors on minimal images.
+  is_dpkg_package_installed ca-certificates || missing+=(ca-certificates)
+
+  if [[ ${#missing[@]} -eq 0 ]]; then
+    success "Prerequisites already installed"
+    return 0
+  fi
+
+  spinner_start "Installing prerequisites: ${missing[*]}"
   # shellcheck disable=SC2024
   sudo apt-get update -qq >>"$LOG_FILE" 2>&1
   # shellcheck disable=SC2024
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    curl ca-certificates gnupg jq openssl python3 python3-yaml >>"$LOG_FILE" 2>&1
+    "${missing[@]}" >>"$LOG_FILE" 2>&1
   spinner_stop 0
 }
 
 setup_apt_repos() {
   spinner_start "Configuring Chia apt repositories"
+  # apt-key is deprecated/removed in modern Debian; the supported pattern is
+  # `gpg --dearmor` into /usr/share/keyrings and `signed-by=` per source list.
   curl -fsSL "$CHIA_GPG_URL" | sudo gpg --batch --yes --dearmor -o /usr/share/keyrings/chia.gpg
   local arch
   arch=$(dpkg --print-architecture)
   local signed="deb [arch=${arch} signed-by=/usr/share/keyrings/chia.gpg]"
+  # Remove any leftover *-test lists so a previous RC-targeted run can't pin
+  # the new install to test sources unintentionally.
   sudo rm -f /etc/apt/sources.list.d/chia-test.list /etc/apt/sources.list.d/cadt-test.list
   echo "${signed} https://repo.chia.net/debian/ stable main" |
     sudo tee /etc/apt/sources.list.d/chia.list >/dev/null
@@ -765,49 +961,56 @@ install_packages() {
 }
 
 prompt_public_address() {
-  if [[ -n "$PUBLIC_ADDRESS" ]]; then
-    return 0
-  fi
-
-  echo ""
-  info "Public address for CADT and DataLayer file serving:"
-  echo "  Enter a domain name (e.g. cadt.example.com)"
-  echo "  Or press Enter to use this machine's public IP address"
-  echo ""
-  local input=""
-  read -r -p "Domain or IP: " input </dev/tty
-
-  input=$(strip_url_scheme "$input")
-
-  if [[ -z "$input" ]]; then
-    local detected_ip=""
-    spinner_start "Trying to get IP address automatically"
-    detected_ip=$(curl -4 --max-time 8 -fsSL https://ip.chia.net 2>/dev/null || echo "")
-    spinner_stop 0
-
-    if [[ -n "$detected_ip" ]] && is_ipv4 "$detected_ip"; then
-      local ip_ok=""
-      read -r -p "Detected IP: ${detected_ip} — is this correct? [Y/n]: " ip_ok </dev/tty
-      if [[ -z "$ip_ok" || "${ip_ok,,}" == "y" || "${ip_ok,,}" == "yes" ]]; then
-        PUBLIC_ADDRESS="$detected_ip"
-      fi
+  # Two responsibilities here:
+  #   1. Acquire PUBLIC_ADDRESS (from --public-address or interactive prompt)
+  #   2. Offer the HTTPS prompt for domain addresses in interactive mode
+  # These were collapsed before with an early return that skipped the HTTPS
+  # offer for preset addresses; keep them separate to make both consistent.
+  if [[ -z "$PUBLIC_ADDRESS" ]]; then
+    if [[ "$ASSUME_YES" == true ]]; then
+      die "--yes requires --public-address=<domain-or-ip> (no safe default)"
     fi
+    echo ""
+    info "Public address for CADT and DataLayer file serving:"
+    echo "  Enter a domain name (e.g. cadt.example.com)"
+    echo "  Or press Enter to use this machine's public IP address"
+    echo ""
+    local input=""
+    read -r -p "Domain or IP: " input </dev/tty
+    input=$(strip_url_scheme "$input")
 
-    if [[ -z "$PUBLIC_ADDRESS" ]]; then
-      while true; do
-        read -r -p "Enter this machine's public IP address: " input </dev/tty
-        input=$(strip_url_scheme "$input")
-        if is_ipv4 "$input"; then
-          PUBLIC_ADDRESS="$input"
-          break
+    if [[ -z "$input" ]]; then
+      local detected_ip=""
+      spinner_start "Trying to get IP address automatically"
+      detected_ip=$(curl -4 --max-time 8 -fsSL https://ip.chia.net 2>/dev/null || echo "")
+      spinner_stop 0
+
+      if [[ -n "$detected_ip" ]] && is_ipv4 "$detected_ip"; then
+        local ip_ok=""
+        read -r -p "Detected IP: ${detected_ip} — is this correct? [Y/n]: " ip_ok </dev/tty
+        if [[ -z "$ip_ok" || "${ip_ok,,}" == "y" || "${ip_ok,,}" == "yes" ]]; then
+          PUBLIC_ADDRESS="$detected_ip"
         fi
-        echo "  Invalid IP address. Please enter a valid IPv4 address (e.g. 203.0.113.10)"
-      done
+      fi
+
+      if [[ -z "$PUBLIC_ADDRESS" ]]; then
+        while true; do
+          read -r -p "Enter this machine's public IP address: " input </dev/tty
+          input=$(strip_url_scheme "$input")
+          if is_ipv4 "$input"; then
+            PUBLIC_ADDRESS="$input"
+            break
+          fi
+          echo "  Invalid IP address. Please enter a valid IPv4 address (e.g. 203.0.113.10)"
+        done
+      fi
+    else
+      PUBLIC_ADDRESS="$input"
     fi
-  else
-    PUBLIC_ADDRESS="$input"
   fi
 
+  # Both paths converge here so validation and the HTTPS prompt fire whether
+  # the address came from --public-address or the interactive read above.
   validate_public_address "$PUBLIC_ADDRESS" || die "Invalid public address: $PUBLIC_ADDRESS"
 
   if is_ipv4 "$PUBLIC_ADDRESS"; then
@@ -816,7 +1019,7 @@ prompt_public_address() {
     echo ""
   fi
 
-  if is_domain "$PUBLIC_ADDRESS" && [[ "$ENABLE_HTTPS" != true ]]; then
+  if is_domain "$PUBLIC_ADDRESS" && [[ "$ENABLE_HTTPS" != true && "$ASSUME_YES" != true ]]; then
     if confirm "Enable HTTPS with Let's Encrypt for ${PUBLIC_ADDRESS}?"; then
       ENABLE_HTTPS=true
       warn "Port 80 and 443 must be open and reachable from the internet for certificate issuance."
@@ -876,21 +1079,25 @@ run_prompts() {
   fi
 
   if [[ -z "$CADT_API_KEY" && "$READ_ONLY" != true ]]; then
-    echo ""
-    info "CADT API key (for UI and API access):"
-    echo "  a) Auto-generate (recommended)"
-    echo "  e) Enter manually"
-    echo "  s) Skip (leave blank)"
-    local apick
-    prompt_default apick "Choice" "a"
-    case "${apick,,}" in
-      e)
-        read -r -s -p "API key: " CADT_API_KEY </dev/tty
-        printf '\n' >/dev/tty
-        ;;
-      s) CADT_API_KEY="" ;;
-      *) CADT_API_KEY=$(openssl rand -hex 24) ;;
-    esac
+    if [[ "$ASSUME_YES" == true ]]; then
+      CADT_API_KEY=$(openssl rand -hex 24)
+    else
+      echo ""
+      info "CADT API key (for UI and API access):"
+      echo "  a) Auto-generate (recommended)"
+      echo "  e) Enter manually"
+      echo "  s) Skip (leave blank)"
+      local apick
+      prompt_default apick "Choice" "a"
+      case "${apick,,}" in
+        e)
+          read -r -s -p "API key: " CADT_API_KEY </dev/tty
+          printf '\n' >/dev/tty
+          ;;
+        s) CADT_API_KEY="" ;;
+        *) CADT_API_KEY=$(openssl rand -hex 24) ;;
+      esac
+    fi
   elif [[ -z "$CADT_API_KEY" ]]; then
     CADT_API_KEY=""
   fi
@@ -898,7 +1105,7 @@ run_prompts() {
   build_datalayer_url
   build_public_url
 
-  if ! $ASSUME_YES; then
+  if [[ "$ASSUME_YES" != true ]]; then
     echo ""
     info "Installation summary:"
     echo "  Network:              ${NETWORK}"
@@ -944,22 +1151,47 @@ init_chia() {
   fi
 }
 
+extract_mnemonic_line() {
+  # chia keys generate_and_print emits three lines (header / 24-word seed /
+  # footer). Filter for the line that has exactly 24 whitespace-separated
+  # words so we don't feed header text into `chia keys add -f`.
+  awk 'NF == 24 { print; exit }'
+}
+
+add_chia_key_from_mnemonic() {
+  # Shared post-mnemonic logic for both generate and import paths.
+  #   $1 mnemonic       — the validated 24-word seed
+  #   $2 label          — keychain label ("CADT")
+  #   $3 failure_hint   — log-safe message for the operator on failure
+  # `chia keys add -f` swallows its own errors and exits 0, so we must
+  # inspect stdout for the "Added private key" success marker. We never
+  # echo add_output through die because mnemonic-validity errors can echo
+  # parts of the seed and die's message is tee'd to the install log.
+  local mnemonic="$1" label="$2" failure_hint="$3"
+  local tmpkey
+  tmpkey=$(mktemp)
+  chmod 600 "$tmpkey"
+  register_tmp_file "$tmpkey"
+  printf '%s\n' "$mnemonic" >"$tmpkey"
+  local add_output
+  add_output=$(chia keys add -f "$tmpkey" -l "$label" 2>&1) || true
+  rm -f "$tmpkey"
+  if ! grep -q "Added private key" <<<"$add_output"; then
+    die "$failure_hint"
+  fi
+}
+
 setup_chia_keys_generate() {
   info "Generating new Chia wallet key..."
 
-  if [[ "$ASSUME_YES" == true && -z "$MNEMONIC_OUTPUT_FILE" ]]; then
-    chia keys generate -l "CADT"
-    success "Chia key generated and added to keychain"
-    return 0
-  fi
-
-  local mnemonic
-  mnemonic=$(chia keys generate_and_print 2>/dev/null | tr -d '\r')
-  [[ -n "$mnemonic" ]] || die "Failed to generate mnemonic"
+  local raw mnemonic
+  raw=$(chia keys generate_and_print 2>/dev/null | tr -d '\r')
+  [[ -n "$raw" ]] || die "Failed to generate mnemonic (chia keys generate_and_print produced no output)"
+  mnemonic=$(printf '%s\n' "$raw" | extract_mnemonic_line)
+  [[ -n "$mnemonic" ]] || die "Could not parse 24-word mnemonic from chia keys output"
 
   if [[ -n "$MNEMONIC_OUTPUT_FILE" ]]; then
-    printf '%s\n' "$mnemonic" >"$MNEMONIC_OUTPUT_FILE"
-    chmod 600 "$MNEMONIC_OUTPUT_FILE" 2>/dev/null || true
+    write_mnemonic_to_output_file "$mnemonic" "$MNEMONIC_OUTPUT_FILE"
   fi
 
   if [[ "$ASSUME_YES" != true ]]; then
@@ -977,13 +1209,8 @@ setup_chia_keys_generate() {
     done
   fi
 
-  local tmpkey
-  tmpkey=$(mktemp)
-  # shellcheck disable=SC2064
-  trap "rm -f '$tmpkey'" RETURN
-  printf '%s\n' "$mnemonic" >"$tmpkey"
-  chmod 600 "$tmpkey"
-  chia keys add -f "$tmpkey" -l "CADT"
+  add_chia_key_from_mnemonic "$mnemonic" "CADT" \
+    "chia keys add did not add the key. Re-run the installer; if this persists, check 'chia keys show' state and that the keyring is unlocked."
   success "Chia key added to keychain"
 }
 
@@ -999,13 +1226,9 @@ setup_chia_keys_import() {
     die "--import-key-from-file is required with --yes for key import"
   fi
   [[ -n "$mnemonic" ]] || die "Empty mnemonic"
-  local tmpkey
-  tmpkey=$(mktemp)
-  # shellcheck disable=SC2064
-  trap "rm -f '$tmpkey'" RETURN
-  printf '%s\n' "$mnemonic" >"$tmpkey"
-  chmod 600 "$tmpkey"
-  chia keys add -f "$tmpkey" -l "CADT"
+
+  add_chia_key_from_mnemonic "$mnemonic" "CADT" \
+    "chia keys add did not import the key (check that the mnemonic file is exactly 12/15/18/21/24 words)"
   success "Chia key imported"
 }
 
@@ -1040,6 +1263,8 @@ setup_datalayer_directory() {
 
   info "Setting up DataLayer file directory..."
 
+  # data-layer must be stopped before moving its server_files dir; otherwise
+  # in-flight writes can race with the mv and end up in the wrong tree.
   sudo systemctl stop "chia-data-layer@${USER}"
 
   if [[ -L "$src" ]]; then
@@ -1056,6 +1281,9 @@ setup_datalayer_directory() {
   sudo find "$dst" -type f -exec chmod 644 {} \; 2>/dev/null || true
   ln -sfn "$dst" "$src"
 
+  # systemd's default UMask is 0022 on most distros but some images ship 0077,
+  # which produces 600 files under /var/www that nginx (running as www-data)
+  # cannot read. Pin UMask explicitly so /data/ stays world-readable.
   sudo mkdir -p "/etc/systemd/system/chia-data-layer@${USER}.service.d"
   sudo tee "/etc/systemd/system/chia-data-layer@${USER}.service.d/umask.conf" >/dev/null <<EOF
 [Service]
@@ -1067,6 +1295,10 @@ EOF
 }
 
 write_nginx_http_config() {
+  # /data/ serves the DataLayer public file tree relocated by
+  # setup_datalayer_directory. The conditional `location /` proxy block is
+  # omitted when --local-only is set so the CADT API stays bound to
+  # 127.0.0.1:31310 and is never reachable through nginx.
   local net="$1"
   local dst="/var/www/server_files_location_${net}"
 
@@ -1089,7 +1321,7 @@ server {
         add_header Cache-Control "public";
     }
 $(if [[ "$LOCAL_ONLY" != true ]]; then
-cat <<'PROXY'
+    cat <<'PROXY'
 
     location / {
         proxy_pass http://127.0.0.1:31310;
@@ -1101,12 +1333,15 @@ cat <<'PROXY'
         proxy_read_timeout 90s;
     }
 PROXY
-fi)
+  fi)
 }
 EOF
 }
 
 write_nginx_https_config() {
+  # HTTPS layout: port 80 keeps the ACME-challenge alias for cert renewal
+  # but 301-redirects everything else to https://. The real CADT proxy and
+  # /data/ alias live in the 443 server block below.
   local net="$1"
   local dst="/var/www/server_files_location_${net}"
 
@@ -1147,7 +1382,7 @@ server {
         add_header Cache-Control "public";
     }
 $(if [[ "$LOCAL_ONLY" != true ]]; then
-cat <<'PROXY'
+    cat <<'PROXY'
 
     location / {
         proxy_pass http://127.0.0.1:31310;
@@ -1159,7 +1394,7 @@ cat <<'PROXY'
         proxy_read_timeout 90s;
     }
 PROXY
-fi)
+  fi)
 }
 EOF
 }
@@ -1188,6 +1423,9 @@ configure_nginx() {
 
   local code
   code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1/data/" || echo "000")
+  # Acceptable codes: 404 (empty tree, no files yet), 200 (autoindex), 403
+  # (autoindex off + dir), 301 (HTTPS redirect took over). Anything else
+  # means nginx is broken or didn't apply the config we generated.
   if [[ "$code" != "404" && "$code" != "200" && "$code" != "403" && "$code" != "301" ]]; then
     die "nginx smoke test failed (HTTP ${code} on /data/)"
   fi
@@ -1232,6 +1470,9 @@ setup_certbot() {
       sudo systemctl reload nginx
       success "HTTPS enabled with Let's Encrypt"
     else
+      # Dry-run never installed certs — flip HTTPS back off and rebuild the
+      # http:// URLs so the install summary, CADT config, and datalayer URL
+      # all reflect what's actually live on disk.
       ENABLE_HTTPS=false
       build_datalayer_url
       build_public_url
@@ -1239,6 +1480,8 @@ setup_certbot() {
     fi
   else
     spinner_stop 1
+    # Certbot failure (rate-limit, port 80 unreachable, DNS) — fall back to
+    # HTTP only and rebuild URLs so config/summary match the live nginx.
     warn "Certbot failed — continuing with HTTP only. Check log for details."
     ENABLE_HTTPS=false
     build_datalayer_url
@@ -1252,6 +1495,9 @@ patch_cadt_config() {
     governance_id="$GOVERNANCE_TESTNETA"
   fi
 
+  # Values pass via env vars and the heredoc is single-quoted ('PY') so bash
+  # never interpolates them into the Python source. This is what keeps API
+  # keys with `, ', ", $, \ from being executed as Python or shell.
   CADT_CONFIG_PATH="$CADT_CONFIG" \
     CADT_NETWORK="$NETWORK" \
     CADT_DATALAYER_URL="$DATALAYER_URL" \
@@ -1272,6 +1518,10 @@ read_only = os.environ["CADT_READ_ONLY"] == "true"
 
 cfg.setdefault("APP", {})["CHIA_NETWORK"] = os.environ["CADT_NETWORK"]
 cfg["APP"]["DATALAYER_FILE_SERVER_URL"] = os.environ["CADT_DATALAYER_URL"]
+# Lock CADT to loopback so the API is never exposed without nginx in front.
+# nginx handles TLS termination, proxy headers, and (optionally) reverse
+# proxying — direct public exposure of CADT's HTTP port is intentionally not
+# supported by this installer.
 cfg["APP"]["BIND_ADDRESS"] = "127.0.0.1"
 
 for section in ("V1", "V2"):
@@ -1289,6 +1539,11 @@ PY
 }
 
 start_cadt_and_wait() {
+  # CADT's bootstrap sequence is unusual: the package doesn't ship a config,
+  # so we must start the service once to make CADT write its default
+  # config.yaml, then stop it, patch the file in place, and re-enable. Doing
+  # it in this order means our governance / network / API-key edits survive
+  # the next service restart instead of being clobbered.
   info "Starting CADT to generate initial configuration..."
   sudo systemctl start "cadt@${USER}"
 
@@ -1408,6 +1663,12 @@ BANNER
   echo -e "${C_RESET}"
 
   parse_args "$@"
+  # Order matters: root is a more fundamental misuse than flag omissions,
+  # so refuse_root must precede validate_yes_args. Both run before any
+  # system mutation (sudo keepalive, apt) so abort paths are clean.
+  refuse_root
+  validate_yes_args
+  validate_min_disk_gb
   require_sudo
   setup_logging
 
@@ -1417,47 +1678,21 @@ BANNER
   check_min_specs
   check_existing_install
 
+  # Bootstrap tools needed before any user-facing configuration:
+  # jq+curl power version resolution; openssl powers --yes API key gen;
+  # python3/python3-yaml power the config patch later. Doing it here means
+  # Phase 1 (or prompts) can rely on these binaries existing.
+  install_prerequisites
+
   phase "Phase 1: Configuration"
-  # Resolve versions from flags without prompts when all set
-  local tmpjson
-  tmpjson=$(mktemp)
-  if [[ -n "$CHIA_VERSION_CHOICE" && -z "$CHIA_APT_VER" ]]; then
-    fetch_releases_json "$GH_API_CHIA" "$tmpjson"
-    resolve_version_choice "$CHIA_VERSION_CHOICE" "$tmpjson" CHIA_APT_VER
-  fi
-  if [[ -n "$CHIA_TOOLS_VERSION_CHOICE" && -z "$TOOLS_APT_VER" ]]; then
-    fetch_releases_json "$GH_API_TOOLS" "$tmpjson"
-    resolve_version_choice "$CHIA_TOOLS_VERSION_CHOICE" "$tmpjson" TOOLS_APT_VER
-  fi
-  if [[ -n "$CADT_VERSION_CHOICE" && -z "$CADT_APT_VER" ]]; then
-    fetch_releases_json "$GH_API_CADT" "$tmpjson"
-    resolve_version_choice "$CADT_VERSION_CHOICE" "$tmpjson" CADT_APT_VER
-  fi
-  rm -f "$tmpjson"
-  validate_supported_apt_versions
-
-  if [[ -z "$NETWORK" || -z "$CHIA_APT_VER" || -z "$TOOLS_APT_VER" || -z "$CADT_APT_VER" ||
-    -z "$PUBLIC_ADDRESS" ]]; then
-    run_prompts
-  else
-    validate_network "$NETWORK"
-    validate_public_address "$PUBLIC_ADDRESS" || die "Invalid public address: $PUBLIC_ADDRESS"
-    apply_config_defaults
-    build_datalayer_url
-    build_public_url
-    if ! $ASSUME_YES; then
-      echo ""
-      confirm "Proceed with installation?" || die "Aborted by user."
-    fi
-  fi
-
-  # Export API key for CI follow-up steps
-  if [[ -n "${GITHUB_ENV:-}" && -n "$CADT_API_KEY" ]]; then
-    echo "API_KEY=${CADT_API_KEY}" >>"$GITHUB_ENV"
-  fi
+  # Single entry point regardless of how many flags were supplied. run_prompts
+  # is fully no-op safe when all values are preset: prompt_version_choice
+  # resolves flag-only inputs without prompting, prompt_default honors
+  # ASSUME_YES, prompt_public_address still validates + offers HTTPS on a
+  # preset domain, and the summary/confirm block at the end is gated by --yes.
+  run_prompts
 
   phase "Phase 2: Installing packages"
-  install_prerequisites
   setup_apt_repos
   install_packages
 

@@ -17,35 +17,103 @@ wait_for_pid_exit() {
   return 1
 }
 
-@test "normalize_apt_version passes through tag unchanged" {
-  [[ "$(normalize_apt_version "2.7.1-rc2")" == "2.7.1-rc2" ]]
-  [[ "$(normalize_apt_version "1.7.26-rc28")" == "1.7.26-rc28" ]]
-  [[ "$(normalize_apt_version "2.7.0")" == "2.7.0" ]]
-}
-
-@test "pick_release_from_json stable returns first non-prerelease" {
+@test "pick_release_from_json stable returns the first non-prerelease tag exactly" {
+  # Assert exact tag so a future jq/order regression can't pass with any
+  # non-empty string. chia-releases.json puts RCs before 2.7.0, so stable
+  # must skip them and land on 2.7.0.
   local fixture="${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
   local tag
   tag=$(pick_release_from_json "$fixture" stable)
-  [[ -n "$tag" ]]
-  run jq -r --arg t "$tag" '.[] | select(.tag_name == $t) | .prerelease' "$fixture"
-  [[ "$output" == "false" ]]
+  [[ "$tag" == "2.7.0" ]]
 }
 
-@test "pick_release_from_json prerelease returns first prerelease" {
+@test "pick_release_from_json prerelease returns the newest prerelease exactly" {
   local fixture="${BATS_TEST_DIRNAME}/fixtures/cadt-releases.json"
   local tag
   tag=$(pick_release_from_json "$fixture" prerelease)
-  [[ -n "$tag" ]]
-  run jq -r --arg t "$tag" '.[] | select(.tag_name == $t) | .prerelease' "$fixture"
-  [[ "$output" == "true" ]]
+  [[ "$tag" == "1.7.26-rc28" ]]
 }
 
-@test "pick_release_from_json index returns numbered release" {
+@test "pick_release_from_json index 1 returns the first non-draft release exactly" {
   local fixture="${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
   local tag
   tag=$(pick_release_from_json "$fixture" 1)
-  [[ -n "$tag" ]]
+  [[ "$tag" == "2.7.1-rc2" ]]
+}
+
+@test "pick_release_from_json index out of range returns empty" {
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  local tag
+  tag=$(pick_release_from_json "$fixture" 99)
+  [[ -z "$tag" ]]
+}
+
+@test "pick_release_from_json stable returns empty when no stable releases exist" {
+  # cadt-releases.json is all prereleases — stable mode must yield empty.
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/cadt-releases.json"
+  local tag
+  tag=$(pick_release_from_json "$fixture" stable)
+  [[ -z "$tag" ]]
+}
+
+@test "pick_release_from_json on missing file returns non-zero" {
+  run pick_release_from_json /nonexistent/path.json stable
+  [[ "$status" -ne 0 ]]
+}
+
+@test "pick_release_from_json on empty array returns empty" {
+  local empty="${BATS_TEST_TMPDIR}/empty.json"
+  printf '[]\n' >"$empty"
+  local tag
+  tag=$(pick_release_from_json "$empty" stable)
+  [[ -z "$tag" ]]
+}
+
+@test "resolve_version_choice stable maps to first non-prerelease tag" {
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  local got
+  resolve_version_choice stable "$fixture" got
+  [[ "$got" == "2.7.0" ]]
+}
+
+@test "resolve_version_choice passes explicit tags through unchanged" {
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  local got
+  resolve_version_choice "9.9.9" "$fixture" got
+  [[ "$got" == "9.9.9" ]]
+}
+
+@test "resolve_version_choice dies when no release matches the choice" {
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/cadt-releases.json"
+  local got
+  # 'stable' over an all-prerelease list produces an empty pick → die.
+  run resolve_version_choice stable "$fixture" got
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"Could not resolve version"* ]]
+}
+
+@test "resolve_version_choice resolves the 'latest' alias the same as 'stable'" {
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  local got
+  resolve_version_choice latest "$fixture" got
+  [[ "$got" == "2.7.0" ]]
+}
+
+@test "resolve_version_choice resolves rc and pre-release aliases" {
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/cadt-releases.json"
+  local a b
+  resolve_version_choice prerelease "$fixture" a
+  resolve_version_choice rc "$fixture" b
+  [[ "$a" == "1.7.26-rc28" && "$b" == "1.7.26-rc28" ]]
+}
+
+@test "resolve_version_choice stable picks chia-tools 1.3.9 from its fixture" {
+  # Wire the otherwise unused chia-tools fixture; protects against drift if
+  # chia-tools fixture format ever diverges from chia/cadt fixtures.
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/chia-tools-releases.json"
+  local got
+  resolve_version_choice stable "$fixture" got
+  [[ "$got" == "1.3.9" ]]
 }
 
 @test "strip_url_scheme removes http prefix" {
@@ -151,48 +219,62 @@ wait_for_pid_exit() {
   validate_supported_apt_versions
 }
 
+@test "validate_supported_apt_versions rejects chia-tools prereleases" {
+  # Mirror of the chia-blockchain-cli RC rejection; copy-paste error in the
+  # second guard would otherwise leave tools RC installs silently allowed.
+  CHIA_APT_VER="2.7.1"
+  TOOLS_APT_VER="1.2.3-rc1"
+  CADT_APT_VER="1.7.26"
+
+  run validate_supported_apt_versions
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"chia-tools prerelease apt packages are not supported"* ]]
+}
+
+@test "verify_apt_package_version succeeds when madison lists the version" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  cat >"${bin}/apt-cache" <<'EOF'
+#!/usr/bin/env bash
+# Mimic apt-cache madison output: pkg | version | source
+echo "  cadt | 1.7.26 | https://repo.chia.net cadt/main amd64 Packages"
+EOF
+  chmod +x "${bin}/apt-cache"
+  PATH="${bin}:$PATH"
+
+  verify_apt_package_version cadt "1.7.26"
+}
+
+@test "verify_apt_package_version dies when version not in madison" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  cat >"${bin}/apt-cache" <<'EOF'
+#!/usr/bin/env bash
+echo "  cadt | 1.7.25 | https://repo.chia.net cadt/main amd64 Packages"
+EOF
+  chmod +x "${bin}/apt-cache"
+  PATH="${bin}:$PATH"
+
+  run verify_apt_package_version cadt "1.7.26"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"not found in apt repositories"* ]]
+}
+
+@test "verify_apt_package_version is a no-op when version arg is empty" {
+  # Latest-from-apt path: no specific pin to verify.
+  verify_apt_package_version cadt ""
+}
+
 @test "cadt_health_curl_args includes API key header only when configured" {
   local args
 
   CADT_API_KEY=""
   cadt_health_curl_args args
-  [[ "${args[*]}" == "-fsS http://localhost:31310/v1/health" ]]
+  [[ "${args[*]}" == "-fsS --connect-timeout 5 --max-time 10 http://localhost:31310/v1/health" ]]
 
   CADT_API_KEY="secret-key"
   cadt_health_curl_args args
-  [[ "${args[*]}" == "-fsS -H x-api-key: secret-key http://localhost:31310/v1/health" ]]
-}
-
-@test "apply_config_defaults sets optional non-interactive defaults" {
-  KEY_MODE=""
-  READ_ONLY=""
-  CADT_API_KEY=""
-
-  apply_config_defaults
-
-  [[ "$KEY_MODE" == "generate" ]]
-  [[ "$READ_ONLY" == "false" ]]
-  [[ -n "$CADT_API_KEY" ]]
-}
-
-@test "apply_config_defaults skips API key generation in read-only mode" {
-  KEY_MODE=""
-  READ_ONLY="true"
-  CADT_API_KEY=""
-
-  apply_config_defaults
-
-  [[ -z "$CADT_API_KEY" ]]
-}
-
-@test "apply_config_defaults preserves explicit API key" {
-  KEY_MODE=""
-  READ_ONLY=""
-  CADT_API_KEY="user-provided-key"
-
-  apply_config_defaults
-
-  [[ "$CADT_API_KEY" == "user-provided-key" ]]
+  [[ "${args[*]}" == "-fsS --connect-timeout 5 --max-time 10 -H x-api-key: secret-key http://localhost:31310/v1/health" ]]
 }
 
 @test "is_dpkg_package_installed detects installed dpkg rows" {
@@ -275,28 +357,113 @@ EOF
   [[ "$output" == 'abc\ndef' ]]
 }
 
-@test "patch_cadt_config passes quoted api key without Python interpolation" {
-  local bin="${BATS_TEST_TMPDIR}/bin"
-  mkdir -p "$bin"
-  cat >"${bin}/python3" <<EOF
-#!/usr/bin/env bash
-if [[ "\${1:-}" == "-c" ]]; then
-  exit 0
-fi
-printf '%s' "\${CADT_API_KEY_VALUE}" >"${BATS_TEST_TMPDIR}/api_key"
-exit 0
-EOF
-  chmod +x "${bin}/python3"
+@test "patch_cadt_config rewrites real YAML with expected APP/V1/V2 values" {
+  if ! command -v python3 >/dev/null 2>&1 ||
+    ! python3 -c 'import yaml' >/dev/null 2>&1; then
+    skip "python3 + pyyaml required"
+  fi
 
-  PATH="${bin}:$PATH"
-  NETWORK=mainnet
-  DATALAYER_URL="http://127.0.0.1/data"
-  READ_ONLY=false
-  CADT_API_KEY="abc'\\def"
+  # Real config.yaml fixture; patch_cadt_config must mutate it in place.
+  CADT_CONFIG="${BATS_TEST_TMPDIR}/config.yaml"
+  cat >"$CADT_CONFIG" <<'YAML'
+APP:
+  CHIA_NETWORK: mainnet
+  BIND_ADDRESS: 0.0.0.0
+V1:
+  READ_ONLY: false
+  CADT_API_KEY: null
+V2:
+  READ_ONLY: false
+  CADT_API_KEY: null
+YAML
+
+  NETWORK=testneta
+  DATALAYER_URL="http://example.com/data"
+  READ_ONLY=true
+  CADT_API_KEY="my-secret-key"
 
   patch_cadt_config
 
-  [[ "$(cat "${BATS_TEST_TMPDIR}/api_key")" == "$CADT_API_KEY" ]]
+  python3 - "$CADT_CONFIG" <<'PY'
+import sys, yaml
+with open(sys.argv[1]) as f:
+    c = yaml.safe_load(f)
+assert c["APP"]["CHIA_NETWORK"] == "testneta", c["APP"].get("CHIA_NETWORK")
+assert c["APP"]["BIND_ADDRESS"] == "127.0.0.1", c["APP"].get("BIND_ADDRESS")
+assert c["APP"]["DATALAYER_FILE_SERVER_URL"] == "http://example.com/data", c["APP"].get("DATALAYER_FILE_SERVER_URL")
+for sec in ("V1", "V2"):
+    assert c[sec]["READ_ONLY"] is True, (sec, c[sec]["READ_ONLY"])
+    assert c[sec]["CADT_API_KEY"] == "my-secret-key", (sec, c[sec]["CADT_API_KEY"])
+    # Testneta governance id from install-omnibus.sh
+    assert (
+        c[sec]["GOVERNANCE"]["GOVERNANCE_BODY_ID"]
+        == "1019153f631bb82e7fc4984dc1f0f2af9e95a7c29df743f7b4dcc2b975857409"
+    ), (sec, c[sec]["GOVERNANCE"])
+PY
+}
+
+@test "patch_cadt_config preserves literal API key when value contains shell-meaningful chars" {
+  if ! command -v python3 >/dev/null 2>&1 ||
+    ! python3 -c 'import yaml' >/dev/null 2>&1; then
+    skip "python3 + pyyaml required"
+  fi
+
+  CADT_CONFIG="${BATS_TEST_TMPDIR}/config.yaml"
+  cat >"$CADT_CONFIG" <<'YAML'
+APP: {}
+V1: {}
+V2: {}
+YAML
+
+  NETWORK=mainnet
+  DATALAYER_URL="http://127.0.0.1/data"
+  READ_ONLY=false
+  # Backticks, single+double quotes, dollar-prefix, backslash — all hazards if
+  # patch_cadt_config interpolates the key into Python source instead of env.
+  CADT_API_KEY="a\`b\"c'd\$e\\f"
+
+  patch_cadt_config
+
+  python3 - "$CADT_CONFIG" "$CADT_API_KEY" <<'PY'
+import sys, yaml
+with open(sys.argv[1]) as f:
+    c = yaml.safe_load(f)
+expected = sys.argv[2]
+for sec in ("V1", "V2"):
+    assert c[sec]["CADT_API_KEY"] == expected, (sec, c[sec]["CADT_API_KEY"], expected)
+PY
+}
+
+@test "patch_cadt_config sets governance ID for mainnet" {
+  if ! command -v python3 >/dev/null 2>&1 ||
+    ! python3 -c 'import yaml' >/dev/null 2>&1; then
+    skip "python3 + pyyaml required"
+  fi
+
+  CADT_CONFIG="${BATS_TEST_TMPDIR}/config.yaml"
+  cat >"$CADT_CONFIG" <<'YAML'
+APP: {}
+V1: {}
+V2: {}
+YAML
+
+  NETWORK=mainnet
+  DATALAYER_URL="http://127.0.0.1/data"
+  READ_ONLY=false
+  CADT_API_KEY=""
+
+  patch_cadt_config
+
+  python3 - "$CADT_CONFIG" <<'PY'
+import sys, yaml
+with open(sys.argv[1]) as f:
+    c = yaml.safe_load(f)
+mainnet_id = "23f6498e015ebcd7190c97df30c032de8deb5c8934fc1caa928bc310e2b8a57e"
+for sec in ("V1", "V2"):
+    assert c[sec]["GOVERNANCE"]["GOVERNANCE_BODY_ID"] == mainnet_id, (sec, c[sec]["GOVERNANCE"])
+    # Empty CADT_API_KEY env should map to None (null) in YAML.
+    assert c[sec]["CADT_API_KEY"] is None, (sec, c[sec]["CADT_API_KEY"])
+PY
 }
 
 @test "parse_args sets network, public-address, and flags" {
@@ -339,7 +506,214 @@ EOF
   [[ "$PUBLIC_ADDRESS" == "example.com" ]]
 }
 
-@test "is_ipv4 recognizes dotted quads" {
+@test "parse_args dies on unknown option with usage hint" {
+  run parse_args --not-a-real-flag
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"Unknown option"* ]]
+  [[ "$output" == *"--help"* ]]
+}
+
+@test "parse_args dies when a value-taking flag has no value" {
+  run parse_args --network
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"requires a value"* ]]
+}
+
+@test "parse_args sets KEY_MODE=import via --import-key-from-file" {
+  KEY_MODE=""
+  IMPORT_KEY_FILE=""
+  parse_args --import-key-from-file=/tmp/seed.txt
+  [[ "$KEY_MODE" == "import" ]]
+  [[ "$IMPORT_KEY_FILE" == "/tmp/seed.txt" ]]
+}
+
+@test "parse_args sets READ_ONLY=true via --read-only" {
+  READ_ONLY=""
+  parse_args --read-only
+  [[ "$READ_ONLY" == true ]]
+}
+
+@test "parse_args captures --api-key value" {
+  CADT_API_KEY=""
+  parse_args --api-key="my-secret"
+  [[ "$CADT_API_KEY" == "my-secret" ]]
+}
+
+@test "validate_yes_args dies when --yes is set but required flags missing" {
+  ASSUME_YES=true
+  NETWORK=""
+  PUBLIC_ADDRESS=""
+  KEY_MODE=""
+  IMPORT_KEY_FILE=""
+  MNEMONIC_OUTPUT_FILE=""
+
+  run validate_yes_args
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"--yes requires:"* ]]
+  [[ "$output" == *"--network"* ]]
+  [[ "$output" == *"--public-address"* ]]
+  [[ "$output" == *"--mnemonic-output-file"* ]]
+}
+
+@test "validate_yes_args passes when --yes is set with required flags and generate" {
+  ASSUME_YES=true
+  NETWORK=testneta
+  PUBLIC_ADDRESS=example.com
+  KEY_MODE=""
+  IMPORT_KEY_FILE=""
+  MNEMONIC_OUTPUT_FILE="${BATS_TEST_TMPDIR}/seed.txt"
+
+  validate_yes_args
+}
+
+@test "validate_yes_args requires --import-key-from-file when KEY_MODE=import" {
+  ASSUME_YES=true
+  NETWORK=testneta
+  PUBLIC_ADDRESS=example.com
+  KEY_MODE=import
+  IMPORT_KEY_FILE=""
+  MNEMONIC_OUTPUT_FILE=""
+
+  run validate_yes_args
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"--import-key-from-file"* ]]
+}
+
+@test "validate_yes_args dies on unreadable --import-key-from-file" {
+  ASSUME_YES=true
+  NETWORK=testneta
+  PUBLIC_ADDRESS=example.com
+  KEY_MODE=import
+  IMPORT_KEY_FILE="/nonexistent/path/to/key"
+  MNEMONIC_OUTPUT_FILE=""
+
+  run validate_yes_args
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"import key file not found"* ]]
+}
+
+@test "validate_mnemonic_output_file_path rejects /dev/null and special files" {
+  run validate_mnemonic_output_file_path /dev/null
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"regular file"* ]]
+}
+
+@test "validate_mnemonic_output_file_path rejects symlinks" {
+  local link="${BATS_TEST_TMPDIR}/seed-link"
+  ln -s "${BATS_TEST_TMPDIR}/target" "$link"
+
+  run validate_mnemonic_output_file_path "$link"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"symlink"* ]]
+}
+
+@test "write_mnemonic_to_output_file refuses to write to a symlink (TOCTOU defense)" {
+  TMP_FILES=()
+  local link="${BATS_TEST_TMPDIR}/seed-link"
+  ln -s "${BATS_TEST_TMPDIR}/elsewhere" "$link"
+
+  run write_mnemonic_to_output_file "word1 word2" "$link"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"symlink"* ]]
+  [[ ! -e "${BATS_TEST_TMPDIR}/elsewhere" ]]
+}
+
+@test "write_mnemonic_to_output_file writes 600-mode file atomically" {
+  TMP_FILES=()
+  local target="${BATS_TEST_TMPDIR}/seed.txt"
+
+  write_mnemonic_to_output_file "word1 word2 word3" "$target"
+
+  [[ -f "$target" ]]
+  [[ "$(cat "$target")" == "word1 word2 word3" ]]
+  # Mode should be 600 (owner read+write only).
+  local mode
+  mode=$(stat -c '%a' "$target")
+  [[ "$mode" == "600" ]]
+}
+
+@test "validate_mnemonic_output_file_path rejects unwritable parent" {
+  run validate_mnemonic_output_file_path /nonexistent-parent-dir/seed.txt
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"parent directory does not exist"* ]]
+}
+
+@test "validate_mnemonic_output_file_path accepts a writable tmp path" {
+  validate_mnemonic_output_file_path "${BATS_TEST_TMPDIR}/seed.txt"
+}
+
+@test "validate_yes_args rejects --mnemonic-output-file=/dev/null" {
+  ASSUME_YES=true
+  NETWORK=testneta
+  PUBLIC_ADDRESS=example.com
+  KEY_MODE=generate
+  IMPORT_KEY_FILE=""
+  MNEMONIC_OUTPUT_FILE=/dev/null
+
+  run validate_yes_args
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"regular file"* ]]
+}
+
+@test "validate_yes_args requires --mnemonic-output-file when generating under --yes" {
+  ASSUME_YES=true
+  NETWORK=testneta
+  PUBLIC_ADDRESS=example.com
+  KEY_MODE=generate
+  IMPORT_KEY_FILE=""
+  MNEMONIC_OUTPUT_FILE=""
+
+  run validate_yes_args
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"--mnemonic-output-file"* ]]
+}
+
+@test "extract_mnemonic_line picks the 24-word line out of generate_and_print output" {
+  # Real chia keys generate_and_print format: header / 24-word seed / footer.
+  local fake_output mnemonic words
+  fake_output="Generating private key. Mnemonic (24 secret words):
+$(printf 'word%d ' {1..24})
+Note that this key has not been added to the keychain. Run chia keys add"
+
+  mnemonic=$(printf '%s\n' "$fake_output" | extract_mnemonic_line)
+
+  [[ -n "$mnemonic" ]]
+  words=$(printf '%s\n' "$mnemonic" | awk '{print NF}')
+  [[ "$words" -eq 24 ]]
+  ! grep -q "Generating" <<<"$mnemonic"
+  ! grep -q "keychain" <<<"$mnemonic"
+}
+
+@test "extract_mnemonic_line returns empty when no 24-word line is present" {
+  local out
+  out=$(printf 'one two three\nfour five\n' | extract_mnemonic_line)
+  [[ -z "$out" ]]
+}
+
+@test "validate_min_disk_gb accepts integers and rejects non-numeric" {
+  MIN_DISK_GIB=300
+  validate_min_disk_gb
+
+  MIN_DISK_GIB=0
+  validate_min_disk_gb
+
+  MIN_DISK_GIB="abc"
+  run validate_min_disk_gb
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"non-negative integer"* ]]
+
+  MIN_DISK_GIB="-5"
+  run validate_min_disk_gb
+  [[ "$status" -ne 0 ]]
+}
+
+@test "is_ipv4 recognizes dotted quads and rejects out-of-range octets" {
   is_ipv4 "192.168.1.1"
+  is_ipv4 "0.0.0.0"
+  is_ipv4 "255.255.255.255"
   ! is_ipv4 "not-an-ip"
+  ! is_ipv4 "999.999.999.999"
+  ! is_ipv4 "256.0.0.1"
+  ! is_ipv4 "1.2.3"
+  ! is_ipv4 "1.2.3.4.5"
 }
