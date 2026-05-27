@@ -114,6 +114,18 @@ validate_public_address() {
   return 1
 }
 
+format_gib_from_kib() {
+  # Render KiB as GiB with one decimal place, integer-only math (no bc).
+  # Used so the system info line and the "minimum requirements" line agree:
+  # 7,864,320 KiB displays as "7.5", not "7" — otherwise the success message
+  # ("7.5 GiB RAM" requirement met) contradicts the system line (was "7 GiB").
+  local kib="$1"
+  local mib=$((kib / 1024))
+  local gib_int=$((mib / 1024))
+  local gib_tenths=$(((mib % 1024) * 10 / 1024))
+  printf '%d.%d' "$gib_int" "$gib_tenths"
+}
+
 meets_min_specs() {
   local cpu="$1" mem_kib="$2" disk_gib="$3" min_disk="$4"
   [[ "$cpu" -ge "${MIN_CPU_CORES}" ]] || return 1
@@ -683,11 +695,15 @@ check_min_specs() {
   disk_root=$(get_free_disk_gib /)
   disk_home=$(get_free_disk_gib "${HOME}")
 
-  info "System: ${cpu} CPUs, $((mem_kib / 1024 / 1024)) GiB RAM, ${disk_root} GiB free on /, ${disk_home} GiB free on \$HOME"
+  local mem_gib min_ram_gib
+  mem_gib=$(format_gib_from_kib "$mem_kib")
+  min_ram_gib=$(format_gib_from_kib "$MIN_RAM_KIB")
+
+  info "System: ${cpu} CPUs, ${mem_gib} GiB RAM, ${disk_root} GiB free on /, ${disk_home} GiB free on \$HOME"
 
   if meets_min_specs "$cpu" "$mem_kib" "$disk_root" "$MIN_DISK_GIB" &&
     meets_min_specs "$cpu" "$mem_kib" "$disk_home" "$MIN_DISK_GIB"; then
-    success "Meets minimum requirements (${MIN_DISK_GIB} GiB disk, ${MIN_CPU_CORES} CPUs, 7.5 GiB RAM)"
+    success "Meets minimum requirements (${MIN_DISK_GIB} GiB disk, ${MIN_CPU_CORES} CPUs, ${min_ram_gib} GiB RAM)"
     return 0
   fi
 
@@ -704,7 +720,7 @@ check_min_specs() {
     fi
   fi
 
-  die "System does not meet minimum requirements: ${MIN_CPU_CORES} CPUs, 7.5 GiB RAM, ${MIN_DISK_GIB} GiB free disk on / and \$HOME."
+  die "System does not meet minimum requirements: ${MIN_CPU_CORES} CPUs, ${min_ram_gib} GiB RAM, ${MIN_DISK_GIB} GiB free disk on / and \$HOME."
 }
 
 check_existing_install() {
@@ -867,6 +883,63 @@ verify_apt_package_version() {
   die "Package ${pkg} version ${ver} not found in apt repositories. Try another version."
 }
 
+# Verify the requested apt pin exists; if not, downshift to the highest
+# *published* version on the same track (stable vs -rc*) that is also
+# <= the requested version, and update the caller's variable.
+#
+# GitHub Releases sometimes publishes slightly ahead of the apt build
+# pipeline, so the brand-new tag the resolver picked may not be in apt yet.
+# Without a fallback the installer dies; with this, the user gets the
+# next-oldest published version and a warning. We never upgrade past the
+# user's pin — a request for rc28 with apt-only-has-rc29 dies rather than
+# silently installing something newer the user did not ask for.
+verify_or_fallback_apt_version() {
+  local pkg="$1" var_name="$2"
+  local want="${!var_name}"
+  [[ -z "$want" ]] && return 0
+
+  # `|| true` so a non-zero apt-cache (e.g. unknown package) doesn't trip
+  # the ERR trap; we want to fall through to our specific die message below.
+  local available
+  available=$(apt-cache madison "$pkg" 2>/dev/null | awk '{print $3}' | sort -V -r -u || true)
+
+  # Exact-match wins; no fallback needed.
+  if [[ -n "$available" ]] && grep -qFx -- "$want" <<<"$available"; then
+    return 0
+  fi
+
+  # Track selection: -rc* tags come from cadt-test repo; non-rc from cadt repo.
+  local want_rc=false
+  [[ "$want" == *-rc* ]] && want_rc=true
+
+  # sort -V -r already orders newest-first. Walk the list and pick the first
+  # entry that is on the same track AND not newer than what was requested
+  # (dpkg --compare-versions is the authoritative semver-ish ordering for
+  # Debian-style version strings, including -rcN suffixes).
+  local fallback="" v
+  while IFS= read -r v; do
+    [[ -z "$v" ]] && continue
+    if [[ "$want_rc" == true ]]; then
+      [[ "$v" == *-rc* ]] || continue
+    else
+      [[ "$v" == *-rc* ]] && continue
+    fi
+    # Skip versions newer than the user's pin — refusing to upgrade past the
+    # requested version is what makes this a "fallback" and not a "drift".
+    if dpkg --compare-versions "$v" gt "$want" 2>/dev/null; then
+      continue
+    fi
+    fallback="$v"
+    break
+  done <<<"$available"
+
+  if [[ -z "$fallback" ]]; then
+    die "Package ${pkg} version ${want} not in apt and no compatible fallback (<= ${want}) available. Run 'apt-cache madison ${pkg}' to see published versions."
+  fi
+  warn "Package ${pkg} version ${want} not yet in apt; using highest available <= requested: ${fallback}"
+  printf -v "$var_name" '%s' "$fallback"
+}
+
 install_prerequisites() {
   # Skip the apt round trip (and pre-confirm system mutation) when the user
   # already has everything we need. Most Ubuntu installs ship these but minimal
@@ -928,9 +1001,12 @@ setup_apt_repos() {
 }
 
 install_packages() {
-  verify_apt_package_version chia-blockchain-cli "$CHIA_APT_VER"
-  verify_apt_package_version chia-tools "$TOOLS_APT_VER"
-  verify_apt_package_version cadt "$CADT_APT_VER"
+  # Use the fallback-aware variant so a brand-new GitHub tag that hasn't
+  # finished its apt build yet downshifts to the highest published version
+  # on the same track instead of aborting the install.
+  verify_or_fallback_apt_version chia-blockchain-cli CHIA_APT_VER
+  verify_or_fallback_apt_version chia-tools TOOLS_APT_VER
+  verify_or_fallback_apt_version cadt CADT_APT_VER
 
   local chia_spec="chia-blockchain-cli"
   local tools_spec="chia-tools"

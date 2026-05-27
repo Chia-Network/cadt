@@ -265,6 +265,148 @@ EOF
   verify_apt_package_version cadt ""
 }
 
+@test "verify_or_fallback_apt_version keeps the pin when exact match exists" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  cat >"${bin}/apt-cache" <<'EOF'
+#!/usr/bin/env bash
+echo "  cadt | 1.7.26 | https://repo.chia.net cadt/main amd64 Packages"
+echo "  cadt | 1.7.25 | https://repo.chia.net cadt/main amd64 Packages"
+EOF
+  chmod +x "${bin}/apt-cache"
+  PATH="${bin}:$PATH"
+  CADT_APT_VER="1.7.26"
+
+  verify_or_fallback_apt_version cadt CADT_APT_VER
+  [[ "$CADT_APT_VER" == "1.7.26" ]]
+}
+
+@test "verify_or_fallback_apt_version falls back to highest published -rc when exact pin missing" {
+  # Mirrors the real failure: GitHub published 1.7.26-rc29 but apt only has rc28.
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  cat >"${bin}/apt-cache" <<'EOF'
+#!/usr/bin/env bash
+echo "  cadt | 1.7.26-rc28 | https://repo.chia.net cadt-test/main amd64 Packages"
+echo "  cadt | 1.7.26-rc27 | https://repo.chia.net cadt-test/main amd64 Packages"
+echo "  cadt | 1.7.25      | https://repo.chia.net cadt/main      amd64 Packages"
+EOF
+  chmod +x "${bin}/apt-cache"
+  PATH="${bin}:$PATH"
+  CADT_APT_VER="1.7.26-rc29"
+
+  verify_or_fallback_apt_version cadt CADT_APT_VER
+  [[ "$CADT_APT_VER" == "1.7.26-rc28" ]]
+}
+
+@test "verify_or_fallback_apt_version refuses to upgrade past the requested pin" {
+  # User explicitly asked for rc28; apt has only rc29. Silently installing
+  # rc29 would mean we installed something the user did not request.
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  cat >"${bin}/apt-cache" <<'EOF'
+#!/usr/bin/env bash
+echo "  cadt | 1.7.26-rc29 | https://repo.chia.net cadt-test/main amd64 Packages"
+EOF
+  chmod +x "${bin}/apt-cache"
+  PATH="${bin}:$PATH"
+  CADT_APT_VER="1.7.26-rc28"
+
+  run verify_or_fallback_apt_version cadt CADT_APT_VER
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"no compatible fallback"* ]]
+}
+
+@test "verify_or_fallback_apt_version falls back to highest stable when stable pin missing" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  cat >"${bin}/apt-cache" <<'EOF'
+#!/usr/bin/env bash
+echo "  cadt | 1.7.26-rc28 | https://repo.chia.net cadt-test/main amd64 Packages"
+echo "  cadt | 1.7.25      | https://repo.chia.net cadt/main      amd64 Packages"
+echo "  cadt | 1.7.24      | https://repo.chia.net cadt/main      amd64 Packages"
+EOF
+  chmod +x "${bin}/apt-cache"
+  PATH="${bin}:$PATH"
+  CADT_APT_VER="1.7.26"
+
+  run verify_or_fallback_apt_version cadt CADT_APT_VER
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == *"not yet in apt"* ]]
+
+  verify_or_fallback_apt_version cadt CADT_APT_VER
+  # Should NOT cross tracks: stable pin must NOT fall back to an -rc tag.
+  [[ "$CADT_APT_VER" == "1.7.25" ]]
+}
+
+@test "verify_or_fallback_apt_version dies when no compatible track version exists" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  # Only -rc available, but user asked for stable.
+  cat >"${bin}/apt-cache" <<'EOF'
+#!/usr/bin/env bash
+echo "  cadt | 1.7.26-rc28 | https://repo.chia.net cadt-test/main amd64 Packages"
+EOF
+  chmod +x "${bin}/apt-cache"
+  PATH="${bin}:$PATH"
+  CADT_APT_VER="1.7.26"
+
+  run verify_or_fallback_apt_version cadt CADT_APT_VER
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"no compatible fallback"* ]]
+}
+
+@test "verify_or_fallback_apt_version dies cleanly when apt-cache fails (unknown pkg)" {
+  # Guard against the previous regression: bare `available=$(... | sort)`
+  # tripped the ERR trap on apt-cache failure, surfacing a generic
+  # "Install failed at line N" instead of the function's own die message.
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  cat >"${bin}/apt-cache" <<'EOF'
+#!/usr/bin/env bash
+exit 100
+EOF
+  chmod +x "${bin}/apt-cache"
+  PATH="${bin}:$PATH"
+  CADT_APT_VER="1.7.26-rc28"
+
+  run verify_or_fallback_apt_version cadt CADT_APT_VER
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"no compatible fallback"* ]]
+}
+
+@test "verify_or_fallback_apt_version is a no-op when variable is empty" {
+  CADT_APT_VER=""
+  verify_or_fallback_apt_version cadt CADT_APT_VER
+  [[ -z "$CADT_APT_VER" ]]
+}
+
+@test "format_gib_from_kib renders fractional GiB with one decimal" {
+  # 7680 MiB == 7.5 GiB exact (matches the MIN_RAM_KIB constant)
+  [[ "$(format_gib_from_kib $((7680 * 1024)))" == "7.5" ]]
+  # 8 GiB exact
+  [[ "$(format_gib_from_kib $((8 * 1024 * 1024)))" == "8.0" ]]
+  # 15 GiB system
+  [[ "$(format_gib_from_kib $((15 * 1024 * 1024)))" == "15.0" ]]
+  # 1.0 GiB
+  [[ "$(format_gib_from_kib $((1 * 1024 * 1024)))" == "1.0" ]]
+}
+
+@test "format_gib_from_kib boundary: 0 and sub-GiB values render as 0.x" {
+  [[ "$(format_gib_from_kib 0)" == "0.0" ]]
+  # 512 MiB = 0.5 GiB
+  [[ "$(format_gib_from_kib $((512 * 1024)))" == "0.5" ]]
+  # 100 MiB < 0.1 GiB → truncates to "0.0" (intentional, not rounded)
+  [[ "$(format_gib_from_kib $((100 * 1024)))" == "0.0" ]]
+}
+
+@test "format_gib_from_kib truncates tenths (does not round)" {
+  # 7.99 GiB-ish: 8181 MiB.  Integer math floors to 7.9, not 8.0.
+  # Documents the trade-off: bash int-only math means small downward bias
+  # in display, which is fine (and conservative) for spec-check messaging.
+  [[ "$(format_gib_from_kib $((8181 * 1024)))" == "7.9" ]]
+}
+
 @test "cadt_health_curl_args includes API key header only when configured" {
   local args
 
