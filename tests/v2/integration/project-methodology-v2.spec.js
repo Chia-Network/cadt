@@ -2,9 +2,18 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { ProjectMethodologyV2, ProjectV2, ProgramV2, MethodologyV2, StagingV2 } from '../../../src/models/v2/index.js';
+import {
+  ProjectMethodologyV2,
+  ProjectV2,
+  ProgramV2,
+  MethodologyV2,
+  StagingV2,
+  ValidationV2,
+  VerificationV2,
+  IssuanceV2,
+} from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
-import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
+import { createV2TestHomeOrg, getV2HomeOrgId, addUuidIfNeeded } from '../utils/v2-test-helpers.js';
 
 describe('Project-Methodology V2 Join Table Integration Tests', function () {
   this.timeout(300000); // 5 minute timeout for comprehensive tests
@@ -712,6 +721,51 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
         cadTrustProjectId: createdProjectId,
         cadTrustMethodologyId: createdMethodologyId,
       });
+    });
+
+    it('should return 409 when issuance still references project-methodology', async function () {
+      const validation = await ValidationV2.create(addUuidIfNeeded('ValidationV2', {
+        validationId: `VAL-PM-GUARD-${uuidv4().slice(0, 8)}`,
+        validationType: 'Validation of Project Design Document',
+        validationBody: 'Guard validator',
+        cadTrustProjectId: testProjectId,
+      }));
+      const verification = await VerificationV2.create(addUuidIfNeeded('VerificationV2', {
+        verificationId: `VER-PM-GUARD-${uuidv4().slice(0, 8)}`,
+        verificationBody: 'Guard verifier',
+        cadTrustProjectId: testProjectId,
+        cadTrustValidationId: validation.cadTrustValidationId,
+      }));
+      const pmId = uuidv4();
+      await ProjectMethodologyV2.create({
+        cadTrustProjectMethodologyId: pmId,
+        cadTrustProjectId: testProjectId,
+        cadTrustMethodologyId: testMethodologyId,
+      });
+      await IssuanceV2.create(addUuidIfNeeded('IssuanceV2', {
+        issuanceId: `ISS-PM-GUARD-${uuidv4().slice(0, 8)}`,
+        issuanceDate: '2024-06-01',
+        cadTrustVerificationId: verification.cadTrustVerificationId,
+        cadTrustProjectMethodologyId: pmId,
+      }));
+
+      const response = await supertest(app)
+        .delete(`/v2/project-methodology/${pmId}`)
+        .expect(409);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.equal('Referenced records must be removed before deletion');
+      expect(response.body.references).to.deep.include({ table: 'issuance', count: 1 });
+
+      const stagingForPm = await StagingV2.findAll({
+        where: { table: 'project_methodology', action: 'DELETE' },
+        raw: true,
+      });
+      const blockedRow = stagingForPm.find((row) => {
+        const data = JSON.parse(row.data);
+        return data[0]?.cad_trust_project_methodology_id === pmId;
+      });
+      expect(blockedRow).to.be.undefined;
     });
 
     it('should delete a project-methodology relationship via API', async function () {

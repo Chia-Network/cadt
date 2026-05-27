@@ -1,3 +1,462 @@
+## [1.7.25](https://github.com/Chia-Network/cadt/compare/1.7.25-rc1...1.7.25) (2025-10-08)
+
+
+
+## [1.7.24](https://github.com/Chia-Network/cadt/compare/1.7.23-rc20...1.7.24) (2025-09-10)
+
+
+
+## [1.7.23](https://github.com/Chia-Network/cadt/compare/1.7.23-rc19...1.7.23) (2025-09-04)
+
+
+
+## [1.7.22](https://github.com/Chia-Network/cadt/compare/1.7.22-rc3...1.7.22) (2025-03-11)
+
+
+
+## [1.7.21](https://github.com/Chia-Network/cadt/compare/1.7.21-rc21...1.7.21) (2025-02-21)
+
+
+
+## [1.7.20](https://github.com/Chia-Network/cadt/compare/1.7.19...1.7.20) (2024-12-09)
+
+
+
+## [1.7.19](https://github.com/Chia-Network/cadt/compare/1.7.18...1.7.19) (2024-12-04)
+
+
+
+## [1.7.18](https://github.com/Chia-Network/cadt/compare/1.7.17...1.7.18) (2024-10-18)
+
+
+
+## [1.7.17](https://github.com/Chia-Network/cadt/compare/1.7.16...1.7.17) (2024-08-16)
+
+
+
+## [1.7.16](https://github.com/Chia-Network/cadt/compare/1.7.15...1.7.16) (2024-05-31)
+
+
+### Bug Fixes
+
+* add a bunch of mirroring debugging output, fix eslint ([fabc8e0](https://github.com/Chia-Network/cadt/commit/fabc8e07e9500a0b6116bbf91d886e68d03d9b60))
+* handle null cases in mirror creation ([133df86](https://github.com/Chia-Network/cadt/commit/133df866191561039e21519e172355cdbfcbc323))
+* issues surfaced by the linter ([6f8f44b](https://github.com/Chia-Network/cadt/commit/6f8f44b3a97ce2800d197767df28eb05c1323599))
+* mirror subscription check in the right orgUid variable ([2cdd7c9](https://github.com/Chia-Network/cadt/commit/2cdd7c9eae1a42136377350046317ef23651721e))
+* move extra mirror debugging messages to the silly log level ([bf36af1](https://github.com/Chia-Network/cadt/commit/bf36af10c5291259dd26d38b5247a5fe0c81700a))
+* remove 0x from store ID when looking for existing mirrors ([9381005](https://github.com/Chia-Network/cadt/commit/9381005123300036a5d22c187284a7cdc71b2766))
+
+
+### Features
+
+* check wallet balance before adding mirror ([ff420f6](https://github.com/Chia-Network/cadt/commit/ff420f6f3a44cf126f8af735818a00c89d10f7ba))
+
+
+
+## [1.7.24-rc1](https://github.com/Chia-Network/cadt/compare/1.7.24...1.7.24-rc1) (2025-09-10)
+
+
+
+## [1.7.24](https://github.com/Chia-Network/cadt/compare/1.7.23-rc20...1.7.24) (2025-09-10)
+
+
+### Bug Fixes
+
+* hash var logic ([21c5a38](https://github.com/Chia-Network/cadt/commit/21c5a388ca3a79c08a163dcef13b6ca40306adf0))
+* log-update dependency issue - load on demand ([33fc935](https://github.com/Chia-Network/cadt/commit/33fc9354970fe4b8a79d428a65aeca1d51f5e252))
+* unsub retry logic ([46314a3](https://github.com/Chia-Network/cadt/commit/46314a324d760247830c036db416cb58beb853bf))
+
+
+
+## [1.7.23](https://github.com/Chia-Network/cadt/compare/1.7.23-rc19...1.7.23) (2025-09-04)
+
+
+
+## [1.7.22](https://github.com/Chia-Network/cadt/compare/1.7.22-rc3...1.7.22) (2025-03-11)
+
+
+
+## [1.7.21](https://github.com/Chia-Network/cadt/compare/1.7.21-rc21...1.7.21) (2025-02-21)
+
+
+
+## [1.7.20](https://github.com/Chia-Network/cadt/compare/1.7.19...1.7.20) (2024-12-09)
+
+
+
+## [1.7.19](https://github.com/Chia-Network/cadt/compare/1.7.18...1.7.19) (2024-12-04)
+
+
+
+## [1.7.18](https://github.com/Chia-Network/cadt/compare/1.7.17...1.7.18) (2024-10-18)
+
+
+
+## [1.7.17](https://github.com/Chia-Network/cadt/compare/1.7.16...1.7.17) (2024-08-16)
+
+
+
+## [1.7.16](https://github.com/Chia-Network/cadt/compare/1.7.15...1.7.16) (2024-05-31)
+
+
+
+## [1.7.23-rc20](https://github.com/Chia-Network/cadt/compare/1.7.23...1.7.23-rc20) (2025-09-04)
+
+
+
+## [1.7.23](https://github.com/Chia-Network/cadt/compare/1.7.23-rc19...1.7.23) (2025-09-04)
+
+
+
+## [1.7.22](https://github.com/Chia-Network/cadt/compare/1.7.22-rc3...1.7.22) (2025-03-11)
+
+
+
+## [1.7.21](https://github.com/Chia-Network/cadt/compare/1.7.21-rc21...1.7.21) (2025-02-21)
+
+
+
+## [1.7.20](https://github.com/Chia-Network/cadt/compare/1.7.19...1.7.20) (2024-12-09)
+
+
+
+## [1.7.19](https://github.com/Chia-Network/cadt/compare/1.7.18...1.7.19) (2024-12-04)
+
+
+
+## [1.7.18](https://github.com/Chia-Network/cadt/compare/1.7.17...1.7.18) (2024-10-18)
+
+
+
+## [1.7.17](https://github.com/Chia-Network/cadt/compare/1.7.16...1.7.17) (2024-08-16)
+
+
+
+## [1.7.16](https://github.com/Chia-Network/cadt/compare/1.7.15...1.7.16) (2024-05-31)
+
+
+### Bug Fixes
+
+* adjust retries and delay again to account for governance creation ([405bf80](https://github.com/Chia-Network/cadt/commit/405bf8010700c2c9d4c8a560ecf4dcce919b8bbd))
+* fine tuning retry count ([1b7f775](https://github.com/Chia-Network/cadt/commit/1b7f7758b4c144ce0447cbbe6604193450134751))
+* install prettier directly, adjust retries to give governance creation more time ([bfb694b](https://github.com/Chia-Network/cadt/commit/bfb694be09d4628335663075af4eeb487b4acff3))
+* support http and https on ip update script ([572c397](https://github.com/Chia-Network/cadt/commit/572c3976c17713449298c7555aa5ef73d61b33cf))
+
+
+
+## [1.7.23-rc5](https://github.com/Chia-Network/cadt/compare/1.7.23-rc4...1.7.23-rc5) (2025-04-03)
+
+
+### Features
+
+* add script to update datalayer URL and reset mirrors ([084f3a0](https://github.com/Chia-Network/cadt/commit/084f3a0d9c5c0ed4aaf404d743de2e54dd321bfb))
+
+
+
+## [1.7.22-rc4](https://github.com/Chia-Network/cadt/compare/1.7.22...1.7.22-rc4) (2025-03-11)
+
+
+
+## [1.7.22](https://github.com/Chia-Network/cadt/compare/1.7.22-rc3...1.7.22) (2025-03-11)
+
+
+
+## [1.7.21](https://github.com/Chia-Network/cadt/compare/1.7.21-rc21...1.7.21) (2025-02-21)
+
+
+
+## [1.7.20](https://github.com/Chia-Network/cadt/compare/1.7.19...1.7.20) (2024-12-09)
+
+
+
+## [1.7.19](https://github.com/Chia-Network/cadt/compare/1.7.18...1.7.19) (2024-12-04)
+
+
+
+## [1.7.18](https://github.com/Chia-Network/cadt/compare/1.7.17...1.7.18) (2024-10-18)
+
+
+
+## [1.7.17](https://github.com/Chia-Network/cadt/compare/1.7.16...1.7.17) (2024-08-16)
+
+
+
+## [1.7.16](https://github.com/Chia-Network/cadt/compare/1.7.15...1.7.16) (2024-05-31)
+
+
+
+## [1.7.22-rc3](https://github.com/Chia-Network/cadt/compare/1.7.22-rc2...1.7.22-rc3) (2025-03-11)
+
+
+### Bug Fixes
+
+* loop bound attack vectors ([164c373](https://github.com/Chia-Network/cadt/commit/164c37392c3df8ee6044014286f1d2be3f33310f))
+* sql injection vectors ([373bcbe](https://github.com/Chia-Network/cadt/commit/373bcbe11f8214b6802c8f9665a780df03550b6e))
+* sql injection vectors via Joi validations ([5016367](https://github.com/Chia-Network/cadt/commit/5016367ca362db2ec565d87a93b29dc2c4c3c696))
+* undefined references ([e35dcf4](https://github.com/Chia-Network/cadt/commit/e35dcf47c8abca97593aece92216ab3b4afcfec7))
+
+
+
+## [1.7.21-rc22](https://github.com/Chia-Network/cadt/compare/1.7.21...1.7.21-rc22) (2025-02-21)
+
+
+
+## [1.7.21](https://github.com/Chia-Network/cadt/compare/1.7.21-rc21...1.7.21) (2025-02-21)
+
+
+
+## [1.7.20](https://github.com/Chia-Network/cadt/compare/1.7.19...1.7.20) (2024-12-09)
+
+
+
+## [1.7.19](https://github.com/Chia-Network/cadt/compare/1.7.18...1.7.19) (2024-12-04)
+
+
+
+## [1.7.18](https://github.com/Chia-Network/cadt/compare/1.7.17...1.7.18) (2024-10-18)
+
+
+
+## [1.7.17](https://github.com/Chia-Network/cadt/compare/1.7.16...1.7.17) (2024-08-16)
+
+
+
+## [1.7.16](https://github.com/Chia-Network/cadt/compare/1.7.15...1.7.16) (2024-05-31)
+
+
+
+## [1.7.21-rc21](https://github.com/Chia-Network/cadt/compare/1.7.21-rc20...1.7.21-rc21) (2025-02-21)
+
+
+
+## [1.7.21-rc20](https://github.com/Chia-Network/cadt/compare/1.7.21-rc19...1.7.21-rc20) (2025-02-05)
+
+
+### Bug Fixes
+
+* undefined function error ([3f834a9](https://github.com/Chia-Network/cadt/commit/3f834a98cd52be071d4a949b9a4bb56e58298c20))
+
+
+
+## [1.7.21-rc19](https://github.com/Chia-Network/cadt/compare/1.7.21-rc18...1.7.21-rc19) (2025-02-03)
+
+
+### Bug Fixes
+
+* bad promise resolve calls ([9a15ef6](https://github.com/Chia-Network/cadt/commit/9a15ef647c18dd596bc26c40b04b1a410d590370))
+
+
+
+## [1.7.21-rc18](https://github.com/Chia-Network/cadt/compare/1.7.21-rc17...1.7.21-rc18) (2025-01-31)
+
+
+### Bug Fixes
+
+* store sync status function ([ee10def](https://github.com/Chia-Network/cadt/commit/ee10def05c9859f1b5e90b7bfddbf511c17f957f))
+
+
+
+## [1.7.21-rc17](https://github.com/Chia-Network/cadt/compare/1.7.21-rc16...1.7.21-rc17) (2025-01-31)
+
+
+### Bug Fixes
+
+* bad imports ([f0d1666](https://github.com/Chia-Network/cadt/commit/f0d16668744f4ce32539f51ceb597b3123cfabbb))
+* default sync task ending before governance data available ([3da7b68](https://github.com/Chia-Network/cadt/commit/3da7b68ca2080d77380906f369f7635151a2da2e))
+* governance fails to sync on initial start ([f5feff5](https://github.com/Chia-Network/cadt/commit/f5feff52d7837b3ea1d06d1b5d5541e3c9a36660))
+
+
+
+## [1.7.21-rc8](https://github.com/Chia-Network/cadt/compare/1.7.21-rc7...1.7.21-rc8) (2025-01-14)
+
+
+### Bug Fixes
+
+* subscribe to org error logic ([6aef2f3](https://github.com/Chia-Network/cadt/commit/6aef2f35a2bb386853b2661a3584631436a58c24))
+
+
+### Features
+
+* add apple ARM package target ([f900b2c](https://github.com/Chia-Network/cadt/commit/f900b2c46aea35d142d975e1b535635979e9997c))
+
+
+
+## [1.7.21-rc7](https://github.com/Chia-Network/cadt/compare/1.7.21-rc6...1.7.21-rc7) (2025-01-06)
+
+
+### Bug Fixes
+
+* minor tweaks ([9852b5f](https://github.com/Chia-Network/cadt/commit/9852b5fbe2167c2f05901b8291f34fe04ae78207))
+* subscribe to organization ([b7d59dc](https://github.com/Chia-Network/cadt/commit/b7d59dc28f5088979bf00f6932432e3614c48033))
+
+
+
+## [1.7.21-rc6](https://github.com/Chia-Network/cadt/compare/1.7.21-rc5...1.7.21-rc6) (2025-01-03)
+
+
+### Bug Fixes
+
+* create org bugs ([ef6c829](https://github.com/Chia-Network/cadt/commit/ef6c829eb0e029aaad1210a30bb9eb1c7addc169))
+
+
+
+## [1.7.21-rc5](https://github.com/Chia-Network/cadt/compare/1.7.21-rc4...1.7.21-rc5) (2025-01-02)
+
+
+### Bug Fixes
+
+* bugs ([c42573a](https://github.com/Chia-Network/cadt/commit/c42573a638287428153e246679b2e7d0c97f6109))
+* bugs and improvements ([4c46054](https://github.com/Chia-Network/cadt/commit/4c46054bb19e55b0f61d7c64b214da1413c17f83))
+* circular imports ([8497173](https://github.com/Chia-Network/cadt/commit/8497173a5cfdaa1d9bdc771d4cf966f2147b08a4))
+* failing tests ([c393204](https://github.com/Chia-Network/cadt/commit/c3932041fda2ef699916b7b2f39d3ae3bddaff33))
+* prevent subscribe task overrun ([5315675](https://github.com/Chia-Network/cadt/commit/53156757d0a695e000fc100f7f1247d82ca6376c))
+* tasks resubscribing to stores while unsubscribe is executing ([c7d34ec](https://github.com/Chia-Network/cadt/commit/c7d34eca73a19194df5a968d83aec6f7ddfa67d0))
+
+
+### Features
+
+* add data model store id and hash to organization table hash ([7140f32](https://github.com/Chia-Network/cadt/commit/7140f320bca69d0401fce16d0dd875046930e0bd))
+* clean-up-failed-org start up task ([477bafa](https://github.com/Chia-Network/cadt/commit/477bafab8e5ce402e206009bf50f7deae3e45bdc))
+* create organization working ([273aac7](https://github.com/Chia-Network/cadt/commit/273aac7fc04018f407d29313b10f77f432433360))
+* delete organization working ([186b763](https://github.com/Chia-Network/cadt/commit/186b7635331f5d03f04c375a4b5b1e3c265ff6e4))
+* implemented unsubscribe from organization ([3df82e2](https://github.com/Chia-Network/cadt/commit/3df82e2dc2957824b4b2a71c93e83333df506f20))
+* update tests to reflect changed functionality ([49c6d50](https://github.com/Chia-Network/cadt/commit/49c6d507dc3f599a22f56593267f15d41f8c648b))
+
+
+
+## [1.7.21-rc1](https://github.com/Chia-Network/cadt/compare/1.7.20...1.7.21-rc1) (2024-12-19)
+
+
+### Bug Fixes
+
+* failing test ([e228d5a](https://github.com/Chia-Network/cadt/commit/e228d5a854d66d91bb48544c09f8823cfcb9c90e))
+
+
+### Features
+
+* check organization subsubscriptions improved ([71a1aa2](https://github.com/Chia-Network/cadt/commit/71a1aa2b76916a2cfd1374ba0322acdf093820eb))
+* importing organization with store subscriptions working ([4b51f80](https://github.com/Chia-Network/cadt/commit/4b51f808482f35a0772a3561342249cc6c7568dc))
+* subscribe to organizations.model.js subscribe to organization happy path working ([0df8cc6](https://github.com/Chia-Network/cadt/commit/0df8cc6cce3398ef2aad96ca81ad05844ce289f5))
+
+
+
+## [1.7.20](https://github.com/Chia-Network/cadt/compare/1.7.19...1.7.20) (2024-12-09)
+
+
+### Bug Fixes
+
+* assorted bug fixes ([d32cc3a](https://github.com/Chia-Network/cadt/commit/d32cc3a32914b59ec7e75dbd1c93387e919cd174))
+* assorted bug fixes ([1054730](https://github.com/Chia-Network/cadt/commit/1054730d1d7dfec2fffca772c753cdea9073c2ea))
+
+
+
+## [1.7.19](https://github.com/Chia-Network/cadt/compare/1.7.18...1.7.19) (2024-12-04)
+
+
+### Bug Fixes
+
+* adjust test expected messages for clarified RPC responses ([13cd876](https://github.com/Chia-Network/cadt/commit/13cd87692693cb3061cc0ed9a3f2da95af7f2ea7))
+* failing tests ([debad53](https://github.com/Chia-Network/cadt/commit/debad53293b5c79cf592451144d89c031c4d4b90))
+* organization meta sync task hanging ([b735808](https://github.com/Chia-Network/cadt/commit/b735808285dab4eb98d36fe348d57f22fb2c61ad))
+* restrictive json parser limit. increased to 5mb ([bd583db](https://github.com/Chia-Network/cadt/commit/bd583dba8e70aec12db35e08f282e78e256c18e1))
+
+
+### Features
+
+* mirror check adds governance mirrors if non-governance instance ([7270d3b](https://github.com/Chia-Network/cadt/commit/7270d3b5a6c5d7c43d24fba9309668d86cd39cd8))
+* mirror check adds governance mirrors if non-governance instance ([7fac2c7](https://github.com/Chia-Network/cadt/commit/7fac2c786c4037cedbd7997c088ebcca898d9487))
+* mirror check adds governance mirrors if non-governance instance ([7213449](https://github.com/Chia-Network/cadt/commit/721344924c121a05e5dbf6d84facbb8dfb006197))
+* mirror check task automatically adds missing governance mirrors ([80986ab](https://github.com/Chia-Network/cadt/commit/80986abe52b205c16b1fa63b0bdf48f581c3f002))
+* sqlite db locking mitigation via organizations.model.js and audit.model.js accessing mutex ([b489859](https://github.com/Chia-Network/cadt/commit/b48985967d911e7d1f0923808b374ecac3d75b19))
+* updated org model and sync registries to prevent locking organization table during audit sync ([a3f33f7](https://github.com/Chia-Network/cadt/commit/a3f33f791e470aed6fa707df6cf2ca483b4fab85))
+
+
+
+## [1.7.18](https://github.com/Chia-Network/cadt/compare/1.7.17...1.7.18) (2024-10-18)
+
+
+### Bug Fixes
+
+* a few more logging improvments ([6093019](https://github.com/Chia-Network/cadt/commit/60930190638fc8c353c6d913c05110623bfe727e))
+* failing tests due to zero vs one based generation count mismatch ([ca8d15c](https://github.com/Chia-Network/cadt/commit/ca8d15cde7e060e5d3f9e663ae64d6614c9a5c4f))
+* failing tests due to zero vs one based generation count mismatch ([293bf14](https://github.com/Chia-Network/cadt/commit/293bf14e90cb3c4d8491d0f88edc08509bf0abeb))
+* improve log messages to include registryId for easier debugging ([a78a6cb](https://github.com/Chia-Network/cadt/commit/a78a6cb5f23d8a56e9f6363623b4ca2eb925dff9))
+* registry sync stopping pre-maturely ([c7d57bf](https://github.com/Chia-Network/cadt/commit/c7d57bf5ecae17da5f93eea3bea844250a09fda7))
+
+
+### Features
+
+* added migration task checks ([aef3a42](https://github.com/Chia-Network/cadt/commit/aef3a4240ccc192b99357df1e0eacd4090dac027))
+* added query logger ([a89fcdd](https://github.com/Chia-Network/cadt/commit/a89fcdde17e7d12c9f559cb0abc2204b62e27c2d))
+* added simulator check to getSyncStatus ([f0cf847](https://github.com/Chia-Network/cadt/commit/f0cf8476aa5a86defbafffa8481023f0d7376e62))
+* added sync registries logging ([b5c863c](https://github.com/Chia-Network/cadt/commit/b5c863c8c7921e21228796877a1f5c6409ac8ca4))
+* added task to check subscriptions and resubscribe to missing org stores ([93cfeea](https://github.com/Chia-Network/cadt/commit/93cfeea83b19282d8f3b307cac86fb53fc87ad05))
+* added task to check subscriptions and resubscribe to missing org stores ([b6c0b4c](https://github.com/Chia-Network/cadt/commit/b6c0b4c2ad242340d0e16ac9d1d91d4134a0d582))
+* additional logging ([c965a53](https://github.com/Chia-Network/cadt/commit/c965a53154906903b2ea8b5257e3913755005ba8))
+* check to reset org generations if cadt is ahead of DL ([b8e2529](https://github.com/Chia-Network/cadt/commit/b8e25290b436cea819a601935c6e0b97f7ab865d))
+* converted logger to ES module for use with config-loader ([473b590](https://github.com/Chia-Network/cadt/commit/473b5904e5bb95be2c905788e2efe11cbe2f7837))
+* minor logging improvements ([0f14b1d](https://github.com/Chia-Network/cadt/commit/0f14b1d417d5e14a6d09203d915970e8177bbdab))
+* minor logging improvements ([0408228](https://github.com/Chia-Network/cadt/commit/0408228d17b788bcf6b828035c8097486073d4bf))
+* named organization in log output ([da42348](https://github.com/Chia-Network/cadt/commit/da42348d1d300975e6bf981c043079200ff28903))
+* sql logging hashes queries ([6d95bab](https://github.com/Chia-Network/cadt/commit/6d95bab90220a25897469dabd3510a2003084dea))
+* sync-registries task refinements ([2e8b8f0](https://github.com/Chia-Network/cadt/commit/2e8b8f0b2d69123eadc804c9f3706f7e9d3d1a29))
+* sync-registries task refinements ([a37775c](https://github.com/Chia-Network/cadt/commit/a37775c16db877003aaa0310005528e9f7e8a72d))
+
+
+
+## [1.7.17](https://github.com/Chia-Network/cadt/compare/1.7.16...1.7.17) (2024-08-16)
+
+
+### Bug Fixes
+
+* bug in which active transfers prevent transfer related actions ([78a5b5b](https://github.com/Chia-Network/cadt/commit/78a5b5b75bba3538a26bd87f18991c1564da4223))
+* changes in previous commit that broke old cadt-ui ([7a4f632](https://github.com/Chia-Network/cadt/commit/7a4f632b734068cd1d5f5cdd5668e0fea8088175))
+* corrected assertion call ([15f20c6](https://github.com/Chia-Network/cadt/commit/15f20c6057e0fd73b5c7af208d4cc6151fffaa79))
+* incorrect payload format to make_offer rpc ([fd52b4a](https://github.com/Chia-Network/cadt/commit/fd52b4a2cb90738c4f2c77a30b04290d918b9624))
+* removed console.log ([0244efe](https://github.com/Chia-Network/cadt/commit/0244efe45d1c036d9eaff95dc4afb2a68fba17f2))
+* removed old pkg ([05b1352](https://github.com/Chia-Network/cadt/commit/05b1352832898da483333cf38a794d6ad4713d6d))
+* testing ([2ec0d38](https://github.com/Chia-Network/cadt/commit/2ec0d389501c649e5fee03c68a54ccb7745942b3))
+
+
+### Features
+
+* /offer/accept conforms to RESTful protocol. will return 200 with message if no offer ([d585902](https://github.com/Chia-Network/cadt/commit/d585902cf79f0780bccd0b46159ae7b427b9b5e6))
+* corrected verificationBody empty string function ([5e614b0](https://github.com/Chia-Network/cadt/commit/5e614b08f797bd23f6932265e33a35382dd4833d))
+* node 20 update complete ([8a2e16d](https://github.com/Chia-Network/cadt/commit/8a2e16d8ced782099889d9894a670bcbc5402cc9))
+* node 20 update complete ([c51ca8b](https://github.com/Chia-Network/cadt/commit/c51ca8bf8f5ec6262c187b67bdcb16dc37c98244))
+* node 20 update complete ([a626aae](https://github.com/Chia-Network/cadt/commit/a626aaee5a61fce65660a6987f9928052060ae4e))
+* offer tweaks and RESTful compliance ([0756fc9](https://github.com/Chia-Network/cadt/commit/0756fc9a31ce2fbae62ad07b76f41977293875e3))
+* verificationBody is now not required for issuances ([39bfdd1](https://github.com/Chia-Network/cadt/commit/39bfdd101108317001ea4a9031bf27c570c9022e))
+
+
+
+## [1.7.16](https://github.com/Chia-Network/cadt/compare/1.7.15...1.7.16) (2024-05-31)
+
+
+### Bug Fixes
+
+* add storeId to log messages that previously only had store name ([8510dc9](https://github.com/Chia-Network/cadt/commit/8510dc940febd2957a815fabe3786038555ff05c))
+* add storeId to log messages that previously only had store name ([f46384d](https://github.com/Chia-Network/cadt/commit/f46384d80815edbc95e4bf7dd0d8817e01150a0e))
+* reset audit table task ([819ebb0](https://github.com/Chia-Network/cadt/commit/819ebb0c6be50abfc6ae52f93a638eaa5124d6e1))
+* reset audit table task ([10285f2](https://github.com/Chia-Network/cadt/commit/10285f2554d049eff05203de16fc7fc11c9d5c71))
+* reset to date ([4a5845d](https://github.com/Chia-Network/cadt/commit/4a5845d8eaa880500739903452ef04f954bccfd1))
+* reset to date endpoint query ([f94fe1e](https://github.com/Chia-Network/cadt/commit/f94fe1ee6086b2e97cc131cde45aff11671bc014))
+* reset to generation validation schema ([4541b1b](https://github.com/Chia-Network/cadt/commit/4541b1b00dad277b1c91bee6c44d8a5030a08665))
+* task meta data retrieval ([5b8bcbe](https://github.com/Chia-Network/cadt/commit/5b8bcbe51fbb6a8ce6059977a2e23086550bdf56))
+* task meta data retrieval ([729e79d](https://github.com/Chia-Network/cadt/commit/729e79dc3e2fcf5ba3af18b20ed06e15b901daae))
+* use toBeProcessedIndex ([33bc5d0](https://github.com/Chia-Network/cadt/commit/33bc5d05178a0943213970b099a96c771a3ee0af))
+* use toBeProcessedIndex ([478de36](https://github.com/Chia-Network/cadt/commit/478de3649d39752f6c6b328b6b6bea23fcc68b3d))
+
+
+### Features
+
+* added option to exclude home org ([75f05ef](https://github.com/Chia-Network/cadt/commit/75f05ef60acc893203795d1c5d2d47a78301ae88))
+* added read-only check to reset date and audit endpoints ([2b015c2](https://github.com/Chia-Network/cadt/commit/2b015c2f2b9de5330388b93b7c865eb83be7ad38))
+* added resetToDate audit endpoint ([69733fc](https://github.com/Chia-Network/cadt/commit/69733fc4128402d370b7dd2b87d4b7753061a316))
+* added resetToGeneration audit endpoint ([aa851b9](https://github.com/Chia-Network/cadt/commit/aa851b9d2f2ce8402cb9de2235f087ca8a536706))
+
+
+
 ## [1.7.15](https://github.com/Chia-Network/cadt/compare/1.7.14...1.7.15) (2024-05-15)
 
 

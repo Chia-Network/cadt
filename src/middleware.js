@@ -20,6 +20,15 @@ import { Organization } from './models';
 import { OrganizationsV2 } from './models/v2/index.js';
 import { logger } from './config/logger.js';
 import { sendReadOnlyError } from './utils/read-only-response.js';
+import { getRateLimitRetryAfterSeconds } from './utils/rate-limit.js';
+import { resolveTrustProxyHops } from './utils/trust-proxy.js';
+import {
+  checkDiskSpace,
+  logDiskSpaceStatus,
+  buildHealthDiskSpacePayload,
+  buildInsufficientDiskSpaceError,
+  isWriteRejectedByDiskGuard,
+} from './utils/disk-space.js';
 
 const { USE_SIMULATOR } = getConfig().APP;
 
@@ -40,12 +49,29 @@ const HEALTH_ENDPOINTS = new Set([
   '/v2/health',
   '/v1/health/wallet',
   '/v2/health/wallet',
+  '/diagnostics',
 ]);
 
 const isHealthEndpoint = (path) => HEALTH_ENDPOINTS.has(path);
 const isReadOnlyMethodBlocked = (method) => !['GET', 'HEAD', 'OPTIONS'].includes(method);
 
 const app = express();
+
+// Configure proxy trust so Express resolves real client IPs from
+// X-Forwarded-For headers.  TRUST_PROXY counts reverse-proxy hops:
+//   0  – no proxy (default, direct access)
+//   1  – one hop  (nginx OR Cloudflare-only)
+//   2  – two hops (Cloudflare → nginx, typical k8s ingress setup)
+// This also silences the express-rate-limit ValidationError that fires
+// when X-Forwarded-For is present but trust proxy is disabled.
+// Never use `true`; it trusts the user-supplied leftmost IP.
+//
+// resolveTrustProxyHops enforces the non-negative integer contract and
+// logs a warning for any other value so that booleans / typos / strings
+// like "loopback" don't silently disable proxy trust via NaN (see
+// src/utils/trust-proxy.js for the rationale).
+const trustProxy = resolveTrustProxyHops(getConfig().APP.TRUST_PROXY);
+app.set('trust proxy', trustProxy);
 
 app.use(
   cors({
@@ -68,7 +94,7 @@ const generalLimiter = rateLimit({
       message: 'Too many requests. Please slow down and try again later.',
       error: 'RATE_LIMIT_EXCEEDED',
       success: false,
-      retryAfter: Math.ceil(req.rateLimit.resetTime / 1000), // seconds until reset
+      retryAfter: getRateLimitRetryAfterSeconds(req.rateLimit?.resetTime),
     });
   },
 });
@@ -168,6 +194,35 @@ app.use(async function (req, res, next) {
     }
     if (READ_ONLY && isReadOnlyMethodBlocked(req.method)) {
       return sendReadOnlyError(res);
+    }
+
+    // Defensive disk-space guard. SQLite (the V1/V2 backing store) returns
+    // SQLITE_FULL mid-transaction when the underlying filesystem runs out
+    // of space, which can corrupt the WAL and leave the DB inconsistent.
+    // Reject POST/PUT/PATCH below the hardcoded BLOCK_BYTES threshold
+    // (see src/utils/disk-space.js) so reads stay available and operators
+    // can free space via DELETE without restarting. Runs after READ_ONLY
+    // (configuration wins over transient state) but before the wallet/
+    // datalayer RPC checks below so we don't pay an RPC cost on a request
+    // we already know we can't persist.
+    if (isWriteRejectedByDiskGuard(req.method)) {
+      let diskStatus = null;
+      try {
+        diskStatus = await checkDiskSpace();
+        logDiskSpaceStatus(diskStatus);
+      } catch (diskErr) {
+        // Fail open: a bug in the guard itself must not take down writes.
+        // computeStatus() swallows per-directory statfs errors and the
+        // dir-resolution helpers don't throw, so reaching this branch
+        // means something unexpected happened (e.g., getChiaRoot blew up
+        // because os.homedir() failed under a misconfigured PID-1).
+        logger.error(
+          `disk-space-guard: unexpected check failure: ${diskErr.message}`,
+        );
+      }
+      if (diskStatus && diskStatus.severity === 'block') {
+        return res.status(507).json(buildInsufficientDiskSpaceError());
+      }
     }
 
     await assertChiaNetworkMatchInConfiguration();
@@ -302,6 +357,13 @@ app.use(function (req, res, next) {
 });
 
 app.use(async function (req, res, next) {
+  // Skip the home-organization-synced header probe on health endpoints so
+  // /diagnostics (and /health*) can respond even when migrations or the
+  // organizations table are slow to come up.
+  if (isHealthEndpoint(req.path)) {
+    return next();
+  }
+
   if (process.env.NODE_ENV !== 'test') {
     // Wait for migrations to complete before accessing organizations table
     const { waitForMigrations } = await import('./routes/index.js');
@@ -384,6 +446,13 @@ app.use(async function (req, res, next) {
 });
 
 app.use(async function (req, res, next) {
+  // Skip the all-data-synced header probe on health endpoints so /diagnostics
+  // (and /health*) can respond even when migrations or the organizations
+  // table are slow to come up.
+  if (isHealthEndpoint(req.path)) {
+    return next();
+  }
+
   // Wait for migrations to complete before accessing organizations table
   const { waitForMigrations } = await import('./routes/index.js');
   await waitForMigrations();
@@ -462,6 +531,14 @@ app.use(async function (req, res, next) {
 });
 
 app.use(async function (req, res, next) {
+  // Skip the wallet-synced header probe for health endpoints. walletIsSynced
+  // can hang for up to 300s when the wallet RPC is unreachable, which would
+  // defeat the purpose of /diagnostics (and slow down /health) precisely in
+  // the scenarios where those endpoints are most useful.
+  if (isHealthEndpoint(req.path)) {
+    return next();
+  }
+
   if (USE_SIMULATOR) {
     res.setHeader(headerKeys.WALLET_SYNCED, true);
   } else {
@@ -472,10 +549,51 @@ app.use(async function (req, res, next) {
 });
 
 app.get('/health', (req, res) => {
+  // Non-blocking: build the cached disk-space projection (helper handles
+  // peek + transition log + async refresh + safe-fail). Synchronously
+  // awaiting statfs here would risk timing out k8s liveness probes when
+  // the filesystem is slow.
   res.status(200).json({
     message: 'OK',
     timestamp: new Date().toISOString(),
+    diskSpace: buildHealthDiskSpacePayload(),
   });
+});
+
+// System-wide diagnostics. Mounted on the root app (not under /v1 or /v2) so
+// it can report CADT, Chia, and machine status independent of the data-model
+// version. Lives in HEALTH_ENDPOINTS above so it bypasses the rate limiter,
+// startup gates, and the Chia/datalayer assertions -- this endpoint is meant
+// to be useful precisely when those subsystems are broken.
+//
+// Auth: handled by the global API-key middleware further up, which runs for
+// EVERY route including HEALTH_ENDPOINTS. When CADT_API_KEY is configured the
+// caller must present x-api-key before reaching this handler. We rely on
+// that single enforcement point rather than duplicating the constant-time
+// check here.
+//
+// Disabled in read-only mode: the diagnostics payload exposes system details
+// (paths, wallet balances, peer IPs, subscription IDs) that should not be
+// served on unauthenticated public-observer nodes.
+app.get('/diagnostics', async (req, res) => {
+  try {
+    const configV1 = getConfig();
+    const configV2 = getConfigV2();
+    if (configV2.READ_ONLY || configV1.READ_ONLY) {
+      return res.status(403).json({
+        error: 'The /diagnostics endpoint is not available on read-only nodes',
+      });
+    }
+    const { getDiagnosticsResponse } = await import('./routes/diagnostics.js');
+    const result = await getDiagnosticsResponse();
+    return res.status(200).json(result);
+  } catch (error) {
+    logger.error(`[diagnostics]: unexpected error building response: ${error.message}`);
+    return res.status(500).json({
+      timestamp: new Date().toISOString(),
+      error: `Failed to build diagnostics response: ${error.message}`,
+    });
+  }
 });
 
 // Conditionally mount V1 and V2 routes based on config

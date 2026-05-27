@@ -329,6 +329,72 @@ const getActiveNetwork = async () => {
   }
 };
 
+const getChiaVersion = async () => {
+  const url = `${rpcUrl}/get_version`;
+  const { cert, key, timeout } = getBaseOptions();
+
+  try {
+    const response = await superagent
+      .post(url)
+      .key(key)
+      .cert(cert)
+      .timeout(timeout)
+      .send(JSON.stringify({}));
+
+    const data = response.body;
+    if (data.success) {
+      return data.version || null;
+    }
+    return null;
+  } catch (error) {
+    logger.debug(`[diagnostics]: wallet get_version failed: ${error.message}`);
+    return null;
+  }
+};
+
+/**
+ * Return the wallet's peer connections (used by /diagnostics to cross-reference
+ * connected full-node peers against the trusted_peers map in the chia config).
+ *
+ * Returns an object with `success: false` on connection errors instead of
+ * throwing, so the diagnostics endpoint can degrade gracefully without
+ * bringing down the rest of the response.
+ *
+ * @returns {Promise<{success: boolean, connections?: Array, error?: string}>}
+ */
+const getWalletConnections = async () => {
+  if (USE_SIMULATOR) {
+    return { success: true, connections: [] };
+  }
+
+  const url = `${rpcUrl}/get_connections`;
+  try {
+    const { cert, key, timeout } = getBaseOptions();
+    const response = await superagent
+      .post(url)
+      .key(key)
+      .cert(cert)
+      .timeout(timeout)
+      .send({});
+
+    const data = response.body || JSON.parse(response.text);
+    if (!data?.success) {
+      return { success: false, error: data?.error || 'unknown error' };
+    }
+
+    const connections = (data.connections || []).map((c) => ({
+      peerHost: c.peer_host,
+      peerPort: c.peer_port,
+      type: c.type,
+      nodeId: c.node_id,
+    }));
+    return { success: true, connections };
+  } catch (error) {
+    logger.debug(`[diagnostics]: wallet get_connections failed: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+};
+
 /**
  * Get coin records from the wallet (includes coin IDs)
  * @returns {Promise<{success: boolean, coin_records: Array}>} Object with coin_records array and success flag
@@ -884,6 +950,8 @@ export default {
   waitForAllTransactionsToConfirm,
   waitForSpendableCoins,
   getActiveNetwork,
+  getChiaVersion,
+  getWalletConnections,
   getLastWalletSyncError,
   getWalletBlockchainSyncStatus,
   getCoinRecords,

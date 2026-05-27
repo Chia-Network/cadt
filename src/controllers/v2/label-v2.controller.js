@@ -272,12 +272,9 @@ export const deleteLabelV2 = async (req, res) => {
       });
     }
 
-    const force = req.query.force === 'true';
-    if (!force) {
-      const refResult = await checkReferences('label', id);
-      if (refResult.hasReferences) {
-        return res.status(409).json(buildReferenceConflictBody('label', refResult));
-      }
+    const refResult = await checkReferences('label', id);
+    if (refResult.hasReferences) {
+      return res.status(409).json(buildReferenceConflictBody('label', refResult));
     }
 
     await StagingV2.create({

@@ -28,13 +28,17 @@ import { OrganizationsV2Router } from './resources/organizations-v2.js';
 import { AuditV2Router } from './resources/audit-v2.js';
 import { OfferV2Router } from './resources/offer-v2.js';
 import { FilestoreV2Router } from './resources/filestore-v2.js';
+import { buildHealthDiskSpacePayload } from '../../utils/disk-space.js';
 
 const V2Router = express.Router();
 
 V2Router.get('/health', (req, res) => {
+  // Non-blocking: see bare /health in src/middleware.js. The shared
+  // helper handles peek + transition log + async refresh.
   res.status(200).json({
     message: 'V2 API is running',
     timestamp: new Date().toISOString(),
+    diskSpace: buildHealthDiskSpacePayload(),
   });
 });
 

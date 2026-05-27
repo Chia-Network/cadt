@@ -1190,7 +1190,7 @@ export const getLiveApiRequest = async (options = {}) => {
 /**
  * Wait for V2 organization to be created and ready
  * Polls GET /v2/organizations until organization appears and is synced
- * Also checks /v2/organizations/status for creation progress details
+ * Also checks /v2/organizations/creation-status for creation progress details
  * @param {Object} request - supertest request instance
  * @param {string} [orgName] - Optional organization name to match (if not provided, finds home org)
  * @param {number} maxWaitTime - Maximum wait time in milliseconds (default: 900000 = 15 minutes)
@@ -1221,16 +1221,27 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
   const noProgressThreshold = isUpgrade ? 60 : 6;
   let lastState = null;
   let lastStateChangeTime = Date.now();
-  const stuckStateThresholdMs = 300000;
+  // 10 min: V1/V2 org creation can legitimately take 5+ min when wallet
+  // sync transients trigger 30s retry backoffs and per-store blockchain
+  // confirmation polling. The server-side incremental state persistence
+  // means stateKey changes whenever any of the 4 stores transitions, so
+  // this only fires when no store has progressed for the full window.
+  const stuckStateThresholdMs = 600000;
 
   while (Date.now() - startTime < maxWaitTime) {
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
     let creationInProgress = false;
 
     try {
-      // First, check creation status endpoint for detailed progress
+      // First, check creation status endpoint for detailed progress.
+      // Note: this MUST be /v2/organizations/creation-status (returns
+      // {state, stores, inProgress, error}). The other endpoint
+      // /v2/organizations/status is homeOrgSyncStatus and returns
+      // {ready, status, success} — using it here makes status.state
+      // and status.stores undefined and silently disables both the
+      // FAILED-fast-fail and the stuck-state detector below.
       try {
-        const statusResponse = await request.get('/v2/organizations/status');
+        const statusResponse = await request.get('/v2/organizations/creation-status');
         if (statusResponse.status === 200 && statusResponse.body) {
           const status = statusResponse.body;
 
@@ -1296,8 +1307,17 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
           }
         }
       } catch (statusError) {
-        // Re-throw stuck state errors
-        if (statusError.message?.includes('appears stuck')) {
+        // Re-throw terminal errors we explicitly threw above (FAILED
+        // state, stuck-state) so the outer org-list catch can decide
+        // what to do with them. HTTP-level errors from the status
+        // endpoint (e.g. 404 on older builds, transient 5xx) fall
+        // through and are silently logged so the loop can keep
+        // polling the org list.
+        if (
+          statusError.message?.includes('Organization creation failed') ||
+          statusError.message?.includes('appears stuck') ||
+          statusError.message?.includes('creation FAILED')
+        ) {
           throw statusError;
         }
         // Status endpoint might not exist or may fail - that's okay
@@ -1384,7 +1404,7 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
 
             // Try to get more details about what went wrong
             try {
-              const statusResponse = await request.get('/v2/organizations/status');
+              const statusResponse = await request.get('/v2/organizations/creation-status');
               if (statusResponse.body) {
                 console.log(`  Final status: ${JSON.stringify(statusResponse.body, null, 2)}`);
               }
@@ -1408,7 +1428,7 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
 
                 // Try to get status
                 try {
-                  const statusResponse = await request.get('/v2/organizations/status');
+                  const statusResponse = await request.get('/v2/organizations/creation-status');
                   if (statusResponse.body) {
                     console.log(`  Final status: ${JSON.stringify(statusResponse.body, null, 2)}`);
                   }
@@ -1473,7 +1493,7 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
 
   // Also try to get final creation status
   try {
-    const finalStatusResponse = await request.get('/v2/organizations/status');
+    const finalStatusResponse = await request.get('/v2/organizations/creation-status');
     if (finalStatusResponse.status === 200 && finalStatusResponse.body) {
       console.log(`Final creation status: ${JSON.stringify(finalStatusResponse.body, null, 2)}`);
     }
@@ -1515,7 +1535,12 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
   const noProgressThreshold = 6;
   let lastState = null;
   let lastStateChangeTime = Date.now();
-  const stuckStateThresholdMs = 300000;
+  // 10 min: V1/V2 org creation can legitimately take 5+ min when wallet
+  // sync transients trigger 30s retry backoffs and per-store blockchain
+  // confirmation polling. The server-side incremental state persistence
+  // means stateKey changes whenever any of the 4 stores transitions, so
+  // this only fires when no store has progressed for the full window.
+  const stuckStateThresholdMs = 600000;
 
   while (Date.now() - startTime < maxWaitTime) {
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
@@ -1590,8 +1615,17 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
           }
         }
       } catch (statusError) {
-        // Re-throw stuck state errors
-        if (statusError.message?.includes('appears stuck')) {
+        // Re-throw terminal errors we explicitly threw above (FAILED
+        // state, stuck-state) so the outer org-list catch can decide
+        // what to do with them. HTTP-level errors from the status
+        // endpoint (e.g. 404 on older builds, transient 5xx) fall
+        // through and are silently logged so the loop can keep
+        // polling the org list.
+        if (
+          statusError.message?.includes('Organization creation failed') ||
+          statusError.message?.includes('appears stuck') ||
+          statusError.message?.includes('creation FAILED')
+        ) {
           throw statusError;
         }
         // Status endpoint might not exist or may fail - that's okay

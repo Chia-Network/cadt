@@ -234,7 +234,7 @@ const getStoreData = async (storeId, callback, onFail, rootHash, retry = 0) => {
 
     const decodedData = decodeDataLayerResponse(encodedData);
 
-    callback(decodedData);
+    await callback(decodedData);
   } catch (error) {
     logger.error(error.message);
     onFail(error.message);
