@@ -1,6 +1,6 @@
 'use strict';
 import { Model } from 'sequelize';
-import { sequelize, safeMirrorDbHandler, mirrorWrite } from '../../database';
+import { sequelize, mirrorDBEnabled, mirrorWrite } from '../../database';
 
 import ModelTypes from './related-projects.modeltypes.js';
 import { RelatedProjectMirror } from './related-projects.model.mirror';
@@ -15,13 +15,17 @@ class RelatedProject extends Model {
       foreignKey: 'warehouseProjectId',
     });
 
-    safeMirrorDbHandler(() => {
+    // Mirror associations are pure Sequelize metadata - no DB I/O. Gate
+    // on mirrorDBEnabled() rather than safeMirrorDbHandler() so we don't
+    // authenticate at module load. See projects.model.js for full
+    // rationale (parallel-backfill race).
+    if (mirrorDBEnabled()) {
       RelatedProjectMirror.belongsTo(Project, {
         onDelete: 'CASCADE',
         targetKey: 'warehouseProjectId',
         foreignKey: 'warehouseProjectId',
       });
-    });
+    }
   }
 
   static async create(values, options) {

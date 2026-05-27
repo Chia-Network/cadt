@@ -5,7 +5,7 @@ import { Model } from 'sequelize';
 import * as rxjs from 'rxjs';
 import {
   sequelize,
-  safeMirrorDbHandler,
+  mirrorDBEnabled,
   mirrorWrite,
   sanitizeSqliteFtsQuery,
 } from '../../database';
@@ -53,7 +53,11 @@ class Unit extends Model {
       as: 'labels',
     });
 
-    safeMirrorDbHandler(() => {
+    // Mirror associations are pure Sequelize metadata - no DB I/O. Gate
+    // on mirrorDBEnabled() rather than safeMirrorDbHandler() so we don't
+    // authenticate at module load. See projects.model.js for full
+    // rationale (parallel-backfill race).
+    if (mirrorDBEnabled()) {
       UnitMirror.belongsTo(Issuance, {
         sourceKey: 'issuanceId',
         foreignKey: 'issuanceId',
@@ -65,7 +69,7 @@ class Unit extends Model {
         through: 'label_unit',
         as: 'labels',
       });
-    });
+    }
   }
 
   static async create(values, options) {

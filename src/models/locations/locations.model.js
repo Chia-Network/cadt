@@ -2,7 +2,7 @@
 
 import { Model } from 'sequelize';
 
-import { sequelize, safeMirrorDbHandler, mirrorWrite } from '../../database';
+import { sequelize, mirrorDBEnabled, mirrorWrite } from '../../database';
 import { Project } from '../projects';
 import { Unit } from '../units';
 
@@ -22,14 +22,18 @@ class ProjectLocation extends Model {
       foreignKey: 'projectLocationId',
     });
 
-    safeMirrorDbHandler(() => {
+    // Mirror associations are pure Sequelize metadata - no DB I/O. Gate
+    // on mirrorDBEnabled() rather than safeMirrorDbHandler() so we don't
+    // authenticate at module load. See projects.model.js for full
+    // rationale (parallel-backfill race).
+    if (mirrorDBEnabled()) {
       ProjectLocationMirror.hasOne(Unit);
       ProjectLocationMirror.belongsTo(Project, {
         onDelete: 'CASCADE',
         targetKey: 'warehouseProjectId',
         foreignKey: 'warehouseProjectId',
       });
-    });
+    }
   }
 
   static async create(values, options) {
