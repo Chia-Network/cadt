@@ -21,6 +21,12 @@ readonly GH_API_CHIA="https://api.github.com/repos/Chia-Network/chia-blockchain/
 readonly GH_API_TOOLS="https://api.github.com/repos/Chia-Network/chia-tools/releases"
 readonly GH_API_CADT="https://api.github.com/repos/Chia-Network/cadt/releases"
 readonly CHIA_ROOT="${HOME}/.chia/mainnet"
+if [[ "${INSTALL_OMNIBUS_LIB_ONLY:-0}" == 1 ]]; then
+  # Default-if-unset so tests can point filesystem-mutating helpers at fixtures.
+  : "${DATALAYER_WWW_ROOT:=/var/www}"
+else
+  readonly DATALAYER_WWW_ROOT="/var/www"
+fi
 # Default-if-unset so tests can point this at a fixture by pre-setting
 # CADT_CONFIG before sourcing. Not made `readonly` for the same reason.
 : "${CADT_CONFIG:=${CHIA_ROOT}/cadt/config.yaml}"
@@ -1341,7 +1347,7 @@ start_chia_services() {
 setup_datalayer_directory() {
   local net="$1"
   local src="${CHIA_ROOT}/data_layer/db/server_files_location_${net}"
-  local dst="/var/www/server_files_location_${net}"
+  local dst="${DATALAYER_WWW_ROOT}/server_files_location_${net}"
 
   info "Setting up DataLayer file directory..."
 
@@ -1352,7 +1358,9 @@ setup_datalayer_directory() {
   if [[ -L "$src" ]]; then
     sudo rm -f "$src"
   elif [[ -d "$src" ]]; then
-    sudo mv "$src" "$dst"
+    sudo mkdir -p "$dst"
+    sudo cp -a "$src/." "$dst/"
+    sudo rm -rf "$src"
   else
     sudo mkdir -p "$dst"
   fi
@@ -1382,7 +1390,7 @@ write_nginx_http_config() {
   # omitted when --local-only is set so the CADT API stays bound to
   # 127.0.0.1:31310 and is never reachable through nginx.
   local net="$1"
-  local dst="/var/www/server_files_location_${net}"
+  local dst="${DATALAYER_WWW_ROOT}/server_files_location_${net}"
 
   sudo mkdir -p "$CERTBOT_WEBROOT"
 
@@ -1425,7 +1433,7 @@ write_nginx_https_config() {
   # but 301-redirects everything else to https://. The real CADT proxy and
   # /data/ alias live in the 443 server block below.
   local net="$1"
-  local dst="/var/www/server_files_location_${net}"
+  local dst="${DATALAYER_WWW_ROOT}/server_files_location_${net}"
 
   sudo tee /etc/nginx/sites-available/cadt >/dev/null <<EOF
 server {

@@ -855,6 +855,60 @@ EOF
   ! grep -q "Install failed at line" <<<"$output"
 }
 
+@test "setup_datalayer_directory merges into existing web root without nesting" {
+  run bash -c '
+    set -Eeuo pipefail
+    tmp="$1"
+    test_dir="$2"
+    bin="${tmp}/bin"
+    mkdir -p "$bin"
+    cat >"${bin}/sudo" <<'"'"'EOF'"'"'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "systemctl" ]]; then
+  exit 0
+fi
+if [[ "${1:-}" == "chown" ]]; then
+  exit 0
+fi
+if [[ "${1:-}" == "tee" ]]; then
+  cat >/dev/null
+  exit 0
+fi
+if [[ "${1:-}" == "mkdir" && "${2:-}" == "-p" && "${3:-}" == /etc/systemd/* ]]; then
+  exit 0
+fi
+exec "$@"
+EOF
+    chmod +x "${bin}/sudo"
+
+    export INSTALL_OMNIBUS_LIB_ONLY=1
+    export HOME="${tmp}/home"
+    export USER=testuser
+    export PATH="${bin}:$PATH"
+    export DATALAYER_WWW_ROOT="${tmp}/www"
+    source "${test_dir}/../install-omnibus.sh"
+
+    src="${CHIA_ROOT}/data_layer/db/server_files_location_testneta"
+    dst="${DATALAYER_WWW_ROOT}/server_files_location_testneta"
+    mkdir -p "$src" "$dst" "${src}/nested" "${dst}/nested"
+    printf source >"${src}/from-src.dat"
+    printf nested >"${src}/nested/file.dat"
+    printf stale >"${dst}/existing.dat"
+    printf old-nested >"${dst}/nested/existing-file.dat"
+
+    setup_datalayer_directory testneta
+
+    [[ -L "$src" ]]
+    [[ "$(readlink "$src")" == "$dst" ]]
+    [[ ! -e "${dst}/server_files_location_testneta" ]]
+    [[ "$(cat "${dst}/from-src.dat")" == "source" ]]
+    [[ "$(cat "${dst}/nested/file.dat")" == "nested" ]]
+    [[ "$(cat "${dst}/existing.dat")" == "stale" ]]
+    [[ "$(cat "${dst}/nested/existing-file.dat")" == "old-nested" ]]
+  ' bash "$BATS_TEST_TMPDIR" "$BATS_TEST_DIRNAME"
+  [[ "$status" -eq 0 ]]
+}
+
 @test "validate_min_disk_gb accepts integers and rejects non-numeric" {
   MIN_DISK_GIB=300
   validate_min_disk_gb
