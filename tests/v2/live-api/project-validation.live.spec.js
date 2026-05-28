@@ -25,53 +25,6 @@ import {
   getInvalidPicklistValue,
 } from './data/test-data-generators.js';
 
-const findNonHomeProject = async (request, homeOrgId) => {
-  let page = 1;
-  const limit = 100;
-
-  while (page <= 10) {
-    const response = await request
-      .get('/v2/project')
-      .query({ page, limit })
-      .expect(200);
-    const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);
-    const nonHomeProject = data.find(record => record.orgUid && record.orgUid !== homeOrgId);
-    if (nonHomeProject) return nonHomeProject;
-
-    const totalPages = response.body?.pageCount || 1;
-    if (page >= totalPages || data.length < limit) break;
-    page++;
-  }
-
-  return null;
-};
-
-const requireNonHomeProject = async (request, homeOrgId, mochaContext) => {
-  const nonHomeProject = await findNonHomeProject(request, homeOrgId);
-  if (!nonHomeProject) {
-    mochaContext.skip();
-  }
-  return nonHomeProject;
-};
-
-const buildProjectUpdateData = (record, overrides = {}) => ({
-  projectRegistryName: record.projectRegistryName,
-  projectId: record.projectId,
-  projectName: record.projectName,
-  projectCreditingProgram: record.projectCreditingProgram ?? null,
-  projectLink: record.projectLink ?? null,
-  projectDescription: record.projectDescription ?? null,
-  projectSector: record.projectSector ?? null,
-  projectType: record.projectType ?? null,
-  projectSubtype: record.projectSubtype ?? null,
-  projectStatus: record.projectStatus ?? null,
-  projectStatusDate: record.projectStatusDate ?? null,
-  projectUnitMetric: record.projectUnitMetric ?? null,
-  cadTrustReferenceProjectId: record.cadTrustReferenceProjectId ?? null,
-  cadTrustProgramId: record.cadTrustProgramId ?? null,
-  ...overrides,
-});
-
 describe('Project Live API Validation Tests', function () {
   this.timeout(600000); // 10 minute timeout
   let request;
@@ -225,26 +178,6 @@ describe('Project Live API Validation Tests', function () {
     });
   });
   describe('Step 7: PUT Request Tests', function () {
-    it('should reject updating a project not owned by the home organization', async function () {
-      const nonHomeProject = await requireNonHomeProject(request, homeOrgId, this);
-
-      const updateData = buildProjectUpdateData(nonHomeProject, {
-        projectName: `Should Not Update ${Date.now()}`,
-      });
-
-      try {
-        const response = await request
-          .put(`/v2/project/${nonHomeProject.cadTrustProjectId}`)
-          .send(updateData);
-
-        expect(response.status).to.equal(400);
-        expect(response.body.success).to.be.false;
-        expect(response.body.error).to.include('Restricted data');
-      } finally {
-        await clearStagingTable(request);
-      }
-    });
-
     it('should update a project', async function () {
       // Get ID from createdIds (if available) or query for test records we created
       let id = createdIds[0];
@@ -358,11 +291,6 @@ describe('Project Live API Validation Tests', function () {
       }
     });
 
-    it('should include synced project data from another organization', async function () {
-      const nonHomeProject = await requireNonHomeProject(request, homeOrgId, this);
-      expect(nonHomeProject.orgUid).to.not.equal(homeOrgId);
-    });
-
     it('should support search functionality', async function () {
       // Test search if supported by endpoint
       const response = await request
@@ -374,21 +302,6 @@ describe('Project Live API Validation Tests', function () {
     });
   });
   describe('Step 9: DELETE Request Tests', function () {
-    it('should reject deleting a project not owned by the home organization', async function () {
-      const nonHomeProject = await requireNonHomeProject(request, homeOrgId, this);
-
-      try {
-        const response = await request
-          .delete(`/v2/project/${nonHomeProject.cadTrustProjectId}`);
-
-        expect(response.status).to.equal(400);
-        expect(response.body.success).to.be.false;
-        expect(response.body.error).to.include('Restricted data');
-      } finally {
-        await clearStagingTable(request);
-      }
-    });
-
     it('should delete all created projects', async function () {
       // Query for test projects by orgUid and TEST- prefix
       // This works even when DELETE runs in a separate process

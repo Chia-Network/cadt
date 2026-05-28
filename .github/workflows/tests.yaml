@@ -4361,6 +4361,68 @@ jobs:
           fi
           echo "All AEF data matches expected values"
 
+      - name: Verify ownership guards block non-home mutations
+        shell: bash
+        run: |
+          echo "########################################################"
+          echo "Verifying ownership guards reject non-home org mutations"
+          echo "########################################################"
+          BASE="http://127.0.0.1:31310/v2"
+          ERRORS=0
+
+          PROJECT=$(curl -s "$BASE/project?page=1&limit=1" | jq '(if type == "object" then .data else . end)[0]')
+          PROJECT_ID=$(echo "$PROJECT" | jq -r '.cadTrustProjectId')
+          echo "Using synced project: $PROJECT_ID"
+
+          echo ""
+          echo "--- PUT update on non-home project (expect 400) ---"
+          PUT_RESP=$(curl -s -w "\n%{http_code}" -X PUT "$BASE/project/$PROJECT_ID" \
+            -H "Content-Type: application/json" \
+            -d "{\"projectName\": \"Should Not Update $(date +%s)\"}")
+          PUT_HTTP=$(echo "$PUT_RESP" | tail -1)
+          PUT_BODY=$(echo "$PUT_RESP" | head -n -1)
+          if [ "$PUT_HTTP" = "400" ]; then
+            echo "  PASS: PUT returned 400"
+            if echo "$PUT_BODY" | jq -r '.error' 2>/dev/null | grep -q "Restricted data"; then
+              echo "  PASS: Error contains 'Restricted data'"
+            else
+              echo "  FAIL: Expected 'Restricted data' in error body"
+              echo "  Body: $PUT_BODY"
+              ERRORS=$((ERRORS + 1))
+            fi
+          else
+            echo "  FAIL: Expected HTTP 400, got $PUT_HTTP"
+            echo "  Body: $PUT_BODY"
+            ERRORS=$((ERRORS + 1))
+          fi
+
+          echo ""
+          echo "--- DELETE on non-home project (expect 400) ---"
+          DEL_RESP=$(curl -s -w "\n%{http_code}" -X DELETE "$BASE/project/$PROJECT_ID")
+          DEL_HTTP=$(echo "$DEL_RESP" | tail -1)
+          DEL_BODY=$(echo "$DEL_RESP" | head -n -1)
+          if [ "$DEL_HTTP" = "400" ]; then
+            echo "  PASS: DELETE returned 400"
+            if echo "$DEL_BODY" | jq -r '.error' 2>/dev/null | grep -q "Restricted data"; then
+              echo "  PASS: Error contains 'Restricted data'"
+            else
+              echo "  FAIL: Expected 'Restricted data' in error body"
+              echo "  Body: $DEL_BODY"
+              ERRORS=$((ERRORS + 1))
+            fi
+          else
+            echo "  FAIL: Expected HTTP 400, got $DEL_HTTP"
+            echo "  Body: $DEL_BODY"
+            ERRORS=$((ERRORS + 1))
+          fi
+
+          echo ""
+          if [ "$ERRORS" -gt 0 ]; then
+            echo "FAILED: $ERRORS ownership guard checks failed"
+            exit 1
+          fi
+          echo "All ownership guard checks passed"
+
       - name: Show CADT logs after tests
         if: always()
         shell: bash
