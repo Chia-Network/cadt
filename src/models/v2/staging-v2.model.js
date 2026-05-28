@@ -257,7 +257,7 @@ class StagingV2 extends Model {
           options,
           visited,
           depth + 1,
-          includeParentsForDirectOwner,
+          false,
           unresolvedFields,
           new Set(),
         )),
@@ -331,12 +331,14 @@ class StagingV2 extends Model {
 
       if (existingRecord) {
         const tableExcludedFields = StagingV2.getExcludedFieldsForTable(values.table);
+        const existingUnresolved = [];
         await StagingV2.assertOwnerOrgUidsAreHome(
           await StagingV2.collectOwnerOrgUids(
-            existingRecord, options, new Set(), 0, false, [], tableExcludedFields,
+            existingRecord, options, new Set(), 0, false, existingUnresolved, tableExcludedFields,
           ),
           values.table,
           true,
+          existingUnresolved,
         );
       } else if (values.action !== 'UPDATE') {
         continue;
