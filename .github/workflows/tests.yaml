@@ -230,7 +230,7 @@ jobs:
           yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.DATALAYER_FILE_SERVER_URL = "https://127.0.0.1:8575"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = false' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = ""' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = "4212425c8e053ad58279f1d1a498afec4a1e6b00da356a49ac72780fe13e98e8"' ~/.chia/mainnet/cadt/config.yaml
           # Enable V2 for V2 live API tests
           yq -yi '.V2.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V1.ENABLE = false' ~/.chia/mainnet/cadt/config.yaml
@@ -481,6 +481,28 @@ jobs:
           echo "Running wallet health sanity check"
           echo "########################################################"
           npm run test:v2:live:wallet-health
+          echo "########################################################"
+          echo "Waiting for non-home project from governance sync"
+          echo "########################################################"
+          MAX_WAIT=600
+          ELAPSED=0
+          while [ "$ELAPSED" -lt "$MAX_WAIT" ]; do
+            PROJECTS=$(curl -s "http://${TEST_API_HOST:-127.0.0.1}:31310/v2/project?page=1&limit=100" 2>/dev/null || echo "[]")
+            NON_HOME=$(echo "$PROJECTS" | jq '[
+              (if type == "object" then .data else . end)[]
+              | select(.orgUid != null and .orgUid != "'"$(curl -s "http://${TEST_API_HOST:-127.0.0.1}:31310/v2/organizations" 2>/dev/null | jq -r 'to_entries[] | select(.value.isHome == true) | .key')"'")
+            ] | length' 2>/dev/null || echo "0")
+            if [ "$NON_HOME" -gt 0 ] 2>/dev/null; then
+              echo "Found $NON_HOME non-home project(s) after ${ELAPSED}s"
+              break
+            fi
+            echo "No non-home projects yet (${ELAPSED}s / ${MAX_WAIT}s)..."
+            sleep 30
+            ELAPSED=$((ELAPSED + 30))
+          done
+          if [ "$ELAPSED" -ge "$MAX_WAIT" ]; then
+            echo "WARNING: No non-home projects appeared after ${MAX_WAIT}s. Ownership guard tests will fail."
+          fi
           echo "########################################################"
           echo "Running data tests"
           echo "########################################################"
