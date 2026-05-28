@@ -2764,17 +2764,29 @@ Response
 
 **Note**: The ID in the URL path is the `cadTrustValidationId`.
 
+**Referential integrity**: If any committed or staged (`INSERT`/`UPDATE`) `verification` records reference this validation via `cadTrustValidationId`, the request returns `409 Conflict` until those references are removed. References from any synced registry count the same.
+
 Request
 ```shell
 curl --location --request DELETE 'localhost:31310/v2/validation/a1b2c3d4-e5f6-7890-abcd-ef1234567890' \
 --header 'Content-Type: application/json'
 ```
 
-Response
+Response (success — no references)
 ```json
 {
-  "message": "Validation deletion staged successfully",
+  "message": "Validation delete staged successfully",
   "success": true
+}
+```
+
+Response (409 — references exist)
+```json
+{
+  "success": false,
+  "message": "Cannot delete validation: it is still referenced by 2 verifications. Remove those references before deleting this validation.",
+  "error": "Referenced records must be removed before deletion",
+  "references": [{ "table": "verification", "count": 2 }]
 }
 ```
 
@@ -2937,6 +2949,8 @@ Response
 
 **Note**: The ID in the URL path is the `cadTrustVerificationId`.
 
+**Cascade delete**: Deleting a verification automatically stages DELETE entries for all child issuances and their units. The `stagedChildDeletes` field in the response reports the total number of child rows staged.
+
 Request
 ```shell
 curl --location --request DELETE 'localhost:31310/v2/verification/b2c3d4e5-f6a7-8901-bcde-f23456789012' \
@@ -2946,7 +2960,8 @@ curl --location --request DELETE 'localhost:31310/v2/verification/b2c3d4e5-f6a7-
 Response
 ```json
 {
-  "message": "Verification deletion staged successfully",
+  "message": "Verification delete staged successfully",
+  "stagedChildDeletes": 5,
   "success": true
 }
 ```
@@ -3110,17 +3125,29 @@ Response
 
 **Note**: The ID in the URL path is the `cadTrustLocationId`.
 
+**Referential integrity**: If any committed or staged (`INSERT`/`UPDATE`) `issuance` records reference this location via `cadTrustLocationId`, the request returns `409 Conflict` until those references are removed. References from any synced registry count the same.
+
 Request
 ```shell
 curl --location --request DELETE 'localhost:31310/v2/location/8182100d-7794-4df7-b3b3-758391d13011' \
 --header 'Content-Type: application/json'
 ```
 
-Response
+Response (success — no references)
 ```json
 {
-  "message": "Location deletion staged successfully",
+  "message": "Location deleted successfully",
   "success": true
+}
+```
+
+Response (409 — references exist)
+```json
+{
+  "success": false,
+  "message": "Cannot delete location: it is still referenced by 3 issuance records. Remove those references before deleting this location.",
+  "error": "Referenced records must be removed before deletion",
+  "references": [{ "table": "issuance", "count": 3 }]
 }
 ```
 
@@ -3276,6 +3303,8 @@ Response
 
 **Note**: The ID in the URL path is the `cadTrustIssuanceId`.
 
+**Cascade delete**: Deleting an issuance automatically stages DELETE entries for all child units and their unit labels. The `stagedChildDeletes` field in the response reports the total number of child rows staged.
+
 Request
 ```shell
 curl --location --request DELETE 'localhost:31310/v2/issuance/d9f58b08-af25-461c-88eb-403bb02b135e' \
@@ -3285,7 +3314,8 @@ curl --location --request DELETE 'localhost:31310/v2/issuance/d9f58b08-af25-461c
 Response
 ```json
 {
-  "message": "Issuance deletion staged successfully",
+  "message": "Issuance delete staged successfully",
+  "stagedChildDeletes": 3,
   "success": true
 }
 ```
@@ -4503,17 +4533,29 @@ Response
 
 **Note**: The ID in the URL path is the `cadTrustProjectMethodologyId`.
 
+**Referential integrity**: If any committed or staged (`INSERT`/`UPDATE`) `issuance` records reference this project-methodology link via `cadTrustProjectMethodologyId`, the request returns `409 Conflict` until those references are removed. References from any synced registry count the same.
+
 Request
 ```shell
 curl --location --request DELETE 'localhost:31310/v2/project-methodology/a1b2c3d4-e5f6-7890-abcd-ef1234567890' \
 --header 'Content-Type: application/json'
 ```
 
-Response
+Response (success — no references)
 ```json
 {
-  "message": "Project-Methodology relationship deletion staged successfully",
+  "message": "Project-Methodology relationship delete staged successfully",
   "success": true
+}
+```
+
+Response (409 — references exist)
+```json
+{
+  "success": false,
+  "message": "Cannot delete project-methodology relationship: it is still referenced by 2 issuance records. Remove those references before deleting this project-methodology relationship.",
+  "error": "Referenced records must be removed before deletion",
+  "references": [{ "table": "issuance", "count": 2 }]
 }
 ```
 
