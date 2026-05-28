@@ -217,7 +217,7 @@ class StagingV2 extends Model {
       StagingV2.getOwnershipParentModels()
         .filter(([fieldName]) => fieldName !== primaryKeyApiField)
         .some(([fieldName]) => (
-          StagingV2.getRecordField(record, fieldName) !== undefined
+          StagingV2.getRecordField(record, fieldName) != null
         )),
     );
   }
