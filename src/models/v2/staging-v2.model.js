@@ -158,6 +158,25 @@ class StagingV2 extends Model {
     };
   }
 
+  static getJoinTableOwnershipFks() {
+    return {
+      project_methodology: new Set(['cadTrustProjectId']),
+      stakeholder_projects: new Set(['cadTrustProjectId']),
+      unit_label: new Set(['cadTrustUnitId']),
+    };
+  }
+
+  static getExcludedFieldsForTable(table) {
+    const ownershipFks = StagingV2.getJoinTableOwnershipFks()[table];
+    if (!ownershipFks) return new Set();
+
+    return new Set(
+      StagingV2.getOwnershipParentModels()
+        .map(([fieldName]) => fieldName)
+        .filter((f) => !ownershipFks.has(f)),
+    );
+  }
+
   static getOwnershipParentModels() {
     return [
       ['cadTrustProjectId', ProjectV2],
@@ -311,8 +330,11 @@ class StagingV2 extends Model {
         : null;
 
       if (existingRecord) {
+        const tableExcludedFields = StagingV2.getExcludedFieldsForTable(values.table);
         await StagingV2.assertOwnerOrgUidsAreHome(
-          await StagingV2.collectOwnerOrgUids(existingRecord, options),
+          await StagingV2.collectOwnerOrgUids(
+            existingRecord, options, new Set(), 0, false, [], tableExcludedFields,
+          ),
           values.table,
           true,
         );
@@ -332,6 +354,8 @@ class StagingV2 extends Model {
           );
         }
 
+        const updateExcluded = StagingV2.getExcludedFieldsForTable(values.table);
+        updateExcluded.add(primaryKeyApiField);
         await StagingV2.assertOwnerOrgUidsAreHome(
           await StagingV2.collectOwnerOrgUids(
             recordData,
@@ -340,7 +364,7 @@ class StagingV2 extends Model {
             0,
             true,
             unresolvedFields,
-            new Set([primaryKeyApiField]),
+            updateExcluded,
           ),
           values.table,
           payloadHasOwnershipFields,
