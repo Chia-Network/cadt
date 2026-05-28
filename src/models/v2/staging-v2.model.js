@@ -196,12 +196,16 @@ class StagingV2 extends Model {
     ];
   }
 
+  static camelToSnake(str) {
+    return str.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
+  }
+
   static getRecordField(record, fieldName) {
     const plainRecord = typeof record?.get === 'function'
       ? record.get({ plain: true })
       : record?.dataValues ?? record;
 
-    return plainRecord?.[fieldName] ?? plainRecord?.[_.snakeCase(fieldName)];
+    return plainRecord?.[fieldName] ?? plainRecord?.[StagingV2.camelToSnake(fieldName)];
   }
 
   static hasOwnershipFields(record, table) {
