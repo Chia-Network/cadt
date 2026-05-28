@@ -336,12 +336,14 @@ class StagingV2 extends Model {
       if (existingRecord) {
         const tableExcludedFields = StagingV2.getExcludedFieldsForTable(values.table);
         const existingUnresolved = [];
+        const existingOwnerOrgUids = await StagingV2.collectOwnerOrgUids(
+          existingRecord, options, new Set(), 0, false, existingUnresolved, tableExcludedFields,
+        );
+        const hasOwnershipChain = StagingV2.hasOwnershipFields(existingRecord, values.table);
         await StagingV2.assertOwnerOrgUidsAreHome(
-          await StagingV2.collectOwnerOrgUids(
-            existingRecord, options, new Set(), 0, false, existingUnresolved, tableExcludedFields,
-          ),
+          existingOwnerOrgUids,
           values.table,
-          true,
+          hasOwnershipChain,
           existingUnresolved,
         );
       } else if (values.action !== 'UPDATE') {
