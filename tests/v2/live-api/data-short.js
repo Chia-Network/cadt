@@ -17,6 +17,7 @@ import {
   verifyMirrorRecordsBatch,
   closeMirrorDbPool,
 } from './helpers/mysql-mirror-helpers.js';
+import { getSharedHomeOrgId } from './helpers/shared-setup.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -420,6 +421,36 @@ async function main() {
 
     const xlsxTestFiles = ['xlsx-import-export.live.spec.js'];
     await runMochaTests('Step 1[1-6]a?:', 'XLSX Import/Export', xlsxTestFiles);
+
+    // Wait for governance to sync at least one non-home project before PUT/DELETE
+    // tests that verify ownership guards reject mutations on foreign records.
+    const homeOrgId = getSharedHomeOrgId();
+    if (homeOrgId) {
+      console.log('--- Waiting for non-home project from governance sync ---');
+      const maxWaitMs = 600_000;
+      const pollIntervalMs = 30_000;
+      const startTime = Date.now();
+      let found = false;
+      while (Date.now() - startTime < maxWaitMs) {
+        const elapsed = Math.round((Date.now() - startTime) / 1000);
+        try {
+          const res = await request.get('/v2/project').query({ page: 1, limit: 100 });
+          const data = Array.isArray(res.body) ? res.body : (res.body?.data || []);
+          const nonHome = data.find(r => r.orgUid && r.orgUid !== homeOrgId);
+          if (nonHome) {
+            console.log(`  ✓ Found non-home project after ${elapsed}s (orgUid=${nonHome.orgUid.slice(0, 12)}...)`);
+            found = true;
+            break;
+          }
+        } catch { /* ignore transient errors */ }
+        console.log(`  No non-home projects yet (${elapsed}s / ${maxWaitMs / 1000}s)...`);
+        await new Promise(r => setTimeout(r, pollIntervalMs));
+      }
+      if (!found) {
+        console.log('  ⚠ WARNING: No non-home projects appeared. Ownership guard tests will fail.');
+      }
+      console.log('');
+    }
 
     // Phase 4: PUT tests
     await runMochaTests('Step 7: PUT Request Tests', 'PUT Operations');
