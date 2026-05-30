@@ -7,6 +7,10 @@ import { getDefaultOrganizationList } from '../utils/data-loaders.js';
 import { Meta, Organization } from '../models/index.js';
 import { logger } from '../config/logger.js';
 import { getConfig } from '../utils/config-loader.js';
+import {
+  buildOrgListAllowSet,
+  unsubscribeOrgsNotInOrgList,
+} from '../utils/orglist-subscription-reconcile.js';
 
 const CONFIG = getConfig();
 
@@ -26,12 +30,17 @@ const task = new Task('sync-default-organizations', async () => {
       // them.
       const defaultOrgRecords = await getDefaultOrganizationList();
       const userDeletedOrgs = await Meta.getUserDeletedOrgUids();
+      const onlyCadtSubscriptions = CONFIG.APP.ONLY_CADT_SUBSCRIPTIONS === true;
 
       const pending = [];
       const imported = [];
+      const resubscribePending = [];
 
       for (const { orgUid } of defaultOrgRecords) {
-        if (userDeletedOrgs?.includes(orgUid)) {
+        if (
+          !onlyCadtSubscriptions &&
+          userDeletedOrgs?.includes(orgUid)
+        ) {
           logger.verbose(
             `default organization ${orgUid} has been explicitly removed from this instance. not adding or checking that it exists`,
           );
@@ -47,6 +56,13 @@ const task = new Task('sync-default-organizations', async () => {
           pending.push(orgUid);
         } else {
           imported.push(orgUid);
+          if (
+            onlyCadtSubscriptions &&
+            defaultOrgRecords.length > 0 &&
+            !Boolean(organization.subscribed)
+          ) {
+            resubscribePending.push(orgUid);
+          }
         }
       }
 
@@ -80,6 +96,41 @@ const task = new Task('sync-default-organizations', async () => {
           );
         }
       });
+
+      const resubscribeResults = await Promise.allSettled(
+        resubscribePending.map(async (orgUid) => {
+          await Organization.subscribeToOrganization(orgUid);
+          logger.info(
+            `[v1]: ONLY_CADT_SUBSCRIPTIONS: re-subscribed organization ${orgUid}`,
+          );
+        }),
+      );
+      resubscribeResults.forEach((result, i) => {
+        if (result.status === 'rejected') {
+          logger.warn(
+            `[v1]: ONLY_CADT_SUBSCRIPTIONS: failed to re-subscribe organization ${resubscribePending[i]}: ${result.reason?.message || result.reason}. Will retry on next task run.`,
+          );
+        }
+      });
+
+      if (onlyCadtSubscriptions) {
+        const { GOVERNANCE_BODY_ID } = CONFIG.GOVERNANCE;
+        const allowSet = buildOrgListAllowSet(defaultOrgRecords, GOVERNANCE_BODY_ID);
+        await unsubscribeOrgsNotInOrgList({
+          defaultOrgList: defaultOrgRecords,
+          allowSet,
+          organizationModel: Organization,
+          fieldNames: {
+            orgUid: 'orgUid',
+            isHome: 'isHome',
+            subscribed: 'subscribed',
+          },
+          unsubscribeFromOrganizationStores:
+            Organization.unsubscribeFromOrganizationStores.bind(Organization),
+          logger,
+          apiVersionLabel: 'v1',
+        });
+      }
     }
   } catch (error) {
     logger.error(

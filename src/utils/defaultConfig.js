@@ -29,6 +29,13 @@ export const defaultConfig = {
     DATALAYER_FILE_SERVER_URL: null,
     AUTO_SUBSCRIBE_FILESTORE: false,
     AUTO_MIRROR_EXTERNAL_STORES: true,
+    /**
+     * When true, DataLayer subscriptions are kept in sync with the governance
+     * orgList: orgs removed from the list are unsubscribed (data retained);
+     * orgs on the list with subscribed=false are re-subscribed. Requires a
+     * non-empty orgList from a successful governance sync before any removal.
+     */
+    ONLY_CADT_SUBSCRIPTIONS: false,
     LOG_LEVEL: 'info',
     TASKS: {
       GOVERNANCE_SYNC_TASK_INTERVAL: 30,
