@@ -444,6 +444,7 @@ describe('V2 Methodology API - Basic CRUD Tests', function () {
       expect(response.body.references).to.be.an('array').with.lengthOf(1);
       expect(response.body.references[0].table).to.equal('project_methodology');
       expect(response.body.references[0].count).to.equal(1);
+      expect(response.body.error).to.equal('Referenced records must be removed before deletion');
 
       const stagingRecord = await StagingV2.findOne({
         where: { table: 'methodology', action: 'DELETE' },
