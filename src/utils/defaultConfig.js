@@ -35,7 +35,7 @@ export const defaultConfig = {
      * orgs on the list with subscribed=false are re-subscribed. Requires a
      * non-empty orgList from a successful governance sync before any removal.
      */
-    ONLY_CADT_SUBSCRIPTIONS: false,
+    ONLY_CADT_SUBSCRIPTIONS: true,
     LOG_LEVEL: 'info',
     TASKS: {
       GOVERNANCE_SYNC_TASK_INTERVAL: 30,

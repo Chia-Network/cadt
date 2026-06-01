@@ -218,8 +218,8 @@ describe('orglist-subscription-reconcile (V2)', function () {
   });
 
   describe('defaultConfig', function () {
-    it('should default ONLY_CADT_SUBSCRIPTIONS to false', function () {
-      expect(defaultConfig.APP.ONLY_CADT_SUBSCRIPTIONS).to.equal(false);
+    it('should default ONLY_CADT_SUBSCRIPTIONS to true', function () {
+      expect(defaultConfig.APP.ONLY_CADT_SUBSCRIPTIONS).to.equal(true);
     });
   });
 });

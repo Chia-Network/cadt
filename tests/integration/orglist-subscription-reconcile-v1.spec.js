@@ -62,7 +62,7 @@ describe('orglist-subscription-reconcile (V1)', function () {
     expect(Boolean(orgC.subscribed)).to.equal(false);
   });
 
-  it('should default ONLY_CADT_SUBSCRIPTIONS to false in shared APP config', function () {
-    expect(defaultConfig.APP.ONLY_CADT_SUBSCRIPTIONS).to.equal(false);
+  it('should default ONLY_CADT_SUBSCRIPTIONS to true in shared APP config', function () {
+    expect(defaultConfig.APP.ONLY_CADT_SUBSCRIPTIONS).to.equal(true);
   });
 });
