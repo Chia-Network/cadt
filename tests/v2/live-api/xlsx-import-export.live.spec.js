@@ -466,7 +466,7 @@ describe('XLSX Import/Export Live API Tests', function () {
     it('should export and re-import project XLSX', async function () {
       const exportResponse = await request
         .get('/v2/project')
-        .query({ xls: 'true' })
+        .query({ xls: 'true', orgUid: 'me' })
         .buffer(true)
         .parse((res, callback) => {
           const chunks = [];
@@ -478,7 +478,7 @@ describe('XLSX Import/Export Live API Tests', function () {
 
       const beforeResponse = await request
         .get('/v2/project')
-        .query({ page: 1, limit: 1000 });
+        .query({ page: 1, limit: 1000, orgUid: 'me' });
       beforeProjects = beforeResponse.body?.data || beforeResponse.body || [];
 
       const importResponse = await request
@@ -492,7 +492,7 @@ describe('XLSX Import/Export Live API Tests', function () {
     it('should export and re-import unit XLSX', async function () {
       const exportResponse = await request
         .get('/v2/unit')
-        .query({ xls: 'true' })
+        .query({ xls: 'true', orgUid: 'me' })
         .buffer(true)
         .parse((res, callback) => {
           const chunks = [];
@@ -504,7 +504,7 @@ describe('XLSX Import/Export Live API Tests', function () {
 
       const beforeResponse = await request
         .get('/v2/unit')
-        .query({ page: 1, limit: 1000 });
+        .query({ page: 1, limit: 1000, orgUid: 'me' });
       beforeUnits = beforeResponse.body?.data || beforeResponse.body || [];
 
       const importResponse = await request
@@ -526,7 +526,7 @@ describe('XLSX Import/Export Live API Tests', function () {
     it('should verify projects match after round-trip', async function () {
       const afterResponse = await request
         .get('/v2/project')
-        .query({ page: 1, limit: 1000 });
+        .query({ page: 1, limit: 1000, orgUid: 'me' });
       const afterProjects = afterResponse.body?.data || afterResponse.body || [];
 
       expect(afterProjects.length).to.equal(beforeProjects.length);
@@ -545,7 +545,7 @@ describe('XLSX Import/Export Live API Tests', function () {
     it('should verify units match after round-trip', async function () {
       const afterResponse = await request
         .get('/v2/unit')
-        .query({ page: 1, limit: 1000 });
+        .query({ page: 1, limit: 1000, orgUid: 'me' });
       const afterUnits = afterResponse.body?.data || afterResponse.body || [];
 
       expect(afterUnits.length).to.equal(beforeUnits.length);
