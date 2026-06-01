@@ -64,8 +64,12 @@ class StagingV2 extends Model {
   }
 
   static async bulkCreate(values, options) {
+    // Resolve the home org once for the whole batch instead of per record.
+    const needsGuard = Array.isArray(values) &&
+      values.some((v) => ['UPDATE', 'DELETE'].includes(v?.action) && !v?.is_transfer);
+    const homeOrgUid = needsGuard ? await StagingV2.resolveHomeOrgUid() : undefined;
     for (const value of values) {
-      await StagingV2.assertMutationOwnedByHomeOrg(value, options);
+      await StagingV2.assertMutationOwnedByHomeOrg(value, options, homeOrgUid);
     }
     StagingV2.changes.next(['staging']);
     const result = await super.bulkCreate(values, options);
@@ -121,6 +125,8 @@ class StagingV2 extends Model {
       transaction: options?.transaction,
     });
 
+    // Resolve the home org once for all matched staging records.
+    const homeOrgUid = await StagingV2.resolveHomeOrgUid();
     for (const stagingRecord of stagingRecords) {
       await StagingV2.assertMutationOwnedByHomeOrg({
         uuid: values.uuid ?? stagingRecord.uuid,
@@ -128,7 +134,7 @@ class StagingV2 extends Model {
         action: values.action ?? stagingRecord.action,
         data: values.data ?? stagingRecord.data,
         is_transfer: values.is_transfer ?? stagingRecord.is_transfer,
-      }, options);
+      }, options, homeOrgUid);
     }
   }
 
@@ -275,11 +281,20 @@ class StagingV2 extends Model {
     return [...new Set(ownerOrgUids)];
   }
 
+  static async resolveHomeOrgUid() {
+    const homeOrg = await OrganizationsV2.findOne({
+      where: { is_home: true },
+      raw: true,
+    });
+    return homeOrg?.org_uid ?? null;
+  }
+
   static async assertOwnerOrgUidsAreHome(
     ownerOrgUids,
     table,
     requireOwner = false,
     unresolvedFields = [],
+    homeOrgUid = null,
   ) {
     if (unresolvedFields.length > 0) {
       throw new Error(
@@ -295,20 +310,16 @@ class StagingV2 extends Model {
       );
     }
 
-    const homeOrg = await OrganizationsV2.findOne({
-      where: { is_home: true },
-      raw: true,
-    });
-    const nonHomeOrgUid = ownerOrgUids.find((orgUid) => orgUid !== homeOrg?.org_uid);
+    const nonHomeOrgUid = ownerOrgUids.find((orgUid) => orgUid !== homeOrgUid);
 
-    if (!homeOrg || nonHomeOrgUid) {
+    if (!homeOrgUid || nonHomeOrgUid) {
       throw new Error(
         `Restricted data: cannot modify this ${table} record with orgUid '${nonHomeOrgUid}'. Only the home organization that created this record can modify it.`,
       );
     }
   }
 
-  static async assertMutationOwnedByHomeOrg(values, options) {
+  static async assertMutationOwnedByHomeOrg(values, options, homeOrgUid) {
     if (!['UPDATE', 'DELETE'].includes(values?.action) || values?.is_transfer) {
       return;
     }
@@ -319,6 +330,12 @@ class StagingV2 extends Model {
     const primaryKeyField = getV2PrimaryKeyField(values.table);
     if (!primaryKeyField) return;
     const primaryKeyApiField = primaryKeyField.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+
+    // Resolve the home org once per call (reused for every data row and both
+    // ownership checks below) unless a batch caller already resolved it.
+    if (homeOrgUid === undefined) {
+      homeOrgUid = await StagingV2.resolveHomeOrgUid();
+    }
 
     const parsedData = Array.isArray(values.data)
       ? values.data
@@ -349,6 +366,7 @@ class StagingV2 extends Model {
           values.table,
           hasOwnershipChain,
           existingUnresolved,
+          homeOrgUid,
         );
       } else if (values.action !== 'UPDATE') {
         continue;
@@ -381,6 +399,7 @@ class StagingV2 extends Model {
           values.table,
           payloadHasOwnershipFields,
           unresolvedFields,
+          homeOrgUid,
         );
       }
     }
