@@ -211,11 +211,15 @@ class StagingV2 extends Model {
   static hasOwnershipFields(record, table) {
     const primaryKeyField = getV2PrimaryKeyField(table);
     const primaryKeyApiField = primaryKeyField?.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+    // Mirror the FK exclusions collectOwnerOrgUids applies so that ownership
+    // detection and resolution agree; otherwise a join-table payload carrying
+    // only an excluded cross-ref FK reports an owner that resolution skips.
+    const excludedFields = StagingV2.getExcludedFieldsForTable(table);
 
     return Boolean(
       StagingV2.getRecordField(record, 'orgUid') ||
       StagingV2.getOwnershipParentModels()
-        .filter(([fieldName]) => fieldName !== primaryKeyApiField)
+        .filter(([fieldName]) => fieldName !== primaryKeyApiField && !excludedFields.has(fieldName))
         .some(([fieldName]) => (
           StagingV2.getRecordField(record, fieldName) != null
         )),
