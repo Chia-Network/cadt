@@ -67,7 +67,7 @@ class StagingV2 extends Model {
     // Resolve the home org once for the whole batch instead of per record.
     const needsGuard = Array.isArray(values) &&
       values.some((v) => ['UPDATE', 'DELETE'].includes(v?.action) && !v?.is_transfer);
-    const homeOrgUid = needsGuard ? await StagingV2.resolveHomeOrgUid() : undefined;
+    const homeOrgUid = needsGuard ? await StagingV2.resolveHomeOrgUid(options) : undefined;
     for (const value of values) {
       await StagingV2.assertMutationOwnedByHomeOrg(value, options, homeOrgUid);
     }
@@ -126,7 +126,7 @@ class StagingV2 extends Model {
     });
 
     // Resolve the home org once for all matched staging records.
-    const homeOrgUid = await StagingV2.resolveHomeOrgUid();
+    const homeOrgUid = await StagingV2.resolveHomeOrgUid(options);
     for (const stagingRecord of stagingRecords) {
       await StagingV2.assertMutationOwnedByHomeOrg({
         uuid: values.uuid ?? stagingRecord.uuid,
@@ -281,9 +281,13 @@ class StagingV2 extends Model {
     return [...new Set(ownerOrgUids)];
   }
 
-  static async resolveHomeOrgUid() {
+  static async resolveHomeOrgUid(options) {
+    // Use the caller's transaction so this read shares the connection of an
+    // open write transaction (e.g. cascade delete) instead of contending for a
+    // separate pooled connection, which can deadlock under connection pressure.
     const homeOrg = await OrganizationsV2.findOne({
       where: { is_home: true },
+      transaction: options?.transaction,
       raw: true,
     });
     return homeOrg?.org_uid ?? null;
@@ -334,7 +338,7 @@ class StagingV2 extends Model {
     // Resolve the home org once per call (reused for every data row and both
     // ownership checks below) unless a batch caller already resolved it.
     if (homeOrgUid === undefined) {
-      homeOrgUid = await StagingV2.resolveHomeOrgUid();
+      homeOrgUid = await StagingV2.resolveHomeOrgUid(options);
     }
 
     const parsedData = Array.isArray(values.data)
