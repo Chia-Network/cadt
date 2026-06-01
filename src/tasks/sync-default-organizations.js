@@ -56,11 +56,7 @@ const task = new Task('sync-default-organizations', async () => {
           pending.push(orgUid);
         } else {
           imported.push(orgUid);
-          if (
-            onlyCadtSubscriptions &&
-            defaultOrgRecords.length > 0 &&
-            !Boolean(organization.subscribed)
-          ) {
+          if (onlyCadtSubscriptions && !organization.subscribed) {
             resubscribePending.push(orgUid);
           }
         }
