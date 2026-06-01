@@ -501,7 +501,10 @@ export const checkDatabaseEmpty = async (request) => {
 
   for (const table of dataTables) {
     try {
-      const response = await request.get(`/v2/${table}`).query({ page: 1, limit: 1000 });
+      // Scope to home-org-owned records only. When governance sync is enabled,
+      // the node legitimately syncs in data owned by other organizations; that
+      // data is not leftover test state and must not fail the empty check.
+      const response = await request.get(`/v2/${table}`).query({ page: 1, limit: 1000, orgUid: 'me' });
       const data = response.body?.data || [];
 
       if (response.status === 200 && Array.isArray(data) && data.length > 0) {
@@ -513,11 +516,11 @@ export const checkDatabaseEmpty = async (request) => {
   }
 
   if (nonEmptyTables.length > 0) {
-    const errorMsg = `Database is not empty. Found data in:\n${nonEmptyTables.map(({ table, count }) => `   - ${table}: ${count} record(s)`).join('\n')}\nPlease clear the database before running tests.`;
+    const errorMsg = `Database is not empty. Found home-org data in:\n${nonEmptyTables.map(({ table, count }) => `   - ${table}: ${count} record(s)`).join('\n')}\nPlease clear the database before running tests.`;
     throw new Error(errorMsg);
   }
 
-  console.log('✓ Database is empty (except home org)');
+  console.log('✓ Database is empty of home-org data (synced non-home data ignored)');
 };
 
 /**
