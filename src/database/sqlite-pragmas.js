@@ -4,6 +4,12 @@ const SQLITE_PRAGMAS = [
   'PRAGMA cache_size = -65536',
   'PRAGMA temp_store = MEMORY',
   'PRAGMA mmap_size = 268435456',
+  // busy_timeout is per-connection: SQLite waits up to this many ms for a
+  // write lock before returning SQLITE_BUSY. Sequelize's sqlite dialect does
+  // not honour dialectOptions.busyTimeout, so it must be set on every pooled
+  // connection here - otherwise only the single connection touched at startup
+  // gets it and the rest fail immediately under concurrent writes.
+  'PRAGMA busy_timeout = 30000',
 ];
 
 const applySqlitePragmas = async (connection) => {

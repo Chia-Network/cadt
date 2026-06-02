@@ -13,6 +13,7 @@ import { seeders } from './seeders';
 
 import dotenv from 'dotenv';
 import { installSqlitePragmas } from './sqlite-pragmas.js';
+import { matchingUpdatedAtAttr, isMirrorInSync } from './mirror-sync-gate.js';
 dotenv.config({ quiet: true });
 
 // possible values: local, test
@@ -110,6 +111,21 @@ let mirrorSetupPromise = null;
 // after the reconnect are serialized behind it so the mirror is caught up
 // before new operations are applied.
 let reconnectBackfillPromise = null;
+
+// Single in-flight backfillMirror call. Distinct from
+// reconnectBackfillPromise above: that one guards the reconnect-detection
+// path inside safeMirrorDbHandler; this one guards backfillMirror itself
+// against concurrent callers. Both startup (prepareDb) and reconnect
+// (startReconnectBackfill) can fire backfillMirror, and in practice they
+// race at cold start because src/middleware.js eagerly imports the V1
+// models barrel - which runs the per-model associate() methods - which
+// historically called safeMirrorDbHandler at module-load time, triggering
+// a setupNeverRan reconnect in parallel with prepareDb's own backfill.
+// The associate() trigger was removed in this change but the in-flight
+// guard remains as a belt-and-suspenders defence against any other
+// concurrent invocation. Cleared on resolve/reject so reconnects after
+// the first run still re-execute.
+let backfillInFlightPromise = null;
 
 export const mirrorDBEnabled = () => {
   if (mirrorEnabledTestOverride !== null) {
@@ -413,6 +429,13 @@ export const initMirrorModel = (initFn) => {
  */
 const BACKFILL_BATCH_SIZE = 1000;
 
+// NOTE: when this early-returns for composite PKs, the in-sync gate
+// that runs after it in backfillMirror operates on raw (un-swept)
+// state. mirror-model-init.spec.js currently enforces single-column
+// PKs on every mirror, so this path is unreachable today. If a
+// composite-PK mirror is introduced later, the gate's PK-swap
+// protection no longer applies and the gate would need to be
+// disabled for that table or replaced with a stronger check.
 const sweepMirrorOrphans = async (source, mirror, name) => {
   const pkAttrs = mirror.primaryKeyAttributes;
   if (!pkAttrs || pkAttrs.length !== 1) {
@@ -502,6 +525,31 @@ export const backfillMirror = async () => {
     return;
   }
 
+  // Coalesce concurrent calls. Without this guard, prepareDb's startup
+  // backfill and any other code path that invokes backfillMirror() would
+  // each pull and upsert the entire dataset. The race is observable in
+  // production logs: identical "synced N records" / "MySQL mirror backfill
+  // completed - N records upserted" lines appearing twice with matching
+  // counts on the same boot. The orphan sweep and bulk upsert are
+  // idempotent so the duplicate work is benign correctness-wise, but it
+  // doubles the cold-start time and MySQL write traffic.
+  //
+  // Cleared on settle so subsequent reconnects after the first run still
+  // perform a fresh catch-up.
+  if (backfillInFlightPromise) {
+    return backfillInFlightPromise;
+  }
+
+  backfillInFlightPromise = (async () => {
+    await runBackfillMirror();
+  })().finally(() => {
+    backfillInFlightPromise = null;
+  });
+
+  return backfillInFlightPromise;
+};
+
+const runBackfillMirror = async () => {
   logger.info('Starting MySQL mirror backfill from SQLite...');
 
   try {
@@ -572,6 +620,7 @@ export const backfillMirror = async () => {
 
     let totalSynced = 0;
     let totalOrphansRemoved = 0;
+    let totalGateSkipped = 0;
 
     for (const { source, mirror, name } of mirrorPairs) {
       try {
@@ -586,9 +635,62 @@ export const backfillMirror = async () => {
         }
 
         // Orphan sweep first (mirror snapshot before source snapshot) so
-        // concurrent inserts aren't wrongly classified as orphans.
+        // concurrent inserts aren't wrongly classified as orphans. The
+        // sweep runs UNCONDITIONALLY - before the in-sync gate below -
+        // because the gate's COUNT(*) + MAX(updatedAt) check cannot
+        // distinguish a healthy mirror from one where rows were
+        // delete+inserted with a different PK during an outage (count
+        // and MAX preserved, but the row identities differ). Running
+        // the sweep first makes such drift visible to the gate via the
+        // post-sweep count mismatch, which then falls through to the
+        // full upsert. See PR review for the reproducer.
         const orphansRemoved = await sweepMirrorOrphans(source, mirror, name);
         totalOrphansRemoved += orphansRemoved;
+
+        // Fast in-sync gate (post-sweep). Skip the bulk upsert entirely
+        // when COUNT(*) matches on both sides AND mirror's MAX(updatedAt)
+        // is at least as new as source's. Both queries are index-backed
+        // (PK + updatedAt), so the gate is cheap - vastly cheaper than
+        // the full keyset walk + bulk upsert it bypasses. (The orphan
+        // sweep above still runs on every restart; we only avoid the
+        // expensive per-row data read + MySQL upsert pass when truly
+        // in sync.)
+        //
+        // Correctness invariant: the gate ONLY short-circuits the upsert;
+        // it never substitutes a partial sync for a full one. On any
+        // mismatch (count differs, mirror is missing rows entirely, or
+        // mirror's MAX(updatedAt) is older than source's) we fall through
+        // to the existing full sync, which catches arbitrary gaps
+        // including outage windows where the mirror missed rows.
+        //
+        // Skip the gate (fall through to full sync) when source and mirror
+        // disagree about which timestamp attribute name to use, or when
+        // either lacks an updatedAt timestamp entirely. Both conditions
+        // mean we can't ask a single MAX() question that both sides answer
+        // consistently.
+        //
+        // Known limitation: an in-place UPDATE to a non-max-row whose
+        // newly-bumped updatedAt happens to remain below the table's
+        // existing MAX(updatedAt) would not be detected by the gate.
+        // Sequelize-driven UPDATEs always bump updatedAt to NOW(), which
+        // is necessarily greater than any prior MAX, so this requires
+        // raw-SQL manipulation that bypasses the ORM. No such code path
+        // exists in CADT today; if one is added, switch the gate to a
+        // SUM(UNIX_TIMESTAMP(updatedAt)) checksum.
+        const updatedAtAttr = matchingUpdatedAtAttr(source, mirror);
+        if (updatedAtAttr) {
+          const inSync = await isMirrorInSync(
+            source,
+            mirror,
+            name,
+            updatedAtAttr,
+            logger,
+          );
+          if (inSync) {
+            totalGateSkipped += 1;
+            continue;
+          }
+        }
 
         const updateFields = Object.keys(mirror.rawAttributes).filter(
           (attr) => !mirror.primaryKeyAttributes.includes(attr),
@@ -692,7 +794,7 @@ export const backfillMirror = async () => {
     }
 
     logger.info(
-      `MySQL mirror backfill completed - ${totalSynced} records upserted, ${totalOrphansRemoved} orphan rows removed`,
+      `MySQL mirror backfill completed - ${totalSynced} records upserted, ${totalOrphansRemoved} orphan rows removed, ${totalGateSkipped} tables skipped (already in sync)`,
     );
   } catch (error) {
     logger.error(

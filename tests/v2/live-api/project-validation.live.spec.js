@@ -185,7 +185,6 @@ describe('Project Live API Validation Tests', function () {
         // Query for test records by filtering by home org and TEST- prefix
         let page = 1;
         const limit = 100;
-
         while (page <= 10) { // Limit to 10 pages to avoid infinite loop
           const response = await request.get(`/v2/project?page=${page}&limit=${limit}&orgUid=${homeOrgId}`).expect(200);
           const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);

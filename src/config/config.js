@@ -118,10 +118,18 @@ export default {
     logging: mirrorLogging,
   },
   // V2 Database Configurations
+  //
+  // transactionType IMMEDIATE: managed transactions BEGIN IMMEDIATE so the
+  // write lock is taken up front. SQLite ignores busy_timeout when a DEFERRED
+  // transaction tries to upgrade a held read lock to a write lock (it returns
+  // SQLITE_BUSY at once to avoid deadlock), so read-then-write transactions
+  // racing the background sync intermittently failed. IMMEDIATE makes them
+  // queue on busy_timeout instead.
   v2Local: {
     dialect: 'sqlite',
     storage: `${v2PersistanceFolder}/data.sqlite3`,
     logging: localLogging,
+    transactionType: 'IMMEDIATE',
     dialectOptions: {
       busyTimeout: 10000,
     },
@@ -130,11 +138,13 @@ export default {
     dialect: 'sqlite',
     storage: `${v2PersistanceFolder}/simulator.sqlite3`,
     logging: false,
+    transactionType: 'IMMEDIATE',
   },
   v2Test: {
     dialect: 'sqlite',
     storage: `${testDbDir}/test-v2-${testRunId}.sqlite3`,
     logging: false,
+    transactionType: 'IMMEDIATE',
     dialectOptions: {
       busyTimeout: 30000, // 30 seconds - allows SQLite to wait for locks instead of immediately failing
     },
@@ -143,6 +153,7 @@ export default {
     dialect: 'sqlite',
     storage: `${testDbDir}/testMirror-v2-${testRunId}.sqlite3`,
     logging: false,
+    transactionType: 'IMMEDIATE',
   },
   v2Mirror: {
     username: getConfigV2().MIRROR_DB?.DB_USERNAME || '',

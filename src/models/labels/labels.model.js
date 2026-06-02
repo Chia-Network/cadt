@@ -1,7 +1,7 @@
 'use strict';
 
 import { Model } from 'sequelize';
-import { sequelize, safeMirrorDbHandler, mirrorWrite } from '../../database';
+import { sequelize, mirrorDBEnabled, mirrorWrite } from '../../database';
 import { Project } from '../projects';
 import { Unit } from '../units';
 
@@ -22,7 +22,11 @@ class Label extends Model {
       as: 'unit',
     });
 
-    safeMirrorDbHandler(() => {
+    // Mirror associations are pure Sequelize metadata - no DB I/O. Gate
+    // on mirrorDBEnabled() rather than safeMirrorDbHandler() so we don't
+    // authenticate at module load. See projects.model.js for full
+    // rationale (parallel-backfill race).
+    if (mirrorDBEnabled()) {
       LabelMirror.belongsTo(Project, {
         targetKey: 'warehouseProjectId',
         foreignKey: 'warehouseProjectId',
@@ -33,7 +37,7 @@ class Label extends Model {
         through: 'label_unit',
         as: 'unit',
       });
-    });
+    }
   }
 
   static async create(values, options) {
