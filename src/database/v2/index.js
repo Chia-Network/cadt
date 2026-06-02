@@ -12,6 +12,7 @@ import { seeders } from './seeders';
 
 import dotenv from 'dotenv';
 import { installSqlitePragmas } from '../sqlite-pragmas.js';
+import { matchingUpdatedAtAttr, isMirrorInSync } from '../mirror-sync-gate.js';
 dotenv.config({ quiet: true });
 
 // possible values: local, test
@@ -676,20 +677,23 @@ const runBackfillMirrorV2 = async () => {
         const orphansRemoved = await sweepMirrorOrphansV2(source, mirror, name);
         totalOrphansRemoved += orphansRemoved;
 
-        // Fast in-sync gate (post-sweep). See isMirrorInSyncV2 below
-        // for the full rationale; in short, skip the bulk upsert when
-        // COUNT(*) matches and the mirror's MAX(updatedAt) is at least
-        // as new as source's. Falls through to the full sync on any
-        // mismatch so outage-recovery semantics are preserved. See
-        // V1's backfillMirror for the same correctness invariant and
-        // the known non-max-row-UPDATE limitation.
-        const updatedAtAttr = matchingUpdatedAtAttrV2(source, mirror);
+        // Fast in-sync gate (post-sweep). See isMirrorInSync in
+        // ../mirror-sync-gate.js for the full rationale; in short, skip
+        // the bulk upsert when COUNT(*) matches and the mirror's
+        // MAX(updatedAt) is at least as new as source's. Falls through
+        // to the full sync on any mismatch so outage-recovery semantics
+        // are preserved. See V1's backfillMirror for the same
+        // correctness invariant and the known non-max-row-UPDATE
+        // limitation.
+        const updatedAtAttr = matchingUpdatedAtAttr(source, mirror);
         if (updatedAtAttr) {
-          const inSync = await isMirrorInSyncV2(
+          const inSync = await isMirrorInSync(
             source,
             mirror,
             name,
             updatedAtAttr,
+            loggerV2,
+            '[v2]: ',
           );
           if (inSync) {
             totalGateSkipped += 1;
@@ -816,93 +820,6 @@ const runBackfillMirrorV2 = async () => {
     );
     loggerV2.debug(error?.stack || error);
     // Don't throw - allow main database to continue operating
-  }
-};
-
-// V2 mirror models declare `updatedAt: 'updated_at'` with
-// `underscored: true`, which makes 'updated_at' the rawAttribute key
-// rather than the V1 default 'updatedAt'. Probe both so the same gate
-// works regardless of naming convention.
-const UPDATED_AT_ATTR_CANDIDATES_V2 = ['updatedAt', 'updated_at'];
-
-const matchingUpdatedAtAttrV2 = (source, mirror) => {
-  const sourceAttrs = source.rawAttributes || {};
-  const mirrorAttrs = mirror.rawAttributes || {};
-  for (const attr of UPDATED_AT_ATTR_CANDIDATES_V2) {
-    if (attr in sourceAttrs && attr in mirrorAttrs) {
-      return attr;
-    }
-  }
-  return null;
-};
-
-/**
- * V2 equivalent of isMirrorInSync. Returns true ONLY when source and
- * mirror have matching COUNT(*) AND either both are empty (count 0) or
- * mirror's MAX(updatedAt) is at least as new as source's. False
- * otherwise (and on any error) so the caller falls through to the
- * existing full-sync path - never substitutes a partial sync for a
- * full one. See V1's isMirrorInSync for the full correctness argument
- * and the known non-max-row-UPDATE limitation; both apply here.
- */
-const isMirrorInSyncV2 = async (source, mirror, name, updatedAtAttr) => {
-  try {
-    const [sourceCount, mirrorCount, sourceMax, mirrorMax] = await Promise.all([
-      source.count(),
-      mirror.count(),
-      source.max(updatedAtAttr),
-      mirror.max(updatedAtAttr),
-    ]);
-
-    if (sourceCount !== mirrorCount) {
-      loggerV2.debug(
-        `[v2]: Mirror backfill: ${name} - gate failed (count mismatch: source=${sourceCount} mirror=${mirrorCount})`,
-      );
-      return false;
-    }
-
-    if (sourceCount === 0) {
-      loggerV2.debug(
-        `[v2]: Mirror backfill: ${name} - in sync, skipping (empty on both sides)`,
-      );
-      return true;
-    }
-
-    // Counts agree and are non-zero. A null MAX(updatedAt) at this
-    // point means rows exist with null timestamps - we can't compare
-    // freshness, so fall through to the full sync rather than skip.
-    if (sourceMax == null || mirrorMax == null) {
-      loggerV2.debug(
-        `[v2]: Mirror backfill: ${name} - gate failed (max(updatedAt) null with ${sourceCount} rows)`,
-      );
-      return false;
-    }
-
-    const sourceMs = new Date(sourceMax).getTime();
-    const mirrorMs = new Date(mirrorMax).getTime();
-    if (Number.isNaN(sourceMs) || Number.isNaN(mirrorMs)) {
-      loggerV2.debug(
-        `[v2]: Mirror backfill: ${name} - gate failed (non-parseable max(updatedAt))`,
-      );
-      return false;
-    }
-
-    if (mirrorMs >= sourceMs) {
-      loggerV2.debug(
-        `[v2]: Mirror backfill: ${name} - in sync, skipping (${sourceCount} rows, max(updatedAt) mirror=${mirrorMs} >= source=${sourceMs})`,
-      );
-      return true;
-    }
-
-    loggerV2.debug(
-      `[v2]: Mirror backfill: ${name} - gate failed (mirror max(updatedAt)=${mirrorMs} < source=${sourceMs})`,
-    );
-    return false;
-  } catch (error) {
-    loggerV2.debug(
-      `[v2]: Mirror backfill: ${name} - gate check failed (${error.message}), falling through to full sync`,
-    );
-    return false;
   }
 };
 

@@ -13,6 +13,7 @@ import { seeders } from './seeders';
 
 import dotenv from 'dotenv';
 import { installSqlitePragmas } from './sqlite-pragmas.js';
+import { matchingUpdatedAtAttr, isMirrorInSync } from './mirror-sync-gate.js';
 dotenv.config({ quiet: true });
 
 // possible values: local, test
@@ -428,132 +429,6 @@ export const initMirrorModel = (initFn) => {
  */
 const BACKFILL_BATCH_SIZE = 1000;
 
-// Sequelize attribute names for the auto-managed updatedAt column. V1
-// models use the default 'updatedAt'; V2 models declare
-// `updatedAt: 'updated_at'` with `underscored: true`, which makes
-// 'updated_at' the rawAttribute key. Probe both candidates so the same
-// gate works against either convention without depending on Sequelize
-// internals (_timestampAttributes is undocumented).
-const UPDATED_AT_ATTR_CANDIDATES = ['updatedAt', 'updated_at'];
-
-/**
- * Find a Sequelize attribute name for the updatedAt column that is
- * present on BOTH source and mirror models. Returns the attribute name,
- * or null when no consistent name exists (either model is missing the
- * column, or they disagree on naming).
- *
- * Disagreement is intentionally treated as "no gate" rather than picking
- * one side: a mismatched name would force one side's MAX() call to
- * reference a non-existent column and throw, which would mask a real
- * drift behind a swallowed error.
- */
-const matchingUpdatedAtAttr = (source, mirror) => {
-  const sourceAttrs = source.rawAttributes || {};
-  const mirrorAttrs = mirror.rawAttributes || {};
-  for (const attr of UPDATED_AT_ATTR_CANDIDATES) {
-    if (attr in sourceAttrs && attr in mirrorAttrs) {
-      return attr;
-    }
-  }
-  return null;
-};
-
-/**
- * Cheap "is the mirror table already caught up?" check used by
- * backfillMirror to short-circuit the bulk-upsert pass when there is
- * nothing to do. The orphan sweep runs unconditionally BEFORE this
- * helper so PK-swap drift (count and MAX preserved, row identities
- * differ) is exposed as a post-sweep count mismatch and falls through
- * to the upsert. See the call site for the full ordering rationale.
- *
- * Returns true ONLY when BOTH conditions hold:
- *   1. count(source) === count(mirror)
- *   2. Either both counts are 0 (truly empty on both sides), OR
- *      max(mirror[updatedAtAttr]) >= max(source[updatedAtAttr])
- *
- * Returns false in every other case (including any error), so the
- * caller falls through to the existing full upsert. Crucially, false
- * is the safe default: a false negative just causes the existing
- * (correct) full sync to run, while a false positive would silently
- * leave the mirror stale. We deliberately bias toward the
- * cheap-but-fully-correct fall-through.
- *
- * Known limitation - non-max-row UPDATE drift: if a row is updated in
- * source via raw SQL with an updatedAt that's strictly below the
- * table's existing MAX(updatedAt), the gate can't see the change.
- * Sequelize-driven UPDATEs auto-bump updatedAt to NOW() (necessarily
- * greater than any prior MAX), so this only happens via raw SQL that
- * bypasses the ORM or via clock-skew adjustments. No such code path
- * exists in CADT today. If composite drift patterns become a concern,
- * replace this with a SUM(UNIX_TIMESTAMP(updatedAt)) checksum or a
- * per-table hash digest.
- */
-const isMirrorInSync = async (source, mirror, name, updatedAtAttr) => {
-  try {
-    const [sourceCount, mirrorCount, sourceMax, mirrorMax] = await Promise.all([
-      source.count(),
-      mirror.count(),
-      source.max(updatedAtAttr),
-      mirror.max(updatedAtAttr),
-    ]);
-
-    if (sourceCount !== mirrorCount) {
-      logger.debug(
-        `Mirror backfill: ${name} - gate failed (count mismatch: source=${sourceCount} mirror=${mirrorCount})`,
-      );
-      return false;
-    }
-
-    if (sourceCount === 0) {
-      logger.debug(
-        `Mirror backfill: ${name} - in sync, skipping (empty on both sides)`,
-      );
-      return true;
-    }
-
-    // Counts agree and are non-zero. A null MAX(updatedAt) at this
-    // point means rows exist with null timestamps - we can't compare
-    // freshness, so fall through to the full sync rather than skip.
-    if (sourceMax == null || mirrorMax == null) {
-      logger.debug(
-        `Mirror backfill: ${name} - gate failed (max(updatedAt) null with ${sourceCount} rows)`,
-      );
-      return false;
-    }
-
-    // Sequelize.max returns either a Date (for DATE columns) or whatever
-    // raw value the dialect returned. Coerce through Date so SQLite string
-    // timestamps and MySQL Date instances compare consistently.
-    const sourceMs = new Date(sourceMax).getTime();
-    const mirrorMs = new Date(mirrorMax).getTime();
-    if (Number.isNaN(sourceMs) || Number.isNaN(mirrorMs)) {
-      logger.debug(
-        `Mirror backfill: ${name} - gate failed (non-parseable max(updatedAt))`,
-      );
-      return false;
-    }
-
-    if (mirrorMs >= sourceMs) {
-      logger.debug(
-        `Mirror backfill: ${name} - in sync, skipping (${sourceCount} rows, max(updatedAt) mirror=${mirrorMs} >= source=${sourceMs})`,
-      );
-      return true;
-    }
-
-    logger.debug(
-      `Mirror backfill: ${name} - gate failed (mirror max(updatedAt)=${mirrorMs} < source=${sourceMs})`,
-    );
-    return false;
-  } catch (error) {
-    // Never block the existing sync path on a gate error - just fall
-    // through to the full upsert.
-    logger.debug(
-      `Mirror backfill: ${name} - gate check failed (${error.message}), falling through to full sync`,
-    );
-    return false;
-  }
-};
-
 // NOTE: when this early-returns for composite PKs, the in-sync gate
 // that runs after it in backfillMirror operates on raw (un-swept)
 // state. mirror-model-init.spec.js currently enforces single-column
@@ -809,6 +684,7 @@ const runBackfillMirror = async () => {
             mirror,
             name,
             updatedAtAttr,
+            logger,
           );
           if (inSync) {
             totalGateSkipped += 1;
