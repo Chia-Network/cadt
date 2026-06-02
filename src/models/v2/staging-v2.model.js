@@ -214,6 +214,19 @@ class StagingV2 extends Model {
     return plainRecord?.[fieldName] ?? plainRecord?.[StagingV2.camelToSnake(fieldName)];
   }
 
+  // True when the model itself carries an org_uid column (e.g. program,
+  // methodology, project, unit, stakeholder, label, aef_t1_submission).
+  // Such records are expected to resolve to an owning org, so when none can
+  // be resolved (e.g. a null org_uid) the mutation is blocked rather than
+  // waved through. Tables without an org_uid column resolve ownership via
+  // their parent FK chain instead (see hasOwnershipFields).
+  static modelHasOrgUidColumn(ModelClass) {
+    const attrs = typeof ModelClass?.getAttributes === 'function'
+      ? ModelClass.getAttributes()
+      : ModelClass?.rawAttributes;
+    return Boolean(attrs && (attrs.orgUid || attrs.org_uid));
+  }
+
   static hasOwnershipFields(record, table) {
     const primaryKeyField = getV2PrimaryKeyField(table);
     const primaryKeyApiField = primaryKeyField?.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
@@ -364,11 +377,13 @@ class StagingV2 extends Model {
         const existingOwnerOrgUids = await StagingV2.collectOwnerOrgUids(
           existingRecord, options, new Set(), 0, false, existingUnresolved, tableExcludedFields,
         );
-        const hasOwnershipChain = StagingV2.hasOwnershipFields(existingRecord, values.table);
+        const requireOwner =
+          StagingV2.hasOwnershipFields(existingRecord, values.table) ||
+          StagingV2.modelHasOrgUidColumn(ModelClass);
         await StagingV2.assertOwnerOrgUidsAreHome(
           existingOwnerOrgUids,
           values.table,
-          hasOwnershipChain,
+          requireOwner,
           existingUnresolved,
           homeOrgUid,
         );
