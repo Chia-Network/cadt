@@ -46,6 +46,12 @@ For tables with a direct `orgUid` column (project, unit, methodology, program, s
 
 For child tables (location, estimation, rating, co_benefit, validation, verification, project_methodology, stakeholder_projects, unit_label, issuance, aef_t2-t5), this filters by the parent project's or unit's `orgUid` through an automatic JOIN.
 
+### Ownership Restrictions
+
+V2 `PUT` and `DELETE` requests can only stage mutations for records owned by the home organization. For tables with a direct `orgUid` column, the record's `orgUid` must match the home organization. For child and relationship tables, ownership is resolved through the referenced owner records, such as project, unit, program, methodology, label, stakeholder, and AEF parent records.
+
+Requests that attempt to update, delete, or retarget a staged mutation to another organization's record are rejected with a `Restricted data` error.
+
 ### Pagination
 
 All GET list endpoints require `page` and `limit` query parameters to prevent unbounded response sizes.

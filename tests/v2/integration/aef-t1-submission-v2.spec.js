@@ -4,7 +4,7 @@ import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
 import { AefT1SubmissionV2, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
-import { createV2TestHomeOrg } from '../utils/v2-test-helpers.js';
+import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
 
 describe('AEF-T1-Submission V2 Integration Tests', function () {
   this.timeout(300000); // 5 minute timeout for comprehensive tests
@@ -548,12 +548,14 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
       }
       if (stagingRecord) {
         await stagingRecord.update({ committed: true });
+        const homeOrgId = await getV2HomeOrgId();
         await AefT1SubmissionV2.create({
           cadTrustAefT1SubmissionId: createdAefT1SubmissionId,
           aefT1SubmissionParty: 'AEF-T1 to Update',
           aefT1SubmissionVersion: '1.0',
           aefT1SubmissionReportYear: 2024,
           aefT1SubmissionSubmissionDate: '2024-01-15',
+          orgUid: homeOrgId,
         });
         // Clean up committed staging record to avoid pending commits errors
         await stagingRecord.destroy();
@@ -622,12 +624,14 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
       }
       if (stagingRecord) {
         await stagingRecord.update({ committed: true });
+        const homeOrgId = await getV2HomeOrgId();
         await AefT1SubmissionV2.create({
           cadTrustAefT1SubmissionId: createdAefT1SubmissionId,
           aefT1SubmissionParty: 'AEF-T1 to Delete',
           aefT1SubmissionVersion: '1.0',
           aefT1SubmissionReportYear: 2024,
           aefT1SubmissionSubmissionDate: '2024-01-15',
+          orgUid: homeOrgId,
         });
         // Clean up committed staging record to avoid pending commits errors
         await stagingRecord.destroy();

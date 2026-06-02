@@ -581,6 +581,94 @@ describe('Rating V2 Endpoint Integration Tests', function () {
       expect(stagedData[0].rating_type).to.equal('CCQI');
       expect(stagedData[0].rating_name).to.equal('Updated Rating Name');
     });
+
+    it('should reject update for a rating owned through another organization project', async function () {
+      await resetV2StagingTable();
+
+      const otherProject = await ProjectV2.create({
+        cadTrustProjectId: uuidv4(),
+        orgUid: 'other-org-uid-12345',
+        projectName: 'Other Org Project for Rating',
+        projectRegistryName: 'Other Registry',
+        projectId: 'OTHER-RATING-PROJECT-001',
+      });
+      const rating = await RatingV2.create({
+        cadTrustRatingId: uuidv4(),
+        ratingType: 'CDP',
+        ratingName: 'Other Org Rating',
+        ratingValue: 'B+',
+        cadTrustProjectId: otherProject.cadTrustProjectId,
+      });
+
+      const response = await supertest(app)
+        .put(`/v2/rating/${rating.cadTrustRatingId}`)
+        .send({
+          ratingType: 'CDP',
+          ratingName: 'Should Not Update',
+          ratingValue: 'A',
+          cadTrustProjectId: otherProject.cadTrustProjectId,
+        })
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('Restricted data');
+
+      const stagingRecord = await StagingV2.findOne({
+        where: {
+          table: 'rating',
+          action: 'UPDATE',
+        },
+      });
+      expect(stagingRecord).to.not.exist;
+    });
+
+    it('should reject update that retargets a home-owned rating to another organization project', async function () {
+      await resetV2StagingTable();
+
+      const homeOrgId = await getV2HomeOrgId();
+      const homeProject = await ProjectV2.create({
+        cadTrustProjectId: uuidv4(),
+        orgUid: homeOrgId,
+        projectName: 'Home Project for Rating Retarget',
+        projectRegistryName: 'Home Registry',
+        projectId: 'HOME-RATING-PROJECT-001',
+      });
+      const otherProject = await ProjectV2.create({
+        cadTrustProjectId: uuidv4(),
+        orgUid: 'other-org-uid-12345',
+        projectName: 'Other Org Project for Rating Retarget',
+        projectRegistryName: 'Other Registry',
+        projectId: 'OTHER-RATING-PROJECT-003',
+      });
+      const rating = await RatingV2.create({
+        cadTrustRatingId: uuidv4(),
+        ratingType: 'CDP',
+        ratingName: 'Home Org Rating',
+        ratingValue: 'B+',
+        cadTrustProjectId: homeProject.cadTrustProjectId,
+      });
+
+      const response = await supertest(app)
+        .put(`/v2/rating/${rating.cadTrustRatingId}`)
+        .send({
+          ratingType: 'CDP',
+          ratingName: 'Should Not Retarget',
+          ratingValue: 'A',
+          cadTrustProjectId: otherProject.cadTrustProjectId,
+        })
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('Restricted data');
+
+      const stagingRecord = await StagingV2.findOne({
+        where: {
+          table: 'rating',
+          action: 'UPDATE',
+        },
+      });
+      expect(stagingRecord).to.not.exist;
+    });
   });
 
   describe('DELETE /v2/rating/:id (Delete)', function () {
@@ -644,6 +732,40 @@ describe('Rating V2 Endpoint Integration Tests', function () {
       expect(stagingRecord).to.exist;
       const stagedData = JSON.parse(stagingRecord.data);
       expect(stagedData[0].cad_trust_rating_id).to.equal(createdRatingId);
+    });
+
+    it('should reject delete for a rating owned through another organization project', async function () {
+      await resetV2StagingTable();
+
+      const otherProject = await ProjectV2.create({
+        cadTrustProjectId: uuidv4(),
+        orgUid: 'other-org-uid-12345',
+        projectName: 'Other Org Project for Rating Delete',
+        projectRegistryName: 'Other Registry',
+        projectId: 'OTHER-RATING-PROJECT-002',
+      });
+      const rating = await RatingV2.create({
+        cadTrustRatingId: uuidv4(),
+        ratingType: 'CDP',
+        ratingName: 'Other Org Rating',
+        ratingValue: 'B+',
+        cadTrustProjectId: otherProject.cadTrustProjectId,
+      });
+
+      const response = await supertest(app)
+        .delete(`/v2/rating/${rating.cadTrustRatingId}`)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('Restricted data');
+
+      const stagingRecord = await StagingV2.findOne({
+        where: {
+          table: 'rating',
+          action: 'DELETE',
+        },
+      });
+      expect(stagingRecord).to.not.exist;
     });
   });
 });

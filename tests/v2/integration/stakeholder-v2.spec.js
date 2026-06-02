@@ -4,7 +4,7 @@ import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
 import { StakeholderV2, StagingV2, StakeholderProjectV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
-import { createV2TestHomeOrg } from '../utils/v2-test-helpers.js';
+import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
 
 describe('Stakeholder V2 Endpoint Integration Tests', function () {
   this.timeout(300000); // 5 minute timeout for comprehensive tests
@@ -458,10 +458,12 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
       }
       if (stagingRecord) {
         await stagingRecord.update({ committed: true });
+        const homeOrgId = await getV2HomeOrgId();
         await StakeholderV2.create({
           cadTrustStakeholderId: createdStakeholderId,
           stakeholderName: 'Stakeholder to Update',
           stakeholderType: 'Owner',
+          orgUid: homeOrgId,
         });
         // Clean up committed staging record to avoid pending commits errors
         await stagingRecord.destroy();
@@ -509,10 +511,12 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
       }
       if (stagingRecord) {
         await stagingRecord.update({ committed: true });
+        const homeOrgId = await getV2HomeOrgId();
         await StakeholderV2.create({
           cadTrustStakeholderId: createdStakeholderId,
           stakeholderName: 'Stakeholder to Delete',
           stakeholderType: 'Consultant',
+          orgUid: homeOrgId,
         });
         // Clean up committed staging record to avoid pending commits errors
         await stagingRecord.destroy();
@@ -537,10 +541,12 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
     });
 
     it('should return 409 when stakeholder_projects references exist', async function () {
+      const homeOrgId = await getV2HomeOrgId();
       const stakeholder = await StakeholderV2.create({
         cadTrustStakeholderId: uuidv4(),
         stakeholderName: 'Referenced Stakeholder',
         stakeholderType: 'Owner',
+        orgUid: homeOrgId,
       });
 
       await StakeholderProjectV2.create({
@@ -567,10 +573,12 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
     });
 
     it('should return 409 when staged stakeholder_projects references exist', async function () {
+      const homeOrgId = await getV2HomeOrgId();
       const stakeholder = await StakeholderV2.create({
         cadTrustStakeholderId: uuidv4(),
         stakeholderName: 'Staged Referenced Stakeholder',
         stakeholderType: 'Owner',
+        orgUid: homeOrgId,
       });
 
       await StagingV2.create({
@@ -598,10 +606,12 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
     });
 
     it('should return 409 with ?force=true when references still exist', async function () {
+      const homeOrgId = await getV2HomeOrgId();
       const stakeholder = await StakeholderV2.create({
         cadTrustStakeholderId: uuidv4(),
         stakeholderName: 'Force Delete Stakeholder',
         stakeholderType: 'Consultant',
+        orgUid: homeOrgId,
       });
 
       await StakeholderProjectV2.create({

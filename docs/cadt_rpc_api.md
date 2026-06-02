@@ -27,6 +27,10 @@ The CADT RPC API is exposed by default on port 31310. This document will give ex
 
 If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to your `curl` request.
 
+## V2 Ownership Note
+
+For the V2 API, update and delete requests can only stage mutations for records owned by the home organization. See the V2 API guide for details on `orgUid` ownership and child-record ownership resolution.
+
 ## Commands
 
 - [`organizations`](#organizations)

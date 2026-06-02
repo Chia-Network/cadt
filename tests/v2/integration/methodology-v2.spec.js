@@ -9,6 +9,7 @@ import {
   resetV2DataTables,
   waitForV2DataLayerSync,
   createV2TestHomeOrg,
+  getV2HomeOrgId,
 } from '../utils/v2-test-helpers.js';
 
 describe('V2 Methodology API - Basic CRUD Tests', function () {
@@ -316,9 +317,11 @@ describe('V2 Methodology API - Basic CRUD Tests', function () {
 
     it('should stage methodology update', async function () {
       // Create a methodology directly in database
+      const homeOrgId = await getV2HomeOrgId();
       const methodology = await MethodologyV2.create({
         methodologyCode: 'UPDATE-METHOD-001',
         methodologyName: 'Original Name',
+        orgUid: homeOrgId,
       });
 
       const updateData = {
@@ -370,10 +373,12 @@ describe('V2 Methodology API - Basic CRUD Tests', function () {
 
     it('should stage methodology deletion', async function () {
       // Create a methodology directly in database
+      const homeOrgId = await getV2HomeOrgId();
       const methodology = await MethodologyV2.create({
         cadTrustMethodologyId: 'test-uuid-delete',
         methodologyCode: 'DELETE-METHOD-001',
         methodologyName: 'To Be Deleted',
+        orgUid: homeOrgId,
       });
 
       const response = await supertest(app)
@@ -401,10 +406,12 @@ describe('V2 Methodology API - Basic CRUD Tests', function () {
 
   describe('DELETE /v2/methodology/:id — reference guards', function () {
     it('should return 409 when project_methodology references exist', async function () {
+      const homeOrgId = await getV2HomeOrgId();
       const methodology = await MethodologyV2.create({
         cadTrustMethodologyId: uuidv4(),
         methodologyCode: 'REFGUARD-METHOD-001',
         methodologyName: 'Referenced Methodology',
+        orgUid: homeOrgId,
       });
 
       const program = await ProgramV2.create({
@@ -415,7 +422,7 @@ describe('V2 Methodology API - Basic CRUD Tests', function () {
 
       const project = await ProjectV2.create({
         cadTrustProjectId: uuidv4(),
-        orgUid: 'test-home-org-v2',
+        orgUid: homeOrgId,
         projectRegistryName: 'Test Registry',
         projectId: 'REFGUARD-PROJ-001',
         projectName: 'Ref Guard Project',
@@ -446,10 +453,12 @@ describe('V2 Methodology API - Basic CRUD Tests', function () {
     });
 
     it('should return 409 when staged project_methodology references exist', async function () {
+      const homeOrgId = await getV2HomeOrgId();
       const methodology = await MethodologyV2.create({
         cadTrustMethodologyId: uuidv4(),
         methodologyCode: 'STAGED-REF-METHOD-001',
         methodologyName: 'Staged Referenced Methodology',
+        orgUid: homeOrgId,
       });
 
       await StagingV2.create({
@@ -477,10 +486,12 @@ describe('V2 Methodology API - Basic CRUD Tests', function () {
     });
 
     it('should allow delete when committed references are already staged for deletion', async function () {
+      const homeOrgId = await getV2HomeOrgId();
       const methodology = await MethodologyV2.create({
         cadTrustMethodologyId: uuidv4(),
         methodologyCode: 'STAGED-DELETE-METHOD-001',
         methodologyName: 'Methodology With Deleted Reference',
+        orgUid: homeOrgId,
       });
 
       const program = await ProgramV2.create({
@@ -491,7 +502,7 @@ describe('V2 Methodology API - Basic CRUD Tests', function () {
 
       const project = await ProjectV2.create({
         cadTrustProjectId: uuidv4(),
-        orgUid: 'test-home-org-v2',
+        orgUid: homeOrgId,
         projectRegistryName: 'Test Registry',
         projectId: 'STAGED-DELETE-PROJ-001',
         projectName: 'Staged Delete Project',
@@ -530,10 +541,12 @@ describe('V2 Methodology API - Basic CRUD Tests', function () {
     });
 
     it('should return 409 with ?force=true when references still exist', async function () {
+      const homeOrgId = await getV2HomeOrgId();
       const methodology = await MethodologyV2.create({
         cadTrustMethodologyId: uuidv4(),
         methodologyCode: 'FORCE-METHOD-001',
         methodologyName: 'Force Delete Methodology',
+        orgUid: homeOrgId,
       });
 
       const program = await ProgramV2.create({
@@ -544,7 +557,7 @@ describe('V2 Methodology API - Basic CRUD Tests', function () {
 
       const project = await ProjectV2.create({
         cadTrustProjectId: uuidv4(),
-        orgUid: 'test-home-org-v2',
+        orgUid: homeOrgId,
         projectRegistryName: 'Test Registry',
         projectId: 'FORCE-PROJ-001',
         projectName: 'Force Delete Project',
