@@ -218,7 +218,6 @@ describe('/diagnostics endpoint', function () {
     });
 
     describe('buildTrustedPeerView', function () {
-      const { buildTrustedPeerView } = (async () => null)(); // placeholder to keep diff small
       it('matches connected peers against trusted_peers regardless of 0x prefix or case', function () {
         const view = diagnostics.__test.buildTrustedPeerView(
           {
@@ -237,18 +236,99 @@ describe('/diagnostics endpoint', function () {
         );
         expect(view.hasTrustedConnection).to.equal(true);
         expect(view.connected[0].trusted).to.equal(true);
+        expect(view.connected[0].trustedReason).to.equal('configured');
         expect(view.connected[1].trusted).to.equal(false);
+        expect(view.connected[1].trustedReason).to.equal(null);
         expect(view.configuredTrustedNodeIds).to.deep.equal(['abcdef12']);
       });
 
       it('reports empty trusted set when chia config has no trusted_peers', function () {
         const view = diagnostics.__test.buildTrustedPeerView(
-          { ok: true, value: { connections: [{ peerHost: 'h', peerPort: 0, type: 1, nodeId: 'aa' }] } },
+          { ok: true, value: { connections: [{ peerHost: '5.6.7.8', peerPort: 0, type: 1, nodeId: 'aa' }] } },
           { ok: true, value: { wallet: {} } },
         );
         expect(view.hasTrustedConnection).to.equal(false);
         expect(view.connected[0].trusted).to.equal(false);
         expect(view.configuredTrustedNodeIds).to.deep.equal([]);
+        expect(view.configuredTrustedCidrs).to.deep.equal([]);
+      });
+
+      it('trusts a localhost peer even when trusted_peers holds only the default placeholder', function () {
+        // Reproduces the real-world case: chia auto-trusts 127.0.0.1, but the
+        // config still contains the example placeholder node id, so a
+        // node-id-only check would wrongly report the peer as untrusted.
+        const view = diagnostics.__test.buildTrustedPeerView(
+          {
+            ok: true,
+            value: {
+              connections: [
+                { peerHost: '127.0.0.1', peerPort: 58444, type: 1, nodeId: 'bf628b52deadbeef' },
+              ],
+            },
+          },
+          {
+            ok: true,
+            value: {
+              wallet: {
+                trusted_peers: {
+                  '0ThisisanexampleNodeID7ff9d60f1c3fa270c213c0ad0cb89c01274634a7c3cb9': 'Does_not_matter',
+                },
+              },
+            },
+          },
+        );
+        expect(view.hasTrustedConnection).to.equal(true);
+        expect(view.connected[0].trusted).to.equal(true);
+        expect(view.connected[0].trustedReason).to.equal('localhost');
+      });
+
+      it('trusts a peer whose IP falls inside a configured trusted CIDR', function () {
+        const view = diagnostics.__test.buildTrustedPeerView(
+          {
+            ok: true,
+            value: {
+              connections: [
+                { peerHost: '10.0.0.5', peerPort: 8444, type: 1, nodeId: 'aa' },
+                { peerHost: '192.168.1.5', peerPort: 8444, type: 1, nodeId: 'bb' },
+              ],
+            },
+          },
+          { ok: true, value: { wallet: { trusted_cidrs: ['10.0.0.0/24'] } } },
+        );
+        expect(view.connected[0].trusted).to.equal(true);
+        expect(view.connected[0].trustedReason).to.equal('cidr');
+        expect(view.connected[1].trusted).to.equal(false);
+        expect(view.configuredTrustedCidrs).to.deep.equal(['10.0.0.0/24']);
+      });
+    });
+
+    describe('isLocalhost', function () {
+      it('recognizes the loopback hosts chia treats as localhost', function () {
+        const { isLocalhost } = diagnostics.__test;
+        expect(isLocalhost('127.0.0.1')).to.equal(true);
+        expect(isLocalhost('localhost')).to.equal(true);
+        expect(isLocalhost('::1')).to.equal(true);
+        expect(isLocalhost('[::1]')).to.equal(true);
+        expect(isLocalhost('0:0:0:0:0:0:0:1')).to.equal(true);
+        expect(isLocalhost('1.2.3.4')).to.equal(false);
+        expect(isLocalhost(null)).to.equal(false);
+      });
+    });
+
+    describe('isTrustedCidr', function () {
+      it('matches IPv4 and IPv6 addresses inside configured ranges', function () {
+        const { isTrustedCidr } = diagnostics.__test;
+        expect(isTrustedCidr('10.0.0.5', ['10.0.0.0/24'])).to.equal(true);
+        expect(isTrustedCidr('10.0.1.5', ['10.0.0.0/24'])).to.equal(false);
+        expect(isTrustedCidr('2001:db8::1', ['2001:db8::/32'])).to.equal(true);
+      });
+
+      it('never throws on malformed input', function () {
+        const { isTrustedCidr } = diagnostics.__test;
+        expect(isTrustedCidr('not-an-ip', ['10.0.0.0/24'])).to.equal(false);
+        expect(isTrustedCidr('10.0.0.5', ['garbage', '10.0.0.0/99', '10.0.0.0'])).to.equal(false);
+        expect(isTrustedCidr('10.0.0.5', [])).to.equal(false);
+        expect(isTrustedCidr('10.0.0.5', null)).to.equal(false);
       });
     });
 

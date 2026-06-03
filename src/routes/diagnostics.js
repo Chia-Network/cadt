@@ -11,6 +11,8 @@
  * middleware returning 403), so there is no reduced-information path.
  */
 
+import net from 'net';
+
 import _ from 'lodash';
 
 import { getConfig, getConfigV2 } from '../utils/config-loader.js';
@@ -340,20 +342,77 @@ const normalizeNodeId = (id) => {
   return s.startsWith('0x') ? s.slice(2) : s;
 };
 
+// Mirrors chia's chia.util.network.is_localhost. The wallet trusts any
+// localhost peer unconditionally, so a connection to 127.0.0.1 is trusted
+// even when wallet.trusted_peers is left at its default placeholder.
+const LOCALHOST_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '0:0:0:0:0:0:0:1']);
+const stripBrackets = (host) => String(host ?? '').replace(/^\[/, '').replace(/\]$/, '');
+const isLocalhost = (peerHost) => LOCALHOST_HOSTS.has(stripBrackets(peerHost));
+
 /**
- * Cross-reference connected wallet peers against the trusted_peers map in
- * the chia config.yaml. Returns a small object suitable for embedding in
- * the diagnostics response, including whether at least one connection is
- * trusted.
+ * Mirror chia's chia.util.network.is_trusted_cidr: true when peerHost parses
+ * to an IP that falls inside any configured CIDR. Never throws -- a malformed
+ * CIDR entry is skipped rather than failing the whole diagnostics response.
+ */
+const isTrustedCidr = (peerHost, trustedCidrs) => {
+  if (!Array.isArray(trustedCidrs) || trustedCidrs.length === 0) return false;
+  const host = stripBrackets(peerHost);
+  const hostType = net.isIP(host);
+  if (hostType === 0) return false;
+  const hostFamily = hostType === 6 ? 'ipv6' : 'ipv4';
+
+  for (const cidr of trustedCidrs) {
+    const slash = String(cidr).lastIndexOf('/');
+    if (slash === -1) continue;
+    const network = String(cidr).slice(0, slash);
+    const prefix = Number(String(cidr).slice(slash + 1));
+    const netType = net.isIP(network);
+    if (netType === 0 || !Number.isInteger(prefix)) continue;
+    try {
+      const blockList = new net.BlockList();
+      blockList.addSubnet(network, prefix, netType === 6 ? 'ipv6' : 'ipv4');
+      if (blockList.check(host, hostFamily)) return true;
+    } catch {
+      // Malformed CIDR (e.g. prefix out of range) -- skip it.
+    }
+  }
+  return false;
+};
+
+/**
+ * Decide whether a single connection is trusted, mirroring chia's
+ * chia.util.network.is_trusted_peer (and the `chia peer`/`chia wallet show`
+ * CLI, which computes trust client-side -- the RPC does not return it):
+ *
+ *   trusted = is_localhost(host) OR node_id in trusted_peers OR is_trusted_cidr
+ *
+ * Returns the matched reason so the diagnostics output explains *why* a peer
+ * is trusted (e.g. a localhost full node is trusted even when trusted_peers
+ * still holds the default placeholder node id).
+ */
+const classifyTrust = (peerHost, nodeId, normalizedTrustedSet, trustedCidrs) => {
+  if (isLocalhost(peerHost)) return 'localhost';
+  if (normalizedTrustedSet && normalizedTrustedSet.has(normalizeNodeId(nodeId))) return 'configured';
+  if (isTrustedCidr(peerHost, trustedCidrs)) return 'cidr';
+  return null;
+};
+
+/**
+ * Cross-reference connected wallet peers against the chia config.yaml trust
+ * settings (wallet.trusted_peers + wallet.trusted_cidrs) plus chia's implicit
+ * localhost rule. Returns a small object suitable for embedding in the
+ * diagnostics response, including whether at least one connection is trusted.
  */
 const buildTrustedPeerView = (connectionsResult, chiaConfigResult) => {
   const view = {
     configuredTrustedNodeIds: [],
+    configuredTrustedCidrs: [],
     connected: [],
     hasTrustedConnection: false,
   };
 
   let normalizedTrustedSet = null;
+  let trustedCidrs = [];
   if (chiaConfigResult?.ok) {
     const trustedPeerMap = _.get(chiaConfigResult.value, 'wallet.trusted_peers', null);
     if (trustedPeerMap && typeof trustedPeerMap === 'object') {
@@ -364,6 +423,11 @@ const buildTrustedPeerView = (connectionsResult, chiaConfigResult) => {
       view.configuredTrustedNodeIds = keys;
       normalizedTrustedSet = new Set(keys.map(normalizeNodeId));
     }
+    const configuredCidrs = _.get(chiaConfigResult.value, 'wallet.trusted_cidrs', null);
+    if (Array.isArray(configuredCidrs)) {
+      trustedCidrs = configuredCidrs;
+      view.configuredTrustedCidrs = configuredCidrs;
+    }
   } else if (chiaConfigResult) {
     view.chiaConfigError = chiaConfigResult.error;
   }
@@ -371,11 +435,10 @@ const buildTrustedPeerView = (connectionsResult, chiaConfigResult) => {
   if (connectionsResult?.ok && connectionsResult.value?.success !== false) {
     const connections = connectionsResult.value?.connections || [];
     view.connected = connections.map((c) => {
-      const trusted = !!(
-        normalizedTrustedSet && normalizedTrustedSet.has(normalizeNodeId(c.nodeId))
-      );
+      const trustedReason = classifyTrust(c.peerHost, c.nodeId, normalizedTrustedSet, trustedCidrs);
+      const trusted = trustedReason !== null;
       if (trusted) view.hasTrustedConnection = true;
-      return { peerHost: c.peerHost, peerPort: c.peerPort, type: c.type, trusted };
+      return { peerHost: c.peerHost, peerPort: c.peerPort, type: c.type, trusted, trustedReason };
     });
   } else if (connectionsResult) {
     view.connectionsError = connectionsResult.ok
@@ -880,6 +943,9 @@ export const __test = {
   collectSubscriptions,
   buildTrustedPeerView,
   normalizeNodeId,
+  isLocalhost,
+  isTrustedCidr,
+  classifyTrust,
   collectOwnedStoreExpectations,
   escalateLostOwnedStores,
   StatusAccumulator,
