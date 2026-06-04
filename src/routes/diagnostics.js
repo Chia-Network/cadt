@@ -362,12 +362,29 @@ const isTrustedCidr = (peerHost, trustedCidrs) => {
   const hostFamily = hostType === 6 ? 'ipv6' : 'ipv4';
 
   for (const cidr of trustedCidrs) {
-    const slash = String(cidr).lastIndexOf('/');
-    if (slash === -1) continue;
-    const network = String(cidr).slice(0, slash);
-    const prefix = Number(String(cidr).slice(slash + 1));
+    const cidrStr = String(cidr);
+    const slash = cidrStr.lastIndexOf('/');
+    let network;
+    let prefix;
+    if (slash === -1) {
+      // Bare IP, no prefix. chia's ip_network() treats this as a host route
+      // (/32 for IPv4, /128 for IPv6), so trust an exact-match peer.
+      network = cidrStr;
+      const bareType = net.isIP(network);
+      if (bareType === 0) continue;
+      prefix = bareType === 6 ? 128 : 32;
+    } else {
+      network = cidrStr.slice(0, slash);
+      const prefixStr = cidrStr.slice(slash + 1);
+      // Require an explicit decimal prefix. Number('') and Number(' ') both
+      // coerce to 0, which would silently widen a typo'd CIDR like "10.0.0.0/"
+      // into /0 and trust every peer; hex/float forms ("/0x10", "/1.5") would
+      // also be misread. chia's ipaddress parser rejects all of these.
+      if (!/^\d+$/.test(prefixStr)) continue;
+      prefix = Number(prefixStr);
+    }
     const netType = net.isIP(network);
-    if (netType === 0 || !Number.isInteger(prefix)) continue;
+    if (netType === 0) continue;
     try {
       const blockList = new net.BlockList();
       blockList.addSubnet(network, prefix, netType === 6 ? 'ipv6' : 'ipv4');
@@ -386,15 +403,23 @@ const isTrustedCidr = (peerHost, trustedCidrs) => {
  *
  *   trusted = is_localhost(host) OR node_id in trusted_peers OR is_trusted_cidr
  *
- * Returns the matched reason so the diagnostics output explains *why* a peer
- * is trusted (e.g. a localhost full node is trusted even when trusted_peers
- * still holds the default placeholder node id).
+ * Returns `{ trusted, reason }` where `trusted` is true / false / 'unknown'.
+ * Localhost is detectable from the peer host alone, so it is evaluated even
+ * without the chia config. The trusted_peers / trusted_cidrs rules require
+ * the config, so when it is unavailable (`configReadable === false`) a
+ * non-localhost peer is 'unknown' rather than false -- CADT and chia can run
+ * in separate containers where CADT has no access to the chia config.yaml,
+ * and reporting 'untrusted' there would be wrong (the peer may well be
+ * trusted via trusted_cidrs we simply can't see).
  */
-const classifyTrust = (peerHost, nodeId, normalizedTrustedSet, trustedCidrs) => {
-  if (isLocalhost(peerHost)) return 'localhost';
-  if (normalizedTrustedSet && normalizedTrustedSet.has(normalizeNodeId(nodeId))) return 'configured';
-  if (isTrustedCidr(peerHost, trustedCidrs)) return 'cidr';
-  return null;
+const classifyTrust = (peerHost, nodeId, normalizedTrustedSet, trustedCidrs, configReadable) => {
+  if (isLocalhost(peerHost)) return { trusted: true, reason: 'localhost' };
+  if (!configReadable) return { trusted: 'unknown', reason: 'chia-config-unavailable' };
+  if (normalizedTrustedSet && normalizedTrustedSet.has(normalizeNodeId(nodeId))) {
+    return { trusted: true, reason: 'configured' };
+  }
+  if (isTrustedCidr(peerHost, trustedCidrs)) return { trusted: true, reason: 'cidr' };
+  return { trusted: false, reason: null };
 };
 
 /**
@@ -409,11 +434,17 @@ const buildTrustedPeerView = (connectionsResult, chiaConfigResult) => {
     configuredTrustedCidrs: [],
     connected: [],
     hasTrustedConnection: false,
+    // True when trust could not be determined -- either the chia config was
+    // unavailable (so trusted_peers/trusted_cidrs can't be checked) or the
+    // wallet connections couldn't be enumerated at all. Distinguishes "known
+    // untrusted" from "can't tell" so callers don't raise a false alarm.
+    trustUnknown: false,
   };
 
+  const configReadable = chiaConfigResult?.ok === true;
   let normalizedTrustedSet = null;
   let trustedCidrs = [];
-  if (chiaConfigResult?.ok) {
+  if (configReadable) {
     const trustedPeerMap = _.get(chiaConfigResult.value, 'wallet.trusted_peers', null);
     if (trustedPeerMap && typeof trustedPeerMap === 'object') {
       // trusted_peers is `{ <peer_node_id>: <cert_path or 'Does_not_matter'> }`
@@ -435,18 +466,41 @@ const buildTrustedPeerView = (connectionsResult, chiaConfigResult) => {
   if (connectionsResult?.ok && connectionsResult.value?.success !== false) {
     const connections = connectionsResult.value?.connections || [];
     view.connected = connections.map((c) => {
-      const trustedReason = classifyTrust(c.peerHost, c.nodeId, normalizedTrustedSet, trustedCidrs);
-      const trusted = trustedReason !== null;
-      if (trusted) view.hasTrustedConnection = true;
-      return { peerHost: c.peerHost, peerPort: c.peerPort, type: c.type, trusted, trustedReason };
+      const { trusted, reason } = classifyTrust(
+        c.peerHost,
+        c.nodeId,
+        normalizedTrustedSet,
+        trustedCidrs,
+        configReadable,
+      );
+      if (trusted === true) view.hasTrustedConnection = true;
+      if (trusted === 'unknown') view.trustUnknown = true;
+      return { peerHost: c.peerHost, peerPort: c.peerPort, type: c.type, trusted, trustedReason: reason };
     });
   } else if (connectionsResult) {
     view.connectionsError = connectionsResult.ok
       ? connectionsResult.value?.error || 'wallet connections unavailable'
       : connectionsResult.error;
+    // Connections couldn't be enumerated -- we can't tell whether a trusted
+    // peer exists, so treat it as unknown rather than "definitively untrusted".
+    view.trustUnknown = true;
   }
 
   return view;
+};
+
+/**
+ * Whether to warn that the wallet is not connected to a trusted full-node
+ * peer. Only warn when we can *definitively* say there is no trusted peer:
+ * the wallet is reachable, nothing is trusted, and no peer's trust is
+ * unknown. When trust is unknown (chia config unreadable, e.g. split
+ * CADT/chia containers) we stay silent rather than raise a false warning.
+ */
+const shouldWarnNoTrustedPeer = (walletReachable, trustedFullNodePeers) => {
+  if (!walletReachable || !trustedFullNodePeers) return false;
+  if (trustedFullNodePeers.hasTrustedConnection) return false;
+  if (trustedFullNodePeers.trustUnknown) return false;
+  return true;
 };
 
 /**
@@ -899,7 +953,7 @@ export const getDiagnosticsResponse = async () => {
       }
     }
 
-    if (walletReachable && walletSection.trustedFullNodePeers?.hasTrustedConnection === false) {
+    if (shouldWarnNoTrustedPeer(walletReachable, walletSection.trustedFullNodePeers)) {
       walletStatus.escalate(
         'warning',
         'Performance is severely degraded when the Chia wallet is not connected to a trusted full node peer',
@@ -946,6 +1000,7 @@ export const __test = {
   isLocalhost,
   isTrustedCidr,
   classifyTrust,
+  shouldWarnNoTrustedPeer,
   collectOwnedStoreExpectations,
   escalateLostOwnedStores,
   StatusAccumulator,
