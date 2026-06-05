@@ -44,7 +44,7 @@ const task = new Task('sync-governance-meta', async () => {
   } catch (error) {
     logger.error(
       `Cant download Goverance data, Retrying in ${
-        CONFIG?.APP?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 30
+        CONFIG?.APP?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 300
       } seconds`,
       error,
     );
@@ -53,7 +53,7 @@ const task = new Task('sync-governance-meta', async () => {
 
 const job = new SimpleIntervalJob(
   {
-    seconds: CONFIG?.APP?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 30,
+    seconds: CONFIG?.APP?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 300,
     runImmediately: true,
   },
   task,

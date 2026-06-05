@@ -80,7 +80,7 @@ const task = new Task('validate-organization-table', async () => {
   } catch (error) {
     logger.error(
       `failed to validate default organization records and subscriptions. Error ${error.message}. ` +
-        `Retrying in ${CONFIG?.APP?.TASKS?.VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL || 900} seconds`,
+        `Retrying in ${CONFIG?.APP?.TASKS?.VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL || 1800} seconds`,
     );
   }
 });
@@ -95,7 +95,7 @@ const task = new Task('validate-organization-table', async () => {
  */
 const job = new SimpleIntervalJob(
   {
-    seconds: CONFIG?.APP?.TASKS?.VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL || 900,
+    seconds: CONFIG?.APP?.TASKS?.VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL || 1800,
     runImmediately: true,
   },
   task,

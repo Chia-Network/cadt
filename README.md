@@ -280,12 +280,12 @@ In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), CADT will add
   * **ONLY_CADT_SUBSCRIPTIONS**: When `true` (the default), CADT keeps DataLayer subscriptions aligned with the governance **orgList** in both directions. Organizations removed from the orgList are unsubscribed from DataLayer (`subscribed: false`); already-synced registry data on this node is **not** deleted. Organizations on the orgList that are not subscribed are subscribed (including orgs re-added after a prior removal, including orgs previously removed via the API delete flow). The home organization and governance body store are never auto-unsubscribed. Reconciliation runs only when a **non-empty** orgList is present locally (after a successful governance sync); an empty orgList is treated as “not ready” and does not trigger unsubscribes. Set to `false` to disable orglist-driven subscribe/unsubscribe reconciliation. While enabled, a manual unsubscribe of an org still listed on the orgList will be reverted on the next sync cycle.
   * **LOG_LEVEL**: Controls verbosity of logging. Common settings are `info` and `debug`. Setting to `silly` will log all queries.
   * **TASKS**: Section for configuring sync intervals.
-    * **GOVERNANCE_SYNC_TASK_INTERVAL**: Syncs picklist, orgList, and glossary from the governance node. Default 30 seconds.
-    * **DEFAULT_ORGANIZATIONS_SYNC_TASK_INTERVAL**: Subscribes to and imports default organizations published by the governance node. Default 30 seconds.
-    * **ORGANIZATION_META_SYNC_TASK_INTERVAL**: Refreshes metadata for already-imported organizations. Default 300 seconds.
-    * **PICKLIST_SYNC_TASK_INTERVAL**: Syncs picklist from the governance node. Default 30 seconds.
-    * **MIRROR_CHECK_TASK_INTERVAL**: Checks if our DataLayer is advertising our `DATALAYER_FILE_SERVER_URL` as a mirror for all subscriptions when `AUTO_MIRROR_EXTERNAL_STORES` is true. Default 86460 seconds.
-    * **VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL**: Validates the organization table periodically. Default 1800 seconds.
+    * **GOVERNANCE_SYNC_TASK_INTERVAL**: Syncs picklist, orgList, and glossary from the governance node. Default 300 seconds (5 minutes).
+    * **ORGANIZATION_META_SYNC_TASK_INTERVAL**: Subscribes to default organizations and refreshes metadata for already-imported organizations. Default 300 seconds (5 minutes).
+    * **PICKLIST_SYNC_TASK_INTERVAL**: Syncs picklist from the governance node. Default 300 seconds (5 minutes).
+    * **MIRROR_CHECK_TASK_INTERVAL**: Checks if our DataLayer is advertising our `DATALAYER_FILE_SERVER_URL` as a mirror for all subscriptions when `AUTO_MIRROR_EXTERNAL_STORES` is true. Default 900 seconds (15 minutes).
+    * **VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL**: Validates the organization table periodically. Default 1800 seconds (30 minutes).
+    * **COIN_MANAGEMENT_TASK_INTERVAL**: Splits wallet coins when usable coin count is low. Default 21600 seconds (6 hours).
   * **REQUEST_CONTENT_LIMITS**: Section for configuring request size limits to prevent denial-of-service attacks. These limits control the maximum array lengths in API requests.
     * **STAGING**:
       * **EDIT_DATA_LEN**: Maximum number of items in staging edit operations. Default 200.

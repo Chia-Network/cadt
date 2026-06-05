@@ -16,7 +16,7 @@ const task = new Task('sync-picklist', async () => {
     pullPickListValues();
   } catch (error) {
     logger.error(
-      `Retrying in ${CONFIG?.TASKS?.PICKLIST_SYNC_TASK_INTERVAL || 30} seconds`,
+      `Retrying in ${CONFIG?.TASKS?.PICKLIST_SYNC_TASK_INTERVAL || 300} seconds`,
       error,
     );
   }
@@ -24,7 +24,7 @@ const task = new Task('sync-picklist', async () => {
 
 const job = new SimpleIntervalJob(
   {
-    seconds: CONFIG?.TASKS?.PICKLIST_SYNC_TASK_INTERVAL || 30,
+    seconds: CONFIG?.TASKS?.PICKLIST_SYNC_TASK_INTERVAL || 300,
     runImmediately: true,
   },
   task,
