@@ -218,7 +218,6 @@ describe('/diagnostics endpoint', function () {
     });
 
     describe('buildTrustedPeerView', function () {
-      const { buildTrustedPeerView } = (async () => null)(); // placeholder to keep diff small
       it('matches connected peers against trusted_peers regardless of 0x prefix or case', function () {
         const view = diagnostics.__test.buildTrustedPeerView(
           {
@@ -237,18 +236,229 @@ describe('/diagnostics endpoint', function () {
         );
         expect(view.hasTrustedConnection).to.equal(true);
         expect(view.connected[0].trusted).to.equal(true);
+        expect(view.connected[0].trustedReason).to.equal('configured');
         expect(view.connected[1].trusted).to.equal(false);
+        expect(view.connected[1].trustedReason).to.equal(null);
         expect(view.configuredTrustedNodeIds).to.deep.equal(['abcdef12']);
       });
 
       it('reports empty trusted set when chia config has no trusted_peers', function () {
         const view = diagnostics.__test.buildTrustedPeerView(
-          { ok: true, value: { connections: [{ peerHost: 'h', peerPort: 0, type: 1, nodeId: 'aa' }] } },
+          { ok: true, value: { connections: [{ peerHost: '5.6.7.8', peerPort: 0, type: 1, nodeId: 'aa' }] } },
           { ok: true, value: { wallet: {} } },
         );
         expect(view.hasTrustedConnection).to.equal(false);
         expect(view.connected[0].trusted).to.equal(false);
         expect(view.configuredTrustedNodeIds).to.deep.equal([]);
+        expect(view.configuredTrustedCidrs).to.deep.equal([]);
+      });
+
+      it('trusts a localhost peer even when trusted_peers holds only the default placeholder', function () {
+        // Reproduces the real-world case: chia auto-trusts 127.0.0.1, but the
+        // config still contains the example placeholder node id, so a
+        // node-id-only check would wrongly report the peer as untrusted.
+        const view = diagnostics.__test.buildTrustedPeerView(
+          {
+            ok: true,
+            value: {
+              connections: [
+                { peerHost: '127.0.0.1', peerPort: 58444, type: 1, nodeId: 'bf628b52deadbeef' },
+              ],
+            },
+          },
+          {
+            ok: true,
+            value: {
+              wallet: {
+                trusted_peers: {
+                  '0ThisisanexampleNodeID7ff9d60f1c3fa270c213c0ad0cb89c01274634a7c3cb9': 'Does_not_matter',
+                },
+              },
+            },
+          },
+        );
+        expect(view.hasTrustedConnection).to.equal(true);
+        expect(view.connected[0].trusted).to.equal(true);
+        expect(view.connected[0].trustedReason).to.equal('localhost');
+      });
+
+      it('trusts a peer whose IP falls inside a configured trusted CIDR', function () {
+        const view = diagnostics.__test.buildTrustedPeerView(
+          {
+            ok: true,
+            value: {
+              connections: [
+                { peerHost: '10.0.0.5', peerPort: 8444, type: 1, nodeId: 'aa' },
+                { peerHost: '192.168.1.5', peerPort: 8444, type: 1, nodeId: 'bb' },
+              ],
+            },
+          },
+          { ok: true, value: { wallet: { trusted_cidrs: ['10.0.0.0/24'] } } },
+        );
+        expect(view.connected[0].trusted).to.equal(true);
+        expect(view.connected[0].trustedReason).to.equal('cidr');
+        expect(view.connected[1].trusted).to.equal(false);
+        expect(view.connected[1].trustedReason).to.equal(null);
+        expect(view.configuredTrustedCidrs).to.deep.equal(['10.0.0.0/24']);
+      });
+
+      it('marks trust unknown when wallet connections cannot be enumerated', function () {
+        // Wallet reachable but get_connections failed: we can't tell whether a
+        // trusted peer exists, so trust is unknown rather than untrusted.
+        const view = diagnostics.__test.buildTrustedPeerView(
+          { ok: false, error: 'wallet RPC refused connection' },
+          { ok: true, value: { wallet: { trusted_cidrs: ['10.0.0.0/8'] } } },
+        );
+        expect(view.connected).to.deep.equal([]);
+        expect(view.hasTrustedConnection).to.equal(false);
+        expect(view.trustUnknown).to.equal(true);
+        expect(view.connectionsError).to.be.a('string').and.not.empty;
+      });
+
+      it('reports unknown (not untrusted) for non-localhost peers when chia config is unreadable', function () {
+        // Split-deployment case: CADT and chia run in separate containers and
+        // CADT cannot read the chia config.yaml, so trusted_peers/trusted_cidrs
+        // are unavailable. A non-localhost peer's trust is unknown, not false.
+        const view = diagnostics.__test.buildTrustedPeerView(
+          {
+            ok: true,
+            value: {
+              connections: [
+                { peerHost: '10.48.83.174', peerPort: 58444, type: 1, nodeId: 'a676d602' },
+              ],
+            },
+          },
+          { ok: false, error: "ENOENT: no such file or directory, open '/root/.chia/mainnet/config/config.yaml'" },
+        );
+        expect(view.connected[0].trusted).to.equal('unknown');
+        expect(view.connected[0].trustedReason).to.equal('chia-config-unavailable');
+        expect(view.hasTrustedConnection).to.equal(false);
+        expect(view.trustUnknown).to.equal(true);
+        expect(view.chiaConfigError).to.be.a('string').and.not.empty;
+      });
+
+      it('still trusts a localhost peer when chia config is unreadable', function () {
+        // Localhost is determinable from the peer host alone, so an
+        // unreadable config does not make a localhost peer unknown.
+        const view = diagnostics.__test.buildTrustedPeerView(
+          {
+            ok: true,
+            value: {
+              connections: [
+                { peerHost: '127.0.0.1', peerPort: 58444, type: 1, nodeId: 'aa' },
+              ],
+            },
+          },
+          { ok: false, error: 'ENOENT' },
+        );
+        expect(view.connected[0].trusted).to.equal(true);
+        expect(view.connected[0].trustedReason).to.equal('localhost');
+        expect(view.hasTrustedConnection).to.equal(true);
+        expect(view.trustUnknown).to.equal(false);
+      });
+    });
+
+    describe('shouldWarnNoTrustedPeer', function () {
+      it('warns only when trust is known and no peer is trusted', function () {
+        expect(
+          diagnostics.__test.shouldWarnNoTrustedPeer(true, { hasTrustedConnection: false, trustUnknown: false }),
+        ).to.equal(true);
+      });
+
+      it('does not warn when a trusted connection exists', function () {
+        expect(
+          diagnostics.__test.shouldWarnNoTrustedPeer(true, { hasTrustedConnection: true, trustUnknown: false }),
+        ).to.equal(false);
+      });
+
+      it('does not warn when trust is unknown (config unreadable)', function () {
+        expect(
+          diagnostics.__test.shouldWarnNoTrustedPeer(true, { hasTrustedConnection: false, trustUnknown: true }),
+        ).to.equal(false);
+      });
+
+      it('does not warn when the wallet is unreachable', function () {
+        expect(
+          diagnostics.__test.shouldWarnNoTrustedPeer(false, { hasTrustedConnection: false, trustUnknown: false }),
+        ).to.equal(false);
+      });
+    });
+
+    describe('classifyTrust', function () {
+      it('returns unknown for a non-localhost peer when config is not readable', function () {
+        expect(diagnostics.__test.classifyTrust('1.2.3.4', 'aa', null, [], false)).to.deep.equal({
+          trusted: 'unknown',
+          reason: 'chia-config-unavailable',
+        });
+      });
+
+      it('returns localhost trust even when config is not readable', function () {
+        expect(diagnostics.__test.classifyTrust('127.0.0.1', 'aa', null, [], false)).to.deep.equal({
+          trusted: true,
+          reason: 'localhost',
+        });
+      });
+
+      it('returns false for an untrusted peer when config is readable', function () {
+        expect(diagnostics.__test.classifyTrust('1.2.3.4', 'aa', new Set(['bb']), [], true)).to.deep.equal({
+          trusted: false,
+          reason: null,
+        });
+      });
+    });
+
+    describe('isLocalhost', function () {
+      it('recognizes the loopback hosts chia treats as localhost', function () {
+        const { isLocalhost } = diagnostics.__test;
+        expect(isLocalhost('127.0.0.1')).to.equal(true);
+        expect(isLocalhost('localhost')).to.equal(true);
+        expect(isLocalhost('::1')).to.equal(true);
+        expect(isLocalhost('[::1]')).to.equal(true);
+        expect(isLocalhost('0:0:0:0:0:0:0:1')).to.equal(true);
+        expect(isLocalhost('1.2.3.4')).to.equal(false);
+        expect(isLocalhost(null)).to.equal(false);
+      });
+    });
+
+    describe('isTrustedCidr', function () {
+      it('matches IPv4 and IPv6 addresses inside configured ranges', function () {
+        const { isTrustedCidr } = diagnostics.__test;
+        expect(isTrustedCidr('10.0.0.5', ['10.0.0.0/24'])).to.equal(true);
+        expect(isTrustedCidr('10.0.1.5', ['10.0.0.0/24'])).to.equal(false);
+        expect(isTrustedCidr('2001:db8::1', ['2001:db8::/32'])).to.equal(true);
+      });
+
+      it('treats a host-bits-set CIDR like chia (strict=False masks host bits)', function () {
+        // chia uses ip_network(cidr, strict=False); "10.0.0.5/24" masks to
+        // 10.0.0.0/24 rather than being rejected.
+        const { isTrustedCidr } = diagnostics.__test;
+        expect(isTrustedCidr('10.0.0.1', ['10.0.0.5/24'])).to.equal(true);
+      });
+
+      it('treats a bare IP as a host route (/32 or /128) like chia', function () {
+        const { isTrustedCidr } = diagnostics.__test;
+        expect(isTrustedCidr('10.0.0.5', ['10.0.0.5'])).to.equal(true);
+        expect(isTrustedCidr('10.0.0.6', ['10.0.0.5'])).to.equal(false);
+        expect(isTrustedCidr('2001:db8::1', ['2001:db8::1'])).to.equal(true);
+      });
+
+      it('never throws on malformed input', function () {
+        const { isTrustedCidr } = diagnostics.__test;
+        expect(isTrustedCidr('not-an-ip', ['10.0.0.0/24'])).to.equal(false);
+        expect(isTrustedCidr('10.0.0.5', ['garbage', '10.0.0.0/99', '10.0.0.0'])).to.equal(false);
+        expect(isTrustedCidr('10.0.0.5', [])).to.equal(false);
+        expect(isTrustedCidr('10.0.0.5', null)).to.equal(false);
+      });
+
+      it('does not treat a malformed prefix as /0 (must not trust every peer)', function () {
+        // Number('')===0 and Number('0x10')===16 would silently widen a
+        // typo'd CIDR; the prefix must be an explicit decimal or be skipped.
+        const { isTrustedCidr } = diagnostics.__test;
+        expect(isTrustedCidr('8.8.8.8', ['10.0.0.0/'])).to.equal(false);
+        expect(isTrustedCidr('8.8.8.8', ['10.0.0.0/ '])).to.equal(false);
+        expect(isTrustedCidr('10.0.255.1', ['10.0.0.0/0x10'])).to.equal(false);
+        // A genuine /0 written explicitly still matches everything.
+        expect(isTrustedCidr('8.8.8.8', ['0.0.0.0/0'])).to.equal(true);
       });
     });
 
