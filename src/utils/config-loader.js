@@ -95,25 +95,6 @@ const loadConfigForVersion = (dataModelVersion) => {
   // Merge with defaults to ensure all fields are present
   mergeObjects(unifiedConfig, defaultConfig);
 
-  // Migrate shipped task-interval defaults when they match a known prior default.
-  // mergeObjects only fills missing keys, so existing configs keep stale values
-  // until upgraded here. User-customized values are left alone.
-  if (unifiedConfig?.APP?.TASKS) {
-    const tasks = unifiedConfig.APP.TASKS;
-    if (tasks.GOVERNANCE_SYNC_TASK_INTERVAL === 30) {
-      tasks.GOVERNANCE_SYNC_TASK_INTERVAL = 300;
-    }
-    if (tasks.PICKLIST_SYNC_TASK_INTERVAL === 30 || tasks.PICKLIST_SYNC_TASK_INTERVAL === 60) {
-      tasks.PICKLIST_SYNC_TASK_INTERVAL = 300;
-    }
-    if (tasks.MIRROR_CHECK_TASK_INTERVAL === 300) {
-      tasks.MIRROR_CHECK_TASK_INTERVAL = 900;
-    }
-    if (tasks.DEFAULT_ORGANIZATIONS_SYNC_TASK_INTERVAL !== undefined) {
-      delete tasks.DEFAULT_ORGANIZATIONS_SYNC_TASK_INTERVAL;
-    }
-  }
-
   // Extract the appropriate section based on version
   // Keep APP nested for compatibility with existing code (getConfig().APP.LOG_LEVEL)
   let mergedConfig;
