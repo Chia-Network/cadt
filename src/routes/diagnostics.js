@@ -14,6 +14,7 @@
 import _ from 'lodash';
 
 import { getConfig, getConfigV2 } from '../utils/config-loader.js';
+import { defaultConfig } from '../utils/defaultConfig.js';
 import { getChiaRoot } from '../utils/chia-root.js';
 import { getWalletHealthResponse } from './wallet-health.js';
 import { getSystemInfo } from '../utils/system-info.js';
@@ -340,6 +341,32 @@ const normalizeNodeId = (id) => {
   return s.startsWith('0x') ? s.slice(2) : s;
 };
 
+/** Task interval keys shipped in defaultConfig.APP.TASKS. */
+const TASK_INTERVAL_KEYS = Object.freeze([
+  'GOVERNANCE_SYNC_TASK_INTERVAL',
+  'ORGANIZATION_META_SYNC_TASK_INTERVAL',
+  'PICKLIST_SYNC_TASK_INTERVAL',
+  'MIRROR_CHECK_TASK_INTERVAL',
+  'VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL',
+  'COIN_MANAGEMENT_TASK_INTERVAL',
+]);
+
+/**
+ * Compare effective APP.TASKS intervals against defaultConfig. Returns only
+ * entries whose actual value differs from the shipped default, each with
+ * { key, default, actual } in seconds.
+ */
+const collectNonDefaultTaskIntervals = (actualTasks, defaultTasks = defaultConfig.APP.TASKS) => {
+  const nonDefault = [];
+  for (const key of TASK_INTERVAL_KEYS) {
+    const defaultValue = defaultTasks?.[key];
+    const actualValue = actualTasks?.[key];
+    if (actualValue === undefined || actualValue === defaultValue) continue;
+    nonDefault.push({ key, default: defaultValue, actual: actualValue });
+  }
+  return nonDefault;
+};
+
 /**
  * Cross-reference connected wallet peers against the trusted_peers map in
  * the chia config.yaml. Returns a small object suitable for embedding in
@@ -573,6 +600,7 @@ export const getDiagnosticsResponse = async () => {
       governanceBodyId: configV2.GOVERNANCE?.GOVERNANCE_BODY_ID || null,
       homeOrgId: homeOrgUid(v2HomeOrg),
     },
+    nonDefaultTaskIntervals: collectNonDefaultTaskIntervals(appConfig.TASKS),
   };
 
   // ---- Chia: network match ------------------------------------------------
@@ -881,6 +909,8 @@ export const __test = {
   buildTrustedPeerView,
   normalizeNodeId,
   collectOwnedStoreExpectations,
+  collectNonDefaultTaskIntervals,
   escalateLostOwnedStores,
   StatusAccumulator,
+  TASK_INTERVAL_KEYS,
 };

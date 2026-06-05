@@ -578,3 +578,51 @@ describe('collectOwnedStoreExpectations', function () {
     expect(result.expectedOwnedStores.map((e) => e.label)).to.deep.equal(['v1 registry']);
   });
 });
+
+describe('diagnostics collectNonDefaultTaskIntervals', function () {
+  const { collectNonDefaultTaskIntervals } = diagnosticsTest;
+
+  const defaultTasks = {
+    GOVERNANCE_SYNC_TASK_INTERVAL: 120,
+    ORGANIZATION_META_SYNC_TASK_INTERVAL: 120,
+    PICKLIST_SYNC_TASK_INTERVAL: 120,
+    MIRROR_CHECK_TASK_INTERVAL: 900,
+    VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL: 1800,
+    COIN_MANAGEMENT_TASK_INTERVAL: 21600,
+  };
+
+  it('returns an empty array when all intervals match defaults', function () {
+    expect(collectNonDefaultTaskIntervals(defaultTasks, defaultTasks)).to.deep.equal([]);
+  });
+
+  it('reports only intervals that differ from defaults', function () {
+    const actual = {
+      ...defaultTasks,
+      GOVERNANCE_SYNC_TASK_INTERVAL: 30,
+      MIRROR_CHECK_TASK_INTERVAL: 900,
+    };
+    expect(collectNonDefaultTaskIntervals(actual, defaultTasks)).to.deep.equal([
+      { key: 'GOVERNANCE_SYNC_TASK_INTERVAL', default: 120, actual: 30 },
+    ]);
+  });
+
+  it('reports multiple non-default intervals', function () {
+    const actual = {
+      ...defaultTasks,
+      PICKLIST_SYNC_TASK_INTERVAL: 60,
+      COIN_MANAGEMENT_TASK_INTERVAL: 3600,
+    };
+    expect(collectNonDefaultTaskIntervals(actual, defaultTasks)).to.deep.equal([
+      { key: 'PICKLIST_SYNC_TASK_INTERVAL', default: 120, actual: 60 },
+      { key: 'COIN_MANAGEMENT_TASK_INTERVAL', default: 21600, actual: 3600 },
+    ]);
+  });
+
+  it('ignores unknown task keys and missing actual values', function () {
+    const actual = {
+      GOVERNANCE_SYNC_TASK_INTERVAL: 120,
+      DEFAULT_ORGANIZATIONS_SYNC_TASK_INTERVAL: 30,
+    };
+    expect(collectNonDefaultTaskIntervals(actual, defaultTasks)).to.deep.equal([]);
+  });
+});
