@@ -342,6 +342,32 @@ const normalizeNodeId = (id) => {
   return s.startsWith('0x') ? s.slice(2) : s;
 };
 
+// Loopback hosts that mean the Chia service runs on the same machine as CADT.
+// Node's URL parser returns IPv6 hosts in bracketed form (e.g. "[::1]"), so we
+// list the bracketed form for IPv6 loopback. The whole 127.0.0.0/8 block is
+// loopback and handled by the prefix check in isLocalChiaUrl.
+const LOCAL_CHIA_HOSTNAMES = new Set([
+  'localhost',
+  '0.0.0.0',
+  '[::1]',
+]);
+
+/**
+ * Whether a Chia RPC URL points at the local machine. Treats localhost, the
+ * full 127.0.0.0/8 loopback block, 0.0.0.0, and IPv6 loopback as local;
+ * anything else is remote. Malformed/empty URLs are treated as non-local
+ * (we can't prove locality, so we don't claim it).
+ */
+const isLocalChiaUrl = (url) => {
+  if (!url) return false;
+  try {
+    const hostname = new URL(url).hostname.toLowerCase();
+    return LOCAL_CHIA_HOSTNAMES.has(hostname) || hostname.startsWith('127.');
+  } catch {
+    return false;
+  }
+};
+
 // Mirrors chia's chia.util.network.is_localhost. The wallet trusts any
 // localhost peer unconditionally, so a connection to 127.0.0.1 is trusted
 // even when wallet.trusted_peers is left at its default placeholder.
@@ -805,9 +831,31 @@ export const getDiagnosticsResponse = async () => {
   })();
 
   // ---- Chia: chia-tools / processes ---------------------------------------
-  const chiaToolsSection = chiaToolsRes.ok
-    ? chiaToolsRes.value
-    : { installed: false, version: null, error: chiaToolsRes.error, note: 'probe failed' };
+  // chia-tools only needs to be installed when the Chia wallet and DataLayer
+  // run on this machine. When either is remote, CADT can't inspect that host,
+  // so we report installed: 'unknown' rather than a misleading "not installed".
+  const chiaIsLocal =
+    isLocalChiaUrl(appConfig.WALLET_URL) && isLocalChiaUrl(appConfig.DATALAYER_URL);
+
+  let chiaToolsSection;
+  if (!chiaIsLocal) {
+    chiaToolsSection = {
+      installed: 'unknown',
+      version: null,
+      chiaIsLocal: false,
+      note: 'Chia wallet/DataLayer are remote; chia-tools is not required on this host',
+    };
+  } else if (chiaToolsRes.ok) {
+    chiaToolsSection = { ...chiaToolsRes.value, chiaIsLocal: true };
+  } else {
+    chiaToolsSection = {
+      installed: false,
+      version: null,
+      chiaIsLocal: true,
+      error: chiaToolsRes.error,
+      note: 'probe failed',
+    };
+  }
 
   // ---- System -------------------------------------------------------------
   const systemSection = systemInfoRes.ok
@@ -875,7 +923,10 @@ export const getDiagnosticsResponse = async () => {
   // chiaTools
   {
     const ctStatus = new StatusAccumulator();
-    if (!chiaToolsSection.installed) {
+    // Only nudge about installing chia-tools when Chia is local. On remote-Chia
+    // setups the binary isn't expected on this host, so installed === 'unknown'
+    // and we leave the status at ok.
+    if (chiaToolsSection.chiaIsLocal && chiaToolsSection.installed !== true) {
       ctStatus.escalate('warning', 'chia-tools is recommended to help manage Chia');
     }
     Object.assign(chiaToolsSection, ctStatus.result());
@@ -997,6 +1048,7 @@ export const __test = {
   collectSubscriptions,
   buildTrustedPeerView,
   normalizeNodeId,
+  isLocalChiaUrl,
   isLocalhost,
   isTrustedCidr,
   classifyTrust,

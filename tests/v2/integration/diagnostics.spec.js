@@ -217,6 +217,32 @@ describe('/diagnostics endpoint', function () {
       });
     });
 
+    describe('isLocalChiaUrl', function () {
+      it('treats loopback hosts as local', function () {
+        const isLocal = diagnostics.__test.isLocalChiaUrl;
+        expect(isLocal('https://localhost:9256')).to.equal(true);
+        expect(isLocal('https://127.0.0.1:9256')).to.equal(true);
+        expect(isLocal('https://127.0.0.2:9256')).to.equal(true);
+        expect(isLocal('https://0.0.0.0:9256')).to.equal(true);
+        expect(isLocal('https://[::1]:8562')).to.equal(true);
+      });
+
+      it('treats non-loopback hosts as remote', function () {
+        const isLocal = diagnostics.__test.isLocalChiaUrl;
+        expect(isLocal('https://wallet.example.com:9256')).to.equal(false);
+        expect(isLocal('https://10.0.0.5:9256')).to.equal(false);
+        expect(isLocal('https://192.168.1.20:8562')).to.equal(false);
+      });
+
+      it('returns false for empty or malformed input', function () {
+        const isLocal = diagnostics.__test.isLocalChiaUrl;
+        expect(isLocal('')).to.equal(false);
+        expect(isLocal(null)).to.equal(false);
+        expect(isLocal(undefined)).to.equal(false);
+        expect(isLocal('not a url')).to.equal(false);
+      });
+    });
+
     describe('buildTrustedPeerView', function () {
       it('matches connected peers against trusted_peers regardless of 0x prefix or case', function () {
         const view = diagnostics.__test.buildTrustedPeerView(
@@ -575,6 +601,43 @@ describe('/diagnostics endpoint', function () {
         expect(chiaTools.status).to.equal('warning');
         expect(chiaTools.message).to.include('chia-tools');
       }
+    });
+
+    it('chiaTools reports chiaIsLocal=true under the default loopback config', async function () {
+      const response = await supertest(app).get('/diagnostics').expect(200);
+      expect(response.body.chia.chiaTools).to.have.property('chiaIsLocal', true);
+    });
+
+    it('chiaTools reports installed "unknown" with ok status when Chia is remote', async function () {
+      await withConfigOverride(async () => {
+        const response = await supertest(app).get('/diagnostics').expect(200);
+        const chiaTools = response.body.chia.chiaTools;
+        expect(chiaTools.chiaIsLocal).to.equal(false);
+        expect(chiaTools.installed).to.equal('unknown');
+        // Remote Chia means chia-tools isn't expected locally, so no warning.
+        expect(chiaTools.status).to.equal('ok');
+        expect(chiaTools.note).to.include('remote');
+      }, {
+        APP: {
+          WALLET_URL: 'https://wallet.example.com:9256',
+          DATALAYER_URL: 'https://datalayer.example.com:8562',
+        },
+      });
+    });
+
+    it('chiaTools is gated remote when only the DataLayer is remote', async function () {
+      await withConfigOverride(async () => {
+        const response = await supertest(app).get('/diagnostics').expect(200);
+        const chiaTools = response.body.chia.chiaTools;
+        expect(chiaTools.chiaIsLocal).to.equal(false);
+        expect(chiaTools.installed).to.equal('unknown');
+        expect(chiaTools.status).to.equal('ok');
+      }, {
+        APP: {
+          WALLET_URL: 'https://localhost:9256',
+          DATALAYER_URL: 'https://datalayer.example.com:8562',
+        },
+      });
     });
 
     it('network status is ok when matches is null or true', async function () {
