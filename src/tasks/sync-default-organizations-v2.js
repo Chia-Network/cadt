@@ -148,14 +148,14 @@ const task = new Task('sync-default-organizations-v2', async () => {
   } catch (error) {
     loggerV2.error(
       `[v2]: failed to validate default organization records and subscriptions. Error ${error.message}. ` +
-        `Retrying in ${CONFIG?.TASKS?.DEFAULT_ORGANIZATIONS_SYNC_TASK_INTERVAL || 30} seconds`,
+        `Retrying in ${CONFIG?.TASKS?.ORGANIZATION_META_SYNC_TASK_INTERVAL || 120} seconds`,
     );
   }
 });
 
 const job = new SimpleIntervalJob(
   {
-    seconds: CONFIG?.TASKS?.DEFAULT_ORGANIZATIONS_SYNC_TASK_INTERVAL || 30,
+    seconds: CONFIG?.TASKS?.ORGANIZATION_META_SYNC_TASK_INTERVAL || 120,
     runImmediately: true,
   },
   task,

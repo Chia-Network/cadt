@@ -16,6 +16,7 @@ import net from 'net';
 import _ from 'lodash';
 
 import { getConfig, getConfigV2 } from '../utils/config-loader.js';
+import { defaultConfig } from '../utils/defaultConfig.js';
 import { getChiaRoot } from '../utils/chia-root.js';
 import { getWalletHealthResponse } from './wallet-health.js';
 import { getSystemInfo } from '../utils/system-info.js';
@@ -340,6 +341,43 @@ const normalizeNodeId = (id) => {
   if (id == null) return '';
   const s = String(id).toLowerCase();
   return s.startsWith('0x') ? s.slice(2) : s;
+};
+
+/** Task interval keys shipped in defaultConfig.APP.TASKS. */
+const TASK_INTERVAL_KEYS = Object.freeze([
+  'GOVERNANCE_SYNC_TASK_INTERVAL',
+  'ORGANIZATION_META_SYNC_TASK_INTERVAL',
+  'PICKLIST_SYNC_TASK_INTERVAL',
+  'MIRROR_CHECK_TASK_INTERVAL',
+  'VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL',
+  'COIN_MANAGEMENT_TASK_INTERVAL',
+]);
+
+/**
+ * Compare effective APP.TASKS intervals against defaultConfig. Returns only
+ * entries whose actual value differs from the shipped default, each with
+ * { key, default, actual } in seconds.
+ */
+const collectNonDefaultTaskIntervals = (actualTasks, defaultTasks = defaultConfig.APP.TASKS) => {
+  const nonDefault = [];
+  for (const key of TASK_INTERVAL_KEYS) {
+    const defaultValue = defaultTasks?.[key];
+    const actualValue = actualTasks?.[key];
+    if (actualValue === undefined) continue;
+    // docker-entrypoint.sh writes env-provided intervals back as quoted YAML
+    // strings, so a config value can equal the numeric default semantically
+    // ("120" vs 120). Compare numerically when both parse as finite numbers,
+    // falling back to strict equality otherwise.
+    const defaultNum = Number(defaultValue);
+    const actualNum = Number(actualValue);
+    const isEqual =
+      Number.isFinite(defaultNum) && Number.isFinite(actualNum)
+        ? defaultNum === actualNum
+        : actualValue === defaultValue;
+    if (isEqual) continue;
+    nonDefault.push({ key, default: defaultValue, actual: actualValue });
+  }
+  return nonDefault;
 };
 
 // Loopback hosts that mean the Chia service runs on the same machine as CADT.
@@ -716,6 +754,7 @@ export const getDiagnosticsResponse = async () => {
       governanceBodyId: configV2.GOVERNANCE?.GOVERNANCE_BODY_ID || null,
       homeOrgId: homeOrgUid(v2HomeOrg),
     },
+    nonDefaultTaskIntervals: collectNonDefaultTaskIntervals(appConfig.TASKS),
   };
 
   // ---- Chia: network match ------------------------------------------------
@@ -1054,6 +1093,8 @@ export const __test = {
   classifyTrust,
   shouldWarnNoTrustedPeer,
   collectOwnedStoreExpectations,
+  collectNonDefaultTaskIntervals,
   escalateLostOwnedStores,
   StatusAccumulator,
+  TASK_INTERVAL_KEYS,
 };

@@ -34,6 +34,30 @@ describe('/diagnostics endpoint', function () {
       expect(cadt).to.have.property('v2').that.is.an('object');
       expect(cadt.v1).to.have.property('governanceBodyId');
       expect(cadt.v2).to.have.property('governanceBodyId');
+      expect(cadt).to.have.property('nonDefaultTaskIntervals').that.is.an('array');
+    });
+
+    it('reports non-default task intervals with default and actual values', async function () {
+      await withConfigOverride(async () => {
+        const response = await supertest(app).get('/diagnostics').expect(200);
+        expect(response.body.cadt.nonDefaultTaskIntervals).to.deep.include({
+          key: 'GOVERNANCE_SYNC_TASK_INTERVAL',
+          default: 120,
+          actual: 30,
+        });
+        expect(response.body.cadt.nonDefaultTaskIntervals).to.deep.include({
+          key: 'MIRROR_CHECK_TASK_INTERVAL',
+          default: 900,
+          actual: 86460,
+        });
+      }, {
+        APP: {
+          TASKS: {
+            GOVERNANCE_SYNC_TASK_INTERVAL: 30,
+            MIRROR_CHECK_TASK_INTERVAL: 86460,
+          },
+        },
+      });
     });
 
     it('reports CPU, memory, and disk in the system section', async function () {
