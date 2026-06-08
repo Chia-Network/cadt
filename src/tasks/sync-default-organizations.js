@@ -9,7 +9,7 @@ import { logger } from '../config/logger.js';
 import { getConfig } from '../utils/config-loader.js';
 import {
   buildOrgListAllowSet,
-  unsubscribeOrgsNotInOrgList,
+  removeOrgsNotInOrgList,
 } from '../utils/orglist-subscription-reconcile.js';
 
 const CONFIG = getConfig();
@@ -112,7 +112,7 @@ const task = new Task('sync-default-organizations', async () => {
       if (onlyCadtSubscriptions) {
         const { GOVERNANCE_BODY_ID } = CONFIG.GOVERNANCE;
         const allowSet = buildOrgListAllowSet(defaultOrgRecords, GOVERNANCE_BODY_ID);
-        await unsubscribeOrgsNotInOrgList({
+        await removeOrgsNotInOrgList({
           defaultOrgList: defaultOrgRecords,
           allowSet,
           organizationModel: Organization,
@@ -123,6 +123,14 @@ const task = new Task('sync-default-organizations', async () => {
           },
           unsubscribeFromOrganizationStores:
             Organization.unsubscribeFromOrganizationStores.bind(Organization),
+          // Background removal of a remote org must not wipe the home org's
+          // pending staged changes (global, un-scoped staging table), and is
+          // not a user deletion so it must not populate the suppression list.
+          deleteAllOrganizationData: (orgUid) =>
+            Organization.deleteAllOrganizationData(orgUid, {
+              skipStagingTruncate: true,
+              recordUserDeleted: false,
+            }),
           logger,
           apiVersionLabel: 'v1',
         });
@@ -131,14 +139,14 @@ const task = new Task('sync-default-organizations', async () => {
   } catch (error) {
     logger.error(
       `failed to validate default organization records and subscriptions. Error ${error.message}. ` +
-        `Retrying in ${CONFIG?.APP?.TASKS?.DEFAULT_ORGANIZATIONS_SYNC_TASK_INTERVAL || 30} seconds`,
+        `Retrying in ${CONFIG?.APP?.TASKS?.ORGANIZATION_META_SYNC_TASK_INTERVAL || 120} seconds`,
     );
   }
 });
 
 const job = new SimpleIntervalJob(
   {
-    seconds: CONFIG?.APP?.TASKS?.DEFAULT_ORGANIZATIONS_SYNC_TASK_INTERVAL || 30,
+    seconds: CONFIG?.APP?.TASKS?.ORGANIZATION_META_SYNC_TASK_INTERVAL || 120,
     runImmediately: true,
   },
   task,

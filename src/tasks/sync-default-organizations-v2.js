@@ -9,7 +9,7 @@ import { loggerV2 } from '../config/logger.js';
 import { getConfig, getConfigV2 } from '../utils/config-loader.js';
 import {
   buildOrgListAllowSet,
-  unsubscribeOrgsNotInOrgList,
+  removeOrgsNotInOrgList,
 } from '../utils/orglist-subscription-reconcile.js';
 
 const CONFIG = getConfig().APP;
@@ -123,7 +123,7 @@ const task = new Task('sync-default-organizations-v2', async () => {
       if (onlyCadtSubscriptions) {
         const { GOVERNANCE_BODY_ID } = getConfigV2().GOVERNANCE;
         const allowSet = buildOrgListAllowSet(defaultOrgList, GOVERNANCE_BODY_ID);
-        await unsubscribeOrgsNotInOrgList({
+        await removeOrgsNotInOrgList({
           defaultOrgList,
           allowSet,
           organizationModel: OrganizationsV2,
@@ -134,6 +134,12 @@ const task = new Task('sync-default-organizations-v2', async () => {
           },
           unsubscribeFromOrganizationStores:
             OrganizationsV2.unsubscribeFromOrganizationStores.bind(OrganizationsV2),
+          // Background removal of an off-orglist org is not a user deletion, so
+          // it must not be recorded in the user-deleted suppression list.
+          deleteAllOrganizationData: (orgUid) =>
+            OrganizationsV2.deleteAllOrganizationData(orgUid, {
+              recordUserDeleted: false,
+            }),
           logger: loggerV2,
           apiVersionLabel: 'v2',
         });
@@ -142,14 +148,14 @@ const task = new Task('sync-default-organizations-v2', async () => {
   } catch (error) {
     loggerV2.error(
       `[v2]: failed to validate default organization records and subscriptions. Error ${error.message}. ` +
-        `Retrying in ${CONFIG?.TASKS?.DEFAULT_ORGANIZATIONS_SYNC_TASK_INTERVAL || 30} seconds`,
+        `Retrying in ${CONFIG?.TASKS?.ORGANIZATION_META_SYNC_TASK_INTERVAL || 120} seconds`,
     );
   }
 });
 
 const job = new SimpleIntervalJob(
   {
-    seconds: CONFIG?.TASKS?.DEFAULT_ORGANIZATIONS_SYNC_TASK_INTERVAL || 30,
+    seconds: CONFIG?.TASKS?.ORGANIZATION_META_SYNC_TASK_INTERVAL || 120,
     runImmediately: true,
   },
   task,

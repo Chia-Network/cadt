@@ -22,7 +22,7 @@ const task = new Task('sync-organization-meta', async () => {
   } catch (error) {
     logger.error(
       `Retrying in ${
-        CONFIG?.APP?.TASKS?.ORGANIZATION_META_SYNC_TASK_INTERVAL || 300
+        CONFIG?.APP?.TASKS?.ORGANIZATION_META_SYNC_TASK_INTERVAL || 120
       } seconds`,
       error,
     );
@@ -32,7 +32,7 @@ const task = new Task('sync-organization-meta', async () => {
 const job = new SimpleIntervalJob(
   {
     // DEFAULT 1
-    seconds: CONFIG?.APP?.TASKS?.ORGANIZATION_META_SYNC_TASK_INTERVAL || 300,
+    seconds: CONFIG?.APP?.TASKS?.ORGANIZATION_META_SYNC_TASK_INTERVAL || 120,
     runImmediately: true,
   },
   task,

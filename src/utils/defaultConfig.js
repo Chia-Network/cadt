@@ -31,18 +31,18 @@ export const defaultConfig = {
     AUTO_MIRROR_EXTERNAL_STORES: true,
     /**
      * When true, DataLayer subscriptions are kept in sync with the governance
-     * orgList: orgs removed from the list are unsubscribed (data retained);
+     * orgList: orgs removed from the list are unsubscribed AND fully deleted
+     * (the org record plus all of its registry data, with no reference checks);
      * orgs on the list with subscribed=false are re-subscribed. Requires a
      * non-empty orgList from a successful governance sync before any removal.
      */
     ONLY_CADT_SUBSCRIPTIONS: true,
     LOG_LEVEL: 'info',
     TASKS: {
-      GOVERNANCE_SYNC_TASK_INTERVAL: 30,
-      DEFAULT_ORGANIZATIONS_SYNC_TASK_INTERVAL: 30,
-      ORGANIZATION_META_SYNC_TASK_INTERVAL: 300,
-      PICKLIST_SYNC_TASK_INTERVAL: 30,
-      MIRROR_CHECK_TASK_INTERVAL: 300,
+      GOVERNANCE_SYNC_TASK_INTERVAL: 120,
+      ORGANIZATION_META_SYNC_TASK_INTERVAL: 120,
+      PICKLIST_SYNC_TASK_INTERVAL: 120,
+      MIRROR_CHECK_TASK_INTERVAL: 900,
       VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL: 1800,
       COIN_MANAGEMENT_TASK_INTERVAL: 21600,
     },

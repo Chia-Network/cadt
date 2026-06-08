@@ -35,6 +35,78 @@ The CADT RPC API V2 is exposed by default on port 31310. This document will give
 
 If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to your `curl` request.
 
+## System endpoints
+
+Several routes are mounted on the server root (not under `/v1` or `/v2`). They are for monitoring and troubleshooting. Unlike most API routes, they are not blocked when the wallet or DataLayer is still syncing or migrations are in progress.
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /health` | CADT process liveness; includes disk-space summary for the Chia root partition |
+| `GET /v1/health` | V1 API liveness (same disk-space fields as `/health`) |
+| `GET /v2/health` | V2 API liveness (same disk-space fields as `/health`) |
+| `GET /v1/health/wallet` | V1 wallet sync and pending-transaction summary |
+| `GET /v2/health/wallet` | V2 wallet sync and pending-transaction summary |
+| `GET /diagnostics` | System-wide debug snapshot (CADT, Chia, DataLayer, host) |
+
+If `CADT_API_KEY` is set, these endpoints use the same global `x-api-key` check as the rest of the API.
+
+<a id="diagnostics"></a>
+### Diagnostics snapshot (`GET /diagnostics`)
+
+Returns one JSON object summarizing CADT configuration, Chia wallet/full-node/DataLayer status, DataLayer subscriptions, local Chia processes, and host CPU/memory/disk. Each major subsection may include a `status` of `ok`, `warning`, or `critical`, plus an optional `message` when attention is needed. External calls use per-section timeouts and degrade gracefully when a subsystem is down.
+
+- **Not available on read-only nodes:** returns **403** when `READ_ONLY` is `true` for V1 or V2.
+- **Response time:** usually well under a second on a healthy install; individual probes can take up to about 10 seconds each, with a worst-case total near 30 seconds when something is wedged.
+
+Request (include the header when an API key is configured):
+
+```shell
+curl -s -H 'x-api-key: <your-api-key-here>' http://localhost:31310/diagnostics
+```
+
+Response (top-level shape; nested fields vary with the environment):
+
+```json
+{
+  "timestamp": "2024-01-15T12:00:00.000Z",
+  "cadt": {
+    "version": "1.0.0",
+    "configDir": "/home/user/.chia/mainnet/cadt",
+    "v1": { "enabled": true, "readOnly": false },
+    "v2": { "enabled": true, "readOnly": false }
+  },
+  "network": { "cadt": "mainnet", "chia": "mainnet", "matches": true, "status": "ok" },
+  "chia": {
+    "version": "2.4.0",
+    "wallet": { "reachable": true, "synced": true },
+    "fullNode": { "reachable": false },
+    "datalayer": { "reachable": true, "subscriptions": [] },
+    "runningProcesses": { "matches": [] }
+  },
+  "system": {
+    "platform": "linux",
+    "cpu": { "cores": 8 },
+    "memory": { "percentUsed": 42 },
+    "disk": { "percentUsed": 55 }
+  }
+}
+```
+
+<a id="health-check"></a>
+### V2 health check (`GET /v2/health`)
+
+```shell
+curl --location --request GET 'http://localhost:31310/v2/health' --header 'Content-Type: application/json'
+```
+
+```json
+{
+  "message": "V2 API is running",
+  "timestamp": "2024-01-15T12:00:00.000Z",
+  "diskSpace": {}
+}
+```
+
 ### Organization Filtering
 
 All GET list endpoints support the `?orgUid=` query parameter to filter records by organization:
@@ -171,6 +243,9 @@ These files use `NEW-<n>` placeholder IDs and demonstrate the expected column na
 
 ## Commands
 
+- [System endpoints](#system-endpoints)
+  - [Diagnostics snapshot](#diagnostics)
+  - [V2 health check](#health-check)
 - [`organizations`](#organizations)
   - [GET Examples](#organizations-get-examples)
     - [List all organizations](#list-all-organizations)
@@ -481,9 +556,7 @@ These files use `NEW-<n>` placeholder IDs and demonstrate the expected column na
     - [Unsubscribe from filestore](#unsubscribe-from-filestore)
   - [DELETE Examples](#filestore-delete-examples)
     - [Delete file from filestore](#delete-file-from-filestore)
-- [`health`](#health)
-  - [GET Examples](#health-get-examples)
-    - [Health check](#health-check)
+
 ---
 
 ## Reference
@@ -6625,28 +6698,5 @@ Response
 }
 ```
 
----
-
-## `health`
-
-Functionality: Health check endpoint for V2 API
-
-<a id="health-get-examples"></a>
-### GET Examples
-
-#### Health check
-
-Request
-```shell
-curl --location --request GET 'localhost:31310/v2/health' --header 'Content-Type: application/json'
-```
-
-Response
-```json
-{
-  "message": "V2 API is running",
-  "timestamp": "2022-03-11T05:17:55.427Z"
-}
-```
 
 ---

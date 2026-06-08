@@ -8,7 +8,7 @@ import TaskManager from '../../../src/tasks/index.js';
  * Governance Sync Task Schedule & Failure Behavior Tests
  *
  * These tests verify:
- *   1. The default governance sync interval is 30 seconds
+ *   1. The default governance sync interval is 120 seconds
  *   2. The task jobs are importable
  *   3. upsertGovernanceDownload is idempotent — repeated calls update existing
  *      records and preserve unrelated cached data (the semantics that let us
@@ -35,9 +35,9 @@ describe('Governance Sync Task Schedule', function () {
   // ─────────────────────────────────────────────────────────
 
   describe('Default governance sync interval', function () {
-    it('defaultConfig should specify 30 seconds for GOVERNANCE_SYNC_TASK_INTERVAL', async function () {
+    it('defaultConfig should specify 120 seconds for GOVERNANCE_SYNC_TASK_INTERVAL', async function () {
       const { defaultConfig } = await import('../../../src/utils/defaultConfig.js');
-      expect(defaultConfig.APP.TASKS.GOVERNANCE_SYNC_TASK_INTERVAL).to.equal(30);
+      expect(defaultConfig.APP.TASKS.GOVERNANCE_SYNC_TASK_INTERVAL).to.equal(120);
     });
 
     it('V1 governance task job should be importable and have the correct id', async function () {
