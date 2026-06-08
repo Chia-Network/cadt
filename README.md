@@ -349,6 +349,20 @@ This script does the following:
 
 A development environment for CADT assumes a synced Chia wallet running locally. [Node version manager (nvm)](https://github.com/nvm-sh/nvm) is used to switch node environments quickly. The repo contains a `.nvmrc` file that specifies the node version the CADT is expected to use and developers can do `nvm use` to switch to the version in the `.nvmrc`.
 
+### Diagnostics
+
+When debugging a local CADT install (wallet not reachable, DataLayer not syncing, network mismatch, low disk space), use the system-wide diagnostics endpoint. It is mounted at the server root, not under `/v1` or `/v2`:
+
+```bash
+curl -s -H 'x-api-key: YOUR_CADT_API_KEY' http://localhost:31310/diagnostics | jq .
+```
+
+Omit the `x-api-key` header only when `CADT_API_KEY` is not configured. The endpoint returns **403** on read-only observer nodes (`READ_ONLY=true`). It is designed to stay usable while other API routes are blocked by sync checks.
+
+Lighter-weight health checks are also available: `GET /health`, `GET /v1/health`, `GET /v2/health`, and `GET /v1/health/wallet` or `GET /v2/health/wallet` for wallet-specific status.
+
+See [System endpoints in the V1 RPC guide](docs/cadt_rpc_api.md#system-endpoints) and [System endpoints in the V2 RPC guide](docs/cadt_rpc_api_v2.md#system-endpoints) for request examples and response fields.
+
 ### Contributing
 
 All branches should be created from the `develop` branch and not from `main`. All pull requests should be made against the `develop` branch unless it is a new release. The `develop` branch will be merged into the `main` branch to create a release. Automation in the CI will create the [release](https://github.com/Chia-Network/cadt/releases) and attach the installation files to it automatically whenever code is merged to `main`. Additionally, the changelog will automatically be updated in the `main` branch. Therefore, the `main` branch should always be a representation of the latest released code.

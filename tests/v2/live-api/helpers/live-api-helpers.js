@@ -498,26 +498,84 @@ export const checkDatabaseEmpty = async (request) => {
   ];
 
   const nonEmptyTables = [];
+  const syncedNonHomeTables = [];
+  const probeFailures = [];
 
   for (const table of dataTables) {
+    // Home-scoped probe: this is the actual cleanliness gate. Scope to
+    // home-org-owned records only because, with governance sync enabled, the
+    // node legitimately syncs in data owned by other organizations; that data
+    // is not leftover test state and must not fail the empty check.
+    let homeResponse;
     try {
-      // Scope to home-org-owned records only. When governance sync is enabled,
-      // the node legitimately syncs in data owned by other organizations; that
-      // data is not leftover test state and must not fail the empty check.
-      const response = await request.get(`/v2/${table}`).query({ page: 1, limit: 1000, orgUid: 'me' });
-      const data = response.body?.data || [];
-
-      if (response.status === 200 && Array.isArray(data) && data.length > 0) {
-        nonEmptyTables.push({ table, count: data.length });
-      }
+      homeResponse = await request
+        .get(`/v2/${table}`)
+        .query({ page: 1, limit: 1000, orgUid: 'me' });
     } catch (error) {
-      // Table might not exist or endpoint might not be available, skip
+      probeFailures.push({ table, reason: error.message });
+      continue;
     }
+
+    // A non-200 means the gate could not actually inspect this table - e.g.
+    // 'me' failed to resolve because no home organization is configured. Treat
+    // that as a hard failure rather than silently assuming the table is empty:
+    // a silently-skipped table would let leftover state slip past the guard.
+    if (homeResponse.status !== 200) {
+      probeFailures.push({
+        table,
+        reason: `home-scoped GET returned status ${homeResponse.status}`,
+      });
+      continue;
+    }
+
+    const homeData = Array.isArray(homeResponse.body?.data)
+      ? homeResponse.body.data
+      : [];
+    if (homeData.length > 0) {
+      nonEmptyTables.push({ table, count: homeData.length });
+    }
+
+    // Unfiltered probe: advisory only. Surfaces synced non-home data so a
+    // genuine leak of foreign rows is at least visible in the logs, without
+    // failing the run when governance sync legitimately populated it.
+    try {
+      const allResponse = await request
+        .get(`/v2/${table}`)
+        .query({ page: 1, limit: 1000 });
+      if (allResponse.status === 200) {
+        const allData = Array.isArray(allResponse.body?.data)
+          ? allResponse.body.data
+          : [];
+        const nonHomeCount = allData.length - homeData.length;
+        if (nonHomeCount > 0) {
+          syncedNonHomeTables.push({ table, count: nonHomeCount });
+        }
+      }
+    } catch {
+      // Advisory probe only - never fail the run on it.
+    }
+  }
+
+  if (probeFailures.length > 0) {
+    const detail = probeFailures
+      .map(({ table, reason }) => `   - ${table}: ${reason}`)
+      .join('\n');
+    throw new Error(
+      `Database empty-check could not inspect every table (is a home organization configured?):\n${detail}`,
+    );
   }
 
   if (nonEmptyTables.length > 0) {
     const errorMsg = `Database is not empty. Found home-org data in:\n${nonEmptyTables.map(({ table, count }) => `   - ${table}: ${count} record(s)`).join('\n')}\nPlease clear the database before running tests.`;
     throw new Error(errorMsg);
+  }
+
+  if (syncedNonHomeTables.length > 0) {
+    console.log(
+      `⚠ Ignoring synced non-home data (not leftover test state):\n${syncedNonHomeTables
+        .map(({ table, count }) => `   - ${table}: ${count} record(s)`)
+        .join('\n')}`,
+    );
   }
 
   console.log('✓ Database is empty of home-org data (synced non-home data ignored)');

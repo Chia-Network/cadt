@@ -184,7 +184,14 @@ describe('Wallet Health - Live', function () {
       expect(body.chia.runningProcesses).to.be.an('object');
       expect(body.chia.runningProcesses.matches).to.be.an('array');
       expect(body.chia.chiaTools).to.be.an('object');
-      expect(body.chia.chiaTools.installed).to.be.a('boolean');
+      expect(body.chia.chiaTools).to.have.property('chiaIsLocal').that.is.a('boolean');
+      // installed is a boolean when Chia runs locally, or the string 'unknown'
+      // when the wallet/DataLayer are remote (chia-tools can't be probed there).
+      if (body.chia.chiaTools.chiaIsLocal) {
+        expect(body.chia.chiaTools.installed).to.be.a('boolean');
+      } else {
+        expect(body.chia.chiaTools.installed).to.equal('unknown');
+      }
       expect(body.chia.chiaTools.note).to.be.a('string').and.not.empty;
     });
 
