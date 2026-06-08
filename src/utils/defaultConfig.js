@@ -31,7 +31,8 @@ export const defaultConfig = {
     AUTO_MIRROR_EXTERNAL_STORES: true,
     /**
      * When true, DataLayer subscriptions are kept in sync with the governance
-     * orgList: orgs removed from the list are unsubscribed (data retained);
+     * orgList: orgs removed from the list are unsubscribed AND fully deleted
+     * (the org record plus all of its registry data, with no reference checks);
      * orgs on the list with subscribed=false are re-subscribed. Requires a
      * non-empty orgList from a successful governance sync before any removal.
      */

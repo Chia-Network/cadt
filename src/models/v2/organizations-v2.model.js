@@ -2151,11 +2151,23 @@ class OrganizationsV2 extends Model {
   }
 
   /**
-   * Delete all V2 data for an organization
+   * Delete all V2 data for an organization: the org's full registry data (via
+   * purgeV2OrganizationData) plus its organization and audit rows.
    * @param {string} orgUid - Organization UID
-   * @returns {Promise<void>}
+   * @param {object} [options]
+   * @param {boolean} [options.recordUserDeleted=true] - When true, the org is
+   *   recorded in the meta user-deleted list so default-org sync will not
+   *   re-import it. Background orglist reconcile passes `false`: an org removed
+   *   because it left the governance orgList is not a user deletion and must not
+   *   be suppressed if it is later re-added or ONLY_CADT_SUBSCRIPTIONS is
+   *   disabled.
+   * @param {number} [options.retryCount=0] - Internal: SQLITE_BUSY retry depth.
+   * @returns {Promise<number>} total number of registry rows purged
    */
-  static async deleteAllOrganizationData(orgUid, retryCount = 0) {
+  static async deleteAllOrganizationData(
+    orgUid,
+    { recordUserDeleted = true, retryCount = 0 } = {},
+  ) {
     const maxRetries = 10;
     const baseDelay = 200; // 200ms base delay
     const maxDelay = 5000; // 5 seconds max delay
@@ -2170,9 +2182,34 @@ class OrganizationsV2 extends Model {
     const releaseAuditTransactionMutex =
       await processingSyncRegistriesTransactionMutexV2.acquire();
 
-    const transaction = await sequelizeV2.transaction();
+    // Release both mutexes exactly once on every exit path. Without this, a
+    // throw after commit (e.g. in the post-commit meta write) would leak both
+    // mutexes and permanently wedge all V2 deletes and sync transactions.
+    let mutexesReleased = false;
+    const releaseMutexes = () => {
+      if (mutexesReleased) {
+        return;
+      }
+      mutexesReleased = true;
+      releaseAddDeleteMutex();
+      releaseAuditTransactionMutex();
+    };
+
+    let purgedRowCount;
+    // Create the transaction inside the try so a failure to open it (e.g.
+    // SQLITE_BUSY / pool exhaustion) still routes through releaseMutexes().
+    let transaction;
     try {
+      transaction = await sequelizeV2.transaction();
       const { AuditV2 } = await import('./index.js');
+      const { purgeV2OrganizationData } = await import(
+        '../../utils/v2-org-data-purge.js'
+      );
+
+      // Remove every registry record this org created (projects, units and all
+      // project-scoped child records). No reference guards are applied: the
+      // org's data is purged unconditionally.
+      purgedRowCount = await purgeV2OrganizationData(orgUid, { transaction });
 
       // Delete from organization table
       await OrganizationsV2.destroy({
@@ -2184,7 +2221,7 @@ class OrganizationsV2 extends Model {
       // Staging is temporary and will be cleared on next commit cycle
       // We skip truncating staging here to avoid database locks
 
-      // Delete from audit table (only V2 data model with org_uid)
+      // Delete from audit table
       await AuditV2.destroy({
         where: { org_uid: orgUid },
         transaction,
@@ -2192,7 +2229,18 @@ class OrganizationsV2 extends Model {
 
       await transaction.commit();
     } catch (error) {
-      await transaction.rollback();
+      // Roll back defensively: a throwing rollback (e.g. on an already-closed
+      // connection) must not bypass the mutex releases below and leak the locks.
+      // transaction may be undefined if it failed to open.
+      try {
+        if (transaction) {
+          await transaction.rollback();
+        }
+      } catch (rollbackError) {
+        loggerV2.error(
+          `[v2]: rollback failed while deleting organization ${orgUid}: ${rollbackError.message}`,
+        );
+      }
 
       // Check if it's a database lock error and we haven't exceeded max retries
       // Check both error.message and error.original (Sequelize wraps errors)
@@ -2217,38 +2265,42 @@ class OrganizationsV2 extends Model {
         );
 
         // Release mutexes before retry
-        releaseAddDeleteMutex();
-        releaseAuditTransactionMutex();
+        releaseMutexes();
 
         // Wait before retry
         await new Promise((resolve) => setTimeout(resolve, delay));
 
         // Retry the operation
-        return await OrganizationsV2.deleteAllOrganizationData(
-          orgUid,
-          retryCount + 1,
-        );
+        return await OrganizationsV2.deleteAllOrganizationData(orgUid, {
+          recordUserDeleted,
+          retryCount: retryCount + 1,
+        });
       }
 
       // If not a lock error or max retries exceeded, throw the error
       loggerV2.error(
         `[v2]: failed to delete all db records for organization ${orgUid}, rolling back changes. Error: ${error.message}`,
       );
-      releaseAddDeleteMutex();
-      releaseAuditTransactionMutex();
+      releaseMutexes();
       throw new Error(
         `an error occurred while deleting records corresponding to organization ${orgUid}. no changes have been made`,
       );
     }
-    // Record the deletion in the meta table while still holding the mutexes so
-    // sync-default-organizations-v2 cannot slip in between the delete and the
-    // meta write and re-import the org.  addUserDeletedOrgUid does not acquire
-    // either mutex, so this cannot deadlock.
-    const { MetaV2: MetaV2Post } = await import('./index.js');
-    await MetaV2Post.addUserDeletedOrgUid(orgUid);
 
-    releaseAddDeleteMutex();
-    releaseAuditTransactionMutex();
+    try {
+      // Record the deletion in the meta table while still holding the mutexes so
+      // sync-default-organizations-v2 cannot slip in between the delete and the
+      // meta write and re-import the org.  addUserDeletedOrgUid does not acquire
+      // either mutex, so this cannot deadlock.
+      if (recordUserDeleted) {
+        const { MetaV2: MetaV2Post } = await import('./index.js');
+        await MetaV2Post.addUserDeletedOrgUid(orgUid);
+      }
+    } finally {
+      releaseMutexes();
+    }
+
+    return purgedRowCount;
   }
 
   /**

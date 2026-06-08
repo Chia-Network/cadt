@@ -1641,8 +1641,21 @@ class Organization extends Model {
   /**
    * removes all records of an organization from all models with an `orgUid` column
    * @param orgUid
+   * @param {object} [options]
+   * @param {boolean} [options.skipStagingTruncate=false] - When true, the global
+   *   staging table is left untouched. Staging holds only the home org's pending
+   *   (uncommitted) changes and has no orgUid column, so background callers that
+   *   remove a remote org (e.g. orglist subscription reconcile) must pass `true`
+   *   to avoid discarding the operator's own staged work.
+   * @param {boolean} [options.recordUserDeleted=true] - When true, the org is
+   *   recorded in the meta user-deleted list so default-org sync will not
+   *   re-import it. Background orglist reconcile passes `false`: an org removed
+   *   because it left the governance orgList is not a user deletion.
    */
-  static async deleteAllOrganizationData(orgUid) {
+  static async deleteAllOrganizationData(
+    orgUid,
+    { skipStagingTruncate = false, recordUserDeleted = true } = {},
+  ) {
     logger.verbose('[v1]: acquiring add/delete org mutex to delete organization');
     const releaseAddDeleteMutex =
       await addOrDeleteOrganizationRecordMutex.acquire();
@@ -1653,32 +1666,68 @@ class Organization extends Model {
     const releaseAuditTransactionMutex =
       await processingSyncRegistriesTransactionMutex.acquire();
 
-    const transaction = await sequelize.transaction();
+    // Release both mutexes exactly once on every exit path.
+    let mutexesReleased = false;
+    const releaseMutexes = () => {
+      if (mutexesReleased) {
+        return;
+      }
+      mutexesReleased = true;
+      releaseAddDeleteMutex();
+      releaseAuditTransactionMutex();
+    };
+
+    // Create the transaction inside the try so a failure to open it still
+    // routes through releaseMutexes() rather than leaking the locks.
+    let transaction;
     try {
+      transaction = await sequelize.transaction();
       await Organization.destroy({ where: { orgUid }, transaction });
 
       for (const modelKey of Object.keys(ModelKeys)) {
         await ModelKeys[modelKey].destroy({ where: { orgUid }, transaction });
       }
 
-      await Staging.truncate({ transaction });
+      if (!skipStagingTruncate) {
+        await Staging.truncate({ transaction });
+      }
       await FileStore.destroy({ where: { orgUid }, transaction });
       await Audit.destroy({ where: { orgUid }, transaction });
 
       await transaction.commit();
-
-      await Meta.addUserDeletedOrgUid(orgUid);
     } catch (error) {
       logger.error(
         `failed to delete all db records for organization ${orgUid}, rolling back changes. Error: ${error.message}`,
       );
-      await transaction.rollback();
+      // Defensive rollback: a throwing rollback must not bypass the mutex
+      // release and leak the locks. transaction may be undefined if it failed
+      // to open.
+      try {
+        if (transaction) {
+          await transaction.rollback();
+        }
+      } catch (rollbackError) {
+        logger.error(
+          `[v1]: rollback failed while deleting organization ${orgUid}: ${rollbackError.message}`,
+        );
+      }
+      releaseMutexes();
       throw new Error(
         `an error occurred while deleting records corresponding to organization ${orgUid}. no changes have been made`,
       );
+    }
+
+    // Record the deletion after a successful commit, while still holding the
+    // mutexes so the default-org sync cannot re-import the org between the
+    // commit and the meta write. Keep the meta write out of the transaction
+    // try so a post-commit failure never triggers a rollback of an already
+    // committed transaction.
+    try {
+      if (recordUserDeleted) {
+        await Meta.addUserDeletedOrgUid(orgUid);
+      }
     } finally {
-      releaseAddDeleteMutex();
-      releaseAuditTransactionMutex();
+      releaseMutexes();
     }
   }
 
