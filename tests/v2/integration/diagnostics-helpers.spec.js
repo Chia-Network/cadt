@@ -625,4 +625,21 @@ describe('diagnostics collectNonDefaultTaskIntervals', function () {
     };
     expect(collectNonDefaultTaskIntervals(actual, defaultTasks)).to.deep.equal([]);
   });
+
+  it('treats numeric-string intervals equal to the default as default', function () {
+    // docker-entrypoint.sh writes env-provided intervals as quoted YAML strings.
+    const actual = {
+      ...defaultTasks,
+      GOVERNANCE_SYNC_TASK_INTERVAL: '120',
+      MIRROR_CHECK_TASK_INTERVAL: '900',
+    };
+    expect(collectNonDefaultTaskIntervals(actual, defaultTasks)).to.deep.equal([]);
+  });
+
+  it('still reports numeric-string intervals that differ from the default', function () {
+    const actual = { ...defaultTasks, PICKLIST_SYNC_TASK_INTERVAL: '60' };
+    expect(collectNonDefaultTaskIntervals(actual, defaultTasks)).to.deep.equal([
+      { key: 'PICKLIST_SYNC_TASK_INTERVAL', default: 120, actual: '60' },
+    ]);
+  });
 });
