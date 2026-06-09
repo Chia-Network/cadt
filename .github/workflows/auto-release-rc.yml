@@ -1,5 +1,5 @@
-# Compares the version in package.json to tags on the repo. If the tag doesn't exist, a new tag is created, which
-# then triggers the normal "on tag" release automation in the build job
+# Computes the next RC version from the latest stable release and existing RC tags. If the tag doesn't exist,
+# a new tag is created, which then triggers the normal "on tag" release automation in the build job.
 name: Auto Tag RC
 
 on:
@@ -33,6 +33,27 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
+          wait_for_release() {
+            local tag="$1"
+            local attempts=30
+            local delay=60
+
+            for attempt in $(seq 1 "$attempts"); do
+              if gh release view "$tag" > /dev/null 2>&1; then
+                echo "Release exists for $tag."
+                return 0
+              fi
+
+              if [ "$attempt" -eq "$attempts" ]; then
+                echo "Timed out waiting for release $tag after $attempts attempts."
+                return 1
+              fi
+
+              echo "Release for $tag not found yet; waiting ${delay}s ($attempt/$attempts)."
+              sleep "$delay"
+            done
+          }
+
           stable_version=$(gh release list --limit 1 --order desc --exclude-pre-releases --json tagName --jq ".[].tagName")
           echo "Latest stable release is $stable_version"
 
@@ -43,25 +64,28 @@ jobs:
           new_patch=$((patch + 1))
 
           new_version="$major.$minor.$new_patch"
-          echo "Looking for RC releases for version $new_version"
+          echo "Looking for RC tags for version $new_version"
 
-          # Get all RC releases for this version and find the highest RC number
-          # Use proper regex escaping for dots and match rc followed by digits
-          # Need double backslash for jq string escaping: \\\\ in sed -> \\ in output -> \ in jq string -> \. in regex
-          escaped_version=$(echo "$new_version" | sed 's/\./\\\\./g')
-          rc_releases=$(gh release list --json tagName --jq "[.[] | select(.tagName | test(\"^${escaped_version}-rc[0-9]+$\")) | .tagName] | .[]")
+          # Get all RC tags for this version and find the highest RC number.
+          escaped_version=${new_version//./\\.}
+          rc_tags=$(git tag -l "${new_version}-rc*" | grep -E "^${escaped_version}-rc[0-9]+$" || true)
 
-          echo "Found RC releases:"
-          echo "$rc_releases"
+          echo "Found RC tags:"
+          echo "$rc_tags"
 
-          if [[ -z ${rc_releases} ]]; then
-            # No existing RC releases, start at rc1
+          if [[ -z ${rc_tags} ]]; then
+            # No existing RC tags, start at rc1
             version="${new_version}-rc1"
-            echo "No existing RC releases found. New version: $version"
+            echo "No existing RC tags found. New version: $version"
           else
-            # Find the highest RC number from all matching releases
-            highest_rc=$(echo "$rc_releases" | grep -oP "rc\K[0-9]+" | sort -n | tail -1)
+            # Find the highest RC number from all matching tags
+            highest_rc=$(echo "$rc_tags" | grep -oP "rc\K[0-9]+" | sort -n | tail -1)
             echo "Highest existing RC number: $highest_rc"
+
+            latest_rc_tag="${new_version}-rc${highest_rc}"
+            if ! wait_for_release "$latest_rc_tag"; then
+              exit 1
+            fi
 
             # Increment the RC number
             rc_number=$((highest_rc + 1))
@@ -70,22 +94,31 @@ jobs:
           fi
 
           # Check if this tag already exists
-          if [ $(git tag -l "$version") ]; then
+          if [ -n "$(git tag -l "$version")" ]; then
             echo "Tag $version already exists."
-            # Check if a release exists for this tag
-            if gh release view "$version" > /dev/null 2>&1; then
-              echo "Release also exists. Nothing to do."
-              exit 0
-            else
-              echo "Tag exists but release does not. Deleting orphaned tag and recreating..."
-              git tag -d $version
-              git push --delete origin $version
+            if ! wait_for_release "$version"; then
+              exit 1
             fi
+
+            echo "Release also exists. Nothing to do."
+            exit 0
           fi
 
           echo "Creating and pushing tag $version"
+          # Stamp the RC version into npm metadata so the built image reports
+          # the same version as the release tag. Only the tag is pushed, so
+          # develop keeps the stable package version.
+          npm version "$version" --no-git-tag-version --allow-same-version
+          git add package.json package-lock.json
+          if git diff --cached --quiet; then
+            echo "Package metadata already set to $version; tagging the current commit."
+          else
+            git commit -m "chore: set rc package version for release tag"
+          fi
+
           rm -f CHANGELOG.md
           npx conventional-changelog-cli -p angular -i CHANGELOG.md -s -r 0
           changes=$(npx conventional-changelog-cli -r 1 | tail -n +2)
-          git tag $version -m "Release $version  $changes"
-          git push origin $version
+
+          git tag "$version" -m "Release $version  $changes"
+          git push origin "$version"
