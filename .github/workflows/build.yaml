@@ -492,7 +492,7 @@ jobs:
           echo "IS_PRERELEASE=${IS_PRERELEASE}" >> "$GITHUB_OUTPUT"
 
       - name: Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           prerelease: ${{steps.is_latest.outputs.IS_PRERELEASE}}
           make_latest: "${{steps.is_latest.outputs.IS_LATEST}}"
