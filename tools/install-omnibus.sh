@@ -895,17 +895,6 @@ prompt_version_choice() {
   success "${label}: ${tag} (apt: ${!var_apt})"
 }
 
-verify_apt_package_version() {
-  local pkg="$1" ver="$2"
-  if [[ -z "$ver" ]]; then
-    return 0
-  fi
-  if apt-cache madison "$pkg" 2>/dev/null | awk -v v="$ver" '$3 == v {found=1} END {exit !found}'; then
-    return 0
-  fi
-  die "Package ${pkg} version ${ver} not found in apt repositories. Try another version."
-}
-
 # Verify the requested apt pin exists; if not, downshift to the highest
 # *published* version on the same track (stable vs -rc*) that is also
 # <= the requested version, and update the caller's variable.

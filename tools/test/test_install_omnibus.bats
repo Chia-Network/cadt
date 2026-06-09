@@ -246,40 +246,6 @@ wait_for_pid_exit() {
   [[ "$output" == *"chia-tools prerelease apt packages are not supported"* ]]
 }
 
-@test "verify_apt_package_version succeeds when madison lists the version" {
-  local bin="${BATS_TEST_TMPDIR}/bin"
-  mkdir -p "$bin"
-  cat >"${bin}/apt-cache" <<'EOF'
-#!/usr/bin/env bash
-# Mimic apt-cache madison output: pkg | version | source
-echo "  cadt | 1.7.26 | https://repo.chia.net cadt/main amd64 Packages"
-EOF
-  chmod +x "${bin}/apt-cache"
-  PATH="${bin}:$PATH"
-
-  verify_apt_package_version cadt "1.7.26"
-}
-
-@test "verify_apt_package_version dies when version not in madison" {
-  local bin="${BATS_TEST_TMPDIR}/bin"
-  mkdir -p "$bin"
-  cat >"${bin}/apt-cache" <<'EOF'
-#!/usr/bin/env bash
-echo "  cadt | 1.7.25 | https://repo.chia.net cadt/main amd64 Packages"
-EOF
-  chmod +x "${bin}/apt-cache"
-  PATH="${bin}:$PATH"
-
-  run verify_apt_package_version cadt "1.7.26"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"not found in apt repositories"* ]]
-}
-
-@test "verify_apt_package_version is a no-op when version arg is empty" {
-  # Latest-from-apt path: no specific pin to verify.
-  verify_apt_package_version cadt ""
-}
-
 @test "verify_or_fallback_apt_version keeps the pin when exact match exists" {
   local bin="${BATS_TEST_TMPDIR}/bin"
   mkdir -p "$bin"
