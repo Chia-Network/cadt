@@ -186,9 +186,24 @@ wait_for_pid_exit() {
 }
 
 @test "soft spec shortfall requires every metric to be close" {
-  is_soft_spec_shortfall 3 $((7 * 1024 * 1024)) 270 270
-  ! is_soft_spec_shortfall 8 $((10 * 1024 * 1024)) 50 300
-  ! is_soft_spec_shortfall 8 $((10 * 1024 * 1024)) 300 50
+  is_soft_spec_shortfall 3 $((7 * 1024 * 1024)) 270
+  ! is_soft_spec_shortfall 8 $((10 * 1024 * 1024)) 50
+}
+
+@test "existing_path_for_disk_check uses chia symlink when mainnet is missing" {
+  local home="${BATS_TEST_TMPDIR}/home"
+  local ssd="${BATS_TEST_TMPDIR}/ssd/chia_root"
+  mkdir -p "$home" "$ssd"
+  ln -s "$ssd" "${home}/.chia"
+
+  local resolved
+  resolved=$(existing_path_for_disk_check "${home}/.chia/mainnet")
+
+  [[ "$resolved" == "${home}/.chia" ]]
+}
+
+@test "datalayer web root defaults under chia root" {
+  [[ "$DATALAYER_WWW_ROOT" == "${CHIA_ROOT}/data_layer/www" ]]
 }
 
 @test "validate_network rejects unsupported network names" {
@@ -872,6 +887,9 @@ if [[ "${1:-}" == "chown" ]]; then
 fi
 if [[ "${1:-}" == "tee" ]]; then
   cat >/dev/null
+  exit 0
+fi
+if [[ "${1:-}" == "setfacl" ]]; then
   exit 0
 fi
 if [[ "${1:-}" == "mkdir" && "${2:-}" == "-p" && "${3:-}" == /etc/systemd/* ]]; then

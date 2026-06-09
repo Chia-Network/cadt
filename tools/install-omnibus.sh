@@ -23,9 +23,9 @@ readonly GH_API_CADT="https://api.github.com/repos/Chia-Network/cadt/releases"
 readonly CHIA_ROOT="${HOME}/.chia/mainnet"
 if [[ "${INSTALL_OMNIBUS_LIB_ONLY:-0}" == 1 ]]; then
   # Default-if-unset so tests can point filesystem-mutating helpers at fixtures.
-  : "${DATALAYER_WWW_ROOT:=/var/www}"
+  : "${DATALAYER_WWW_ROOT:=${CHIA_ROOT}/data_layer/www}"
 else
-  readonly DATALAYER_WWW_ROOT="/var/www"
+  readonly DATALAYER_WWW_ROOT="${CHIA_ROOT}/data_layer/www"
 fi
 # Default-if-unset so tests can point this at a fixture by pre-setting
 # CADT_CONFIG before sourcing. Not made `readonly` for the same reason.
@@ -141,11 +141,10 @@ meets_min_specs() {
 }
 
 is_soft_spec_shortfall() {
-  local cpu="$1" mem_kib="$2" disk_root="$3" disk_home="$4" min_disk="${5:-$MIN_DISK_GIB}"
+  local cpu="$1" mem_kib="$2" disk_chia="$3" min_disk="${4:-$MIN_DISK_GIB}"
   [[ "$cpu" -ge "$((MIN_CPU_CORES - 1))" ]] || return 1
   [[ "$mem_kib" -ge "$((MIN_RAM_KIB * 9 / 10))" ]] || return 1
-  [[ "$disk_root" -ge "$((min_disk * 9 / 10))" ]] || return 1
-  [[ "$disk_home" -ge "$((min_disk * 9 / 10))" ]] || return 1
+  [[ "$disk_chia" -ge "$((min_disk * 9 / 10))" ]] || return 1
   return 0
 }
 
@@ -689,31 +688,48 @@ check_architecture() {
 
 get_free_disk_gib() {
   local path="$1"
-  local gib
-  gib=$(df -BG "$path" 2>/dev/null | awk 'NR==2 { gsub(/G/,"",$4); print $4 }')
+  local disk_path gib
+  disk_path=$(existing_path_for_disk_check "$path")
+  gib=$(df -BG "$disk_path" 2>/dev/null | awk 'NR==2 { gsub(/G/,"",$4); print $4 }')
   echo "${gib:-0}"
 }
 
+existing_path_for_disk_check() {
+  local path="$1"
+  while [[ ! -e "$path" ]]; do
+    local parent
+    parent=$(dirname "$path")
+    if [[ "$parent" == "$path" ]]; then
+      break
+    fi
+    path="$parent"
+  done
+  echo "$path"
+}
+
 check_min_specs() {
-  local cpu mem_kib disk_root disk_home
+  local cpu mem_kib disk_root disk_home disk_chia chia_disk_path
   cpu=$(nproc)
   mem_kib=$(awk '/MemTotal:/ {print $2}' /proc/meminfo)
   disk_root=$(get_free_disk_gib /)
   disk_home=$(get_free_disk_gib "${HOME}")
+  disk_chia=$(get_free_disk_gib "$CHIA_ROOT")
+  chia_disk_path=$(existing_path_for_disk_check "$CHIA_ROOT")
 
   local mem_gib min_ram_gib
   mem_gib=$(format_gib_from_kib "$mem_kib")
   min_ram_gib=$(format_gib_from_kib "$MIN_RAM_KIB")
 
   info "System: ${cpu} CPUs, ${mem_gib} GiB RAM, ${disk_root} GiB free on /, ${disk_home} GiB free on \$HOME"
+  info "Chia storage: ${disk_chia} GiB free at ${CHIA_ROOT} (checked ${chia_disk_path})"
 
-  if meets_min_specs "$cpu" "$mem_kib" "$disk_root" "$MIN_DISK_GIB" &&
-    meets_min_specs "$cpu" "$mem_kib" "$disk_home" "$MIN_DISK_GIB"; then
-    success "Meets minimum requirements (${MIN_DISK_GIB} GiB disk, ${MIN_CPU_CORES} CPUs, ${min_ram_gib} GiB RAM)"
+  if meets_min_specs "$cpu" "$mem_kib" "$disk_chia" "$MIN_DISK_GIB"; then
+    success \
+      "Meets minimum requirements (${MIN_DISK_GIB} GiB Chia storage, ${MIN_CPU_CORES} CPUs, ${min_ram_gib} GiB RAM)"
     return 0
   fi
 
-  if is_soft_spec_shortfall "$cpu" "$mem_kib" "$disk_root" "$disk_home"; then
+  if is_soft_spec_shortfall "$cpu" "$mem_kib" "$disk_chia"; then
     if [[ "$ASSUME_YES" == true ]]; then
       # --yes still accepts soft shortfall, but the warning must be visible
       # since confirm() doesn't print anything.
@@ -726,7 +742,8 @@ check_min_specs() {
     fi
   fi
 
-  die "System does not meet minimum requirements: ${MIN_CPU_CORES} CPUs, ${min_ram_gib} GiB RAM, ${MIN_DISK_GIB} GiB free disk on / and \$HOME."
+  die \
+    "System does not meet minimum requirements: ${MIN_CPU_CORES} CPUs, ${min_ram_gib} GiB RAM, ${MIN_DISK_GIB} GiB free disk for Chia at ${CHIA_ROOT}."
 }
 
 check_existing_install() {
@@ -954,6 +971,7 @@ install_prerequisites() {
   command -v curl >/dev/null 2>&1 || missing+=(curl)
   command -v jq >/dev/null 2>&1 || missing+=(jq)
   command -v openssl >/dev/null 2>&1 || missing+=(openssl)
+  command -v setfacl >/dev/null 2>&1 || missing+=(acl)
   command -v gpg >/dev/null 2>&1 || missing+=(gnupg)
   command -v python3 >/dev/null 2>&1 || missing+=(python3)
   if command -v python3 >/dev/null 2>&1; then
@@ -1344,6 +1362,30 @@ start_chia_services() {
   spinner_stop 0
 }
 
+grant_nginx_acl_for_path() {
+  local path="$1"
+  local current="/"
+  IFS='/' read -r -a parts <<<"${path#/}"
+
+  for ((i = 0; i < ${#parts[@]} - 1; i++)); do
+    [[ -z "${parts[$i]}" ]] && continue
+    current="${current%/}/${parts[$i]}"
+    sudo setfacl -m u:www-data:--x "$current"
+  done
+  sudo setfacl -R -m u:www-data:rX "$path"
+}
+
+grant_nginx_access_to_datalayer_root() {
+  local path="$1"
+  local resolved
+  grant_nginx_acl_for_path "$path"
+
+  resolved=$(readlink -f "$path" 2>/dev/null || true)
+  if [[ -n "$resolved" && "$resolved" != "$path" ]]; then
+    grant_nginx_acl_for_path "$resolved"
+  fi
+}
+
 setup_datalayer_directory() {
   local net="$1"
   local src="${CHIA_ROOT}/data_layer/db/server_files_location_${net}"
@@ -1369,6 +1411,7 @@ setup_datalayer_directory() {
   sudo chown -R "${USER}:${USER}" "$dst"
   sudo find "$dst" -type d -exec chmod 755 {} \;
   sudo find "$dst" -type f -exec chmod 644 {} \; 2>/dev/null || true
+  grant_nginx_access_to_datalayer_root "$dst"
   ln -sfn "$dst" "$src"
 
   # systemd's default UMask is 0022 on most distros but some images ship 0077,
