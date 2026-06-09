@@ -43,6 +43,7 @@ CHIA_TOOLS_VERSION_CHOICE=""
 CADT_VERSION_CHOICE=""
 PUBLIC_ADDRESS=""
 LOCAL_ONLY=false
+TESTING_NO_PUBLIC_MIRROR=false
 ENABLE_HTTPS=false
 CERTBOT_DRY_RUN=false
 READ_ONLY=""
@@ -203,6 +204,11 @@ cadt_health_curl_args() {
 }
 
 build_datalayer_url() {
+  if [[ "$TESTING_NO_PUBLIC_MIRROR" == true ]]; then
+    DATALAYER_URL=""
+    return 0
+  fi
+
   local scheme="http"
   if [[ "$ENABLE_HTTPS" == true ]]; then
     scheme="https"
@@ -211,6 +217,11 @@ build_datalayer_url() {
 }
 
 build_public_url() {
+  if [[ -z "$PUBLIC_ADDRESS" ]]; then
+    PUBLIC_URL="http://localhost:31310"
+    return 0
+  fi
+
   local scheme="http"
   if [[ "$ENABLE_HTTPS" == true ]]; then
     scheme="https"
@@ -272,6 +283,20 @@ validate_yes_args() {
   if [[ ${#missing[@]} -gt 0 ]]; then
     die "--yes requires: ${missing[*]} (no safe defaults; abort before mutating the system)"
   fi
+
+  validate_testing_no_public_mirror_network
+}
+
+validate_testing_no_public_mirror_network() {
+  [[ "$TESTING_NO_PUBLIC_MIRROR" == true ]] || return 0
+  [[ "$NETWORK" == "testneta" ]] ||
+    die "--testing-no-public-mirror is only supported with --network=testneta"
+}
+
+warn_no_public_mirror() {
+  warn "Testing mode: DataLayer file server URL will not be advertised."
+  echo "  By leaving DATALAYER_FILE_SERVER_URL blank, nobody on the CADT network"
+  echo "  will learn where to sync your data from. Only use this for testing purposes."
 }
 
 validate_mnemonic_output_file_path() {
@@ -360,6 +385,9 @@ parse_args() {
         ;;
       --local-only)
         LOCAL_ONLY=true
+        ;;
+      --testing-no-public-mirror)
+        TESTING_NO_PUBLIC_MIRROR=true
         ;;
       --https)
         ENABLE_HTTPS=true
@@ -479,6 +507,7 @@ Options:
   --cadt-version=stable|prerelease|<tag>
   --public-address=<domain-or-ip>  public address for this server
   --local-only                     skip CADT API proxy (datalayer files still served)
+  --testing-no-public-mirror       testing only; leave DataLayer URL unadvertised
   --https                          enable HTTPS with Let's Encrypt certbot
   --certbot-dry-run                run certbot in dry-run mode (for testing)
   --read-only                      observer mode
@@ -1055,47 +1084,68 @@ prompt_public_address() {
   #   2. Offer the HTTPS prompt for domain addresses in interactive mode
   # These were collapsed before with an early return that skipped the HTTPS
   # offer for preset addresses; keep them separate to make both consistent.
+  if [[ "$TESTING_NO_PUBLIC_MIRROR" == true ]]; then
+    warn_no_public_mirror
+    if [[ "$ASSUME_YES" != true ]] && ! confirm "Is this really what you want?"; then
+      TESTING_NO_PUBLIC_MIRROR=false
+    fi
+  fi
+
   if [[ -z "$PUBLIC_ADDRESS" ]]; then
     if [[ "$ASSUME_YES" == true ]]; then
       die "--yes requires --public-address=<domain-or-ip> (no safe default)"
     fi
-    echo ""
-    info "Public address for CADT and DataLayer file serving:"
-    echo "  Enter a domain name (e.g. cadt.example.com)"
-    echo "  Or press Enter to use this machine's public IP address"
-    echo ""
-    local input=""
-    read -r -p "Domain or IP: " input </dev/tty
-    input=$(strip_url_scheme "$input")
 
-    if [[ -z "$input" ]]; then
-      local detected_ip=""
-      spinner_start "Trying to get IP address automatically"
-      detected_ip=$(curl -4 --max-time 8 -fsSL https://ip.chia.net 2>/dev/null || echo "")
-      spinner_stop 0
+    while [[ -z "$PUBLIC_ADDRESS" ]]; do
+      echo ""
+      info "Public address for CADT and DataLayer file serving:"
+      echo "  Enter a domain name (e.g. cadt.example.com)"
+      echo "  Or press Enter to use this machine's public IP address"
+      echo "  Type 'testing' to leave the DataLayer URL out of CADT config"
+      echo ""
+      local input=""
+      read -r -p "Domain, IP, or testing: " input </dev/tty
+      input=$(strip_url_scheme "$input")
 
-      if [[ -n "$detected_ip" ]] && is_ipv4 "$detected_ip"; then
-        local ip_ok=""
-        read -r -p "Detected IP: ${detected_ip} — is this correct? [Y/n]: " ip_ok </dev/tty
-        if [[ -z "$ip_ok" || "${ip_ok,,}" == "y" || "${ip_ok,,}" == "yes" ]]; then
-          PUBLIC_ADDRESS="$detected_ip"
-        fi
-      fi
-
-      if [[ -z "$PUBLIC_ADDRESS" ]]; then
-        while true; do
-          read -r -p "Enter this machine's public IP address: " input </dev/tty
-          input=$(strip_url_scheme "$input")
-          if is_ipv4 "$input"; then
-            PUBLIC_ADDRESS="$input"
-            break
+      case "${input,,}" in
+        testing | test-only | no-public-mirror)
+          warn_no_public_mirror
+          if confirm "Is this really what you want?"; then
+            TESTING_NO_PUBLIC_MIRROR=true
           fi
-          echo "  Invalid IP address. Please enter a valid IPv4 address (e.g. 203.0.113.10)"
-        done
+          continue
+          ;;
+      esac
+
+      if [[ -z "$input" ]]; then
+        local detected_ip=""
+        spinner_start "Trying to get IP address automatically"
+        detected_ip=$(curl -4 --max-time 8 -fsSL https://ip.chia.net 2>/dev/null || echo "")
+        spinner_stop 0
+
+        if [[ -n "$detected_ip" ]] && is_ipv4 "$detected_ip"; then
+          local ip_ok=""
+          read -r -p "Detected IP: ${detected_ip} — is this correct? [Y/n]: " ip_ok </dev/tty
+          if [[ -z "$ip_ok" || "${ip_ok,,}" == "y" || "${ip_ok,,}" == "yes" ]]; then
+            PUBLIC_ADDRESS="$detected_ip"
+          fi
+        fi
+
+        if [[ -z "$PUBLIC_ADDRESS" ]]; then
+          while true; do
+            read -r -p "Enter this machine's public IP address: " input </dev/tty
+            input=$(strip_url_scheme "$input")
+            if is_ipv4 "$input"; then
+              PUBLIC_ADDRESS="$input"
+              break
+            fi
+            echo "  Invalid IP address. Please enter a valid IPv4 address (e.g. 203.0.113.10)"
+          done
+        fi
+      else
+        PUBLIC_ADDRESS="$input"
       fi
-    else
-      PUBLIC_ADDRESS="$input"
-    fi
+    done
   fi
 
   # Both paths converge here so validation and the HTTPS prompt fire whether
@@ -1130,6 +1180,7 @@ run_prompts() {
     esac
   fi
   validate_network "$NETWORK"
+  validate_testing_no_public_mirror_network
 
   if [[ -z "$CHIA_APT_VER" ]]; then
     prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER false
@@ -1143,6 +1194,7 @@ run_prompts() {
   validate_supported_apt_versions
 
   prompt_public_address
+  validate_testing_no_public_mirror_network
 
   if [[ -z "$KEY_MODE" ]]; then
     echo ""
@@ -1202,9 +1254,10 @@ run_prompts() {
     echo "  chia-tools:           ${TOOLS_APT_VER:-latest}"
     echo "  cadt:                 ${CADT_APT_VER:-latest}"
     echo "  Public address:       ${PUBLIC_ADDRESS}"
-    echo "  DataLayer URL:        ${DATALAYER_URL}"
+    echo "  DataLayer URL:        ${DATALAYER_URL:-'(blank; not advertised)'}"
     echo "  HTTPS:                ${ENABLE_HTTPS}"
     echo "  Local-only:           ${LOCAL_ONLY}"
+    echo "  DataLayer advertised: $([[ "$TESTING_NO_PUBLIC_MIRROR" == true ]] && echo disabled || echo enabled)"
     echo "  Key:                  ${KEY_MODE}"
     echo "  Read-only:            ${READ_ONLY}"
     echo "  CADT API key:         $([[ -n "$CADT_API_KEY" ]] && echo '(set)' || echo '(none)')"
@@ -1734,7 +1787,12 @@ print_final_summary() {
     echo "  CADT API (public): ${PUBLIC_URL}"
   fi
   echo "  CADT API (local):  http://localhost:31310"
-  echo "  DataLayer files:   ${DATALAYER_URL}"
+  if [[ "$TESTING_NO_PUBLIC_MIRROR" == true ]]; then
+    echo "  DataLayer files:   ${PUBLIC_URL}/data"
+    echo "                     not advertised in CADT config (testing only)"
+  else
+    echo "  DataLayer files:   ${DATALAYER_URL}"
+  fi
   echo "  Network:           ${NETWORK}"
   echo "  Governance ID:     ${governance_id}"
   if [[ -n "$CADT_API_KEY" ]]; then
@@ -1743,9 +1801,13 @@ print_final_summary() {
     echo "  API key:           (not set)"
   fi
   echo ""
-  if is_domain "$PUBLIC_ADDRESS"; then
+  if [[ -n "$PUBLIC_ADDRESS" ]] && is_domain "$PUBLIC_ADDRESS"; then
     info "DNS"
     echo "  Ensure DNS for '${PUBLIC_ADDRESS}' points to this machine."
+    echo ""
+  fi
+  if [[ "$TESTING_NO_PUBLIC_MIRROR" == true ]]; then
+    warn_no_public_mirror
     echo ""
   fi
   info "Next steps — home organization"

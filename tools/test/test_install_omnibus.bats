@@ -166,6 +166,14 @@ wait_for_pid_exit() {
   [[ "$DATALAYER_URL" == "https://cadt.example.com/data" ]]
 }
 
+@test "build_datalayer_url is blank when public mirror disabled" {
+  PUBLIC_ADDRESS=""
+  ENABLE_HTTPS=true
+  TESTING_NO_PUBLIC_MIRROR=true
+  build_datalayer_url
+  [[ "$DATALAYER_URL" == "" ]]
+}
+
 @test "build_public_url produces correct scheme" {
   PUBLIC_ADDRESS="cadt.example.com"
   ENABLE_HTTPS=false
@@ -525,6 +533,34 @@ for sec in ("V1", "V2"):
 PY
 }
 
+@test "patch_cadt_config leaves datalayer URL blank when public mirror disabled" {
+  if ! command -v python3 >/dev/null 2>&1 ||
+    ! python3 -c 'import yaml' >/dev/null 2>&1; then
+    skip "python3 + pyyaml required"
+  fi
+
+  CADT_CONFIG="${BATS_TEST_TMPDIR}/config.yaml"
+  cat >"$CADT_CONFIG" <<'YAML'
+APP: {}
+V1: {}
+V2: {}
+YAML
+
+  NETWORK=testneta
+  DATALAYER_URL=""
+  READ_ONLY=true
+  CADT_API_KEY=""
+
+  patch_cadt_config
+
+  python3 - "$CADT_CONFIG" <<'PY'
+import sys, yaml
+with open(sys.argv[1]) as f:
+    c = yaml.safe_load(f)
+assert c["APP"]["DATALAYER_FILE_SERVER_URL"] == "", c["APP"].get("DATALAYER_FILE_SERVER_URL")
+PY
+}
+
 @test "patch_cadt_config preserves literal API key when value contains shell-meaningful chars" {
   if ! command -v python3 >/dev/null 2>&1 ||
     ! python3 -c 'import yaml' >/dev/null 2>&1; then
@@ -629,6 +665,14 @@ PY
   [[ "$PUBLIC_ADDRESS" == "example.com" ]]
 }
 
+@test "parse_args handles testing no public mirror flag" {
+  TESTING_NO_PUBLIC_MIRROR=false
+  LOCAL_ONLY=false
+  parse_args --testing-no-public-mirror
+  [[ "$TESTING_NO_PUBLIC_MIRROR" == true ]]
+  [[ "$LOCAL_ONLY" == false ]]
+}
+
 @test "parse_args dies on unknown option with usage hint" {
   run parse_args --not-a-real-flag
   [[ "$status" -ne 0 ]]
@@ -687,6 +731,46 @@ PY
   MNEMONIC_OUTPUT_FILE="${BATS_TEST_TMPDIR}/seed.txt"
 
   validate_yes_args
+}
+
+@test "validate_yes_args requires public address when public mirror is not advertised" {
+  ASSUME_YES=true
+  NETWORK=testneta
+  PUBLIC_ADDRESS=""
+  TESTING_NO_PUBLIC_MIRROR=true
+  KEY_MODE=""
+  IMPORT_KEY_FILE=""
+  MNEMONIC_OUTPUT_FILE="${BATS_TEST_TMPDIR}/seed.txt"
+
+  run validate_yes_args
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"--public-address"* ]]
+}
+
+@test "validate_yes_args allows testing no public mirror with public address" {
+  ASSUME_YES=true
+  NETWORK=testneta
+  PUBLIC_ADDRESS=example.com
+  TESTING_NO_PUBLIC_MIRROR=true
+  KEY_MODE=""
+  IMPORT_KEY_FILE=""
+  MNEMONIC_OUTPUT_FILE="${BATS_TEST_TMPDIR}/seed.txt"
+
+  validate_yes_args
+}
+
+@test "validate_yes_args rejects testing no public mirror on mainnet" {
+  ASSUME_YES=true
+  NETWORK=mainnet
+  PUBLIC_ADDRESS=example.com
+  TESTING_NO_PUBLIC_MIRROR=true
+  KEY_MODE=""
+  IMPORT_KEY_FILE=""
+  MNEMONIC_OUTPUT_FILE="${BATS_TEST_TMPDIR}/seed.txt"
+
+  run validate_yes_args
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"only supported with --network=testneta"* ]]
 }
 
 @test "validate_yes_args requires --import-key-from-file when KEY_MODE=import" {
