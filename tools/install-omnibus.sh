@@ -827,13 +827,28 @@ fetch_releases_json() {
   if [[ -n "${GH_TOKEN:-}" ]]; then
     auth=(-H "Authorization: Bearer ${GH_TOKEN}")
   fi
-  # Request the largest page size GitHub supports so a long RC stream
-  # doesn't bury the latest stable beyond the default first page.
   local sep="?"
   [[ "$url" == *\?* ]] && sep="&"
-  if ! curl -fsSL "${auth[@]}" "${url}${sep}per_page=100" -o "$dest"; then
-    die "Could not fetch ${label} releases from GitHub. Retry, set GH_TOKEN, or pass an exact --${flag_hint}=<tag> value."
-  fi
+  local page=1 page_count page_file
+  local max_pages=10
+  local page_files=()
+
+  while true; do
+    page_file=$(mktemp)
+    register_tmp_file "$page_file"
+    page_files+=("$page_file")
+    if ! curl -fsSL "${auth[@]}" "${url}${sep}per_page=100&page=${page}" -o "$page_file"; then
+      die "Could not fetch ${label} releases from GitHub. Retry, set GH_TOKEN, or pass an exact --${flag_hint}=<tag> value."
+    fi
+    page_count=$(jq 'length' "$page_file")
+    ((page_count < 100)) && break
+    if ((page >= max_pages)); then
+      die "Could not find a final ${label} releases page after ${max_pages} GitHub pages. Pass an exact --${flag_hint}=<tag> value."
+    fi
+    page=$((page + 1))
+  done
+
+  jq -s 'add' "${page_files[@]}" >"$dest"
 }
 
 version_flag_for_label() {
@@ -1331,6 +1346,23 @@ extract_mnemonic_line() {
   awk 'NF == 24 { print; exit }'
 }
 
+format_mnemonic_for_display() {
+  local mnemonic="$1"
+  local -a words
+  read -r -a words <<<"$mnemonic"
+
+  local i
+  for i in "${!words[@]}"; do
+    printf '%2d. %-12s' "$((i + 1))" "${words[$i]}"
+    if (((i + 1) % 4 == 0)); then
+      printf '\n'
+    fi
+  done
+  if ((${#words[@]} % 4 != 0)); then
+    printf '\n'
+  fi
+}
+
 add_chia_key_from_mnemonic() {
   # Shared post-mnemonic logic for both generate and import paths.
   #   $1 mnemonic       — the validated 24-word seed
@@ -1374,15 +1406,19 @@ setup_chia_keys_generate() {
   if [[ "$ASSUME_YES" != true ]]; then
     private_echo ""
     private_echo "${C_RED}╔══════════════════════════════════════════════════════════════╗${C_RESET}"
-    private_echo "${C_RED}║  WRITE DOWN YOUR 24-WORD MNEMONIC — IT CANNOT BE RECOVERED  ║${C_RESET}"
+    private_echo "${C_RED}║  WRITE DOWN YOUR 24-WORD MNEMONIC                           ║${C_RESET}"
+    private_echo "${C_RED}║  THIS IS THE KEY TO ALL YOUR CADT DATA                      ║${C_RESET}"
     private_echo "${C_RED}╚══════════════════════════════════════════════════════════════╝${C_RESET}"
     private_echo ""
-    private_literal "$mnemonic"
+    private_echo "You cannot recover ownership of your data without this key."
+    private_echo "To see it at any time, run: ${C_BOLD}chia keys show --show-mnemonic-seed${C_RESET}"
     private_echo ""
-    local confirm_phrase="I HAVE WRITTEN DOWN MY MNEMONIC"
+    private_echo "${C_YELLOW}${C_BOLD}$(format_mnemonic_for_display "$mnemonic")${C_RESET}"
+    private_echo ""
+    local confirm_phrase="CONTINUE"
     local typed=""
     while [[ "$typed" != "$confirm_phrase" ]]; do
-      read -r -p "Type '${confirm_phrase}' to continue: " typed </dev/tty
+      read -r -p "Type CONTINUE when you have your mnemonic stored securely: " typed </dev/tty
     done
   fi
 

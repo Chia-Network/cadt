@@ -179,6 +179,93 @@ EOF
   [[ "$CHIA_APT_VER" == "2.7.0" ]]
 }
 
+@test "prompt_version_choice finds stable release beyond first GitHub page" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  local marker="${BATS_TEST_TMPDIR}/page-2-called"
+  mkdir -p "$bin"
+  cat >"${bin}/curl" <<EOF
+#!/usr/bin/env bash
+out=""
+url=""
+while [[ \$# -gt 0 ]]; do
+  case "\$1" in
+    -o)
+      out="\$2"
+      shift 2
+      ;;
+    http*)
+      url="\$1"
+      shift
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
+if [[ "\$url" == *"&page=1" ]]; then
+  {
+    echo "["
+    for i in \$(seq 1 100); do
+      [[ "\$i" -gt 1 ]] && echo ","
+      printf '{"tag_name":"1.0.0-rc%s","draft":false,"prerelease":true}' "\$i"
+    done
+    echo "]"
+  } >"\$out"
+else
+  touch "${marker}"
+  printf '[{"tag_name":"1.0.0","draft":false,"prerelease":false}]\\n' >"\$out"
+fi
+EOF
+  chmod +x "${bin}/curl"
+  PATH="${bin}:$PATH"
+
+  CHIA_VERSION_CHOICE="stable"
+  CHIA_APT_VER=""
+
+  prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER false
+
+  [[ -f "$marker" ]]
+  [[ "$CHIA_APT_VER" == "1.0.0" ]]
+}
+
+@test "fetch_releases_json stops after maximum full pages" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  cat >"${bin}/curl" <<'EOF'
+#!/usr/bin/env bash
+out=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -o)
+      out="$2"
+      shift 2
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
+{
+  echo "["
+  for i in $(seq 1 100); do
+    [[ "$i" -gt 1 ]] && echo ","
+    printf '{"tag_name":"1.0.0-rc%s","draft":false,"prerelease":true}' "$i"
+  done
+  echo "]"
+} >"$out"
+EOF
+  chmod +x "${bin}/curl"
+  PATH="${bin}:$PATH"
+
+  run fetch_releases_json "https://api.example.invalid/releases" "${BATS_TEST_TMPDIR}/releases.json" "cadt" "cadt-version"
+
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"Could not find a final cadt releases page after 10 GitHub pages"* ]]
+  [[ "$output" == *"--cadt-version=<tag>"* ]]
+}
+
 @test "prompt_version_choice fetches releases for latest alias" {
   local bin="${BATS_TEST_TMPDIR}/bin"
   local fixture="${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
@@ -1006,6 +1093,18 @@ Note that this key has not been added to the keychain. Run chia keys add"
   local out
   out=$(printf 'one two three\nfour five\n' | extract_mnemonic_line)
   [[ -z "$out" ]]
+}
+
+@test "format_mnemonic_for_display numbers words in rows" {
+  local mnemonic formatted
+  mnemonic=$(printf 'word%d ' {1..24})
+
+  formatted=$(format_mnemonic_for_display "$mnemonic")
+
+  [[ "$formatted" == *" 1. word1"* ]]
+  [[ "$formatted" == *" 4. word4"* ]]
+  [[ "$formatted" == *"24. word24"* ]]
+  [[ "$(printf '%s\n' "$formatted" | wc -l)" -eq 6 ]]
 }
 
 @test "setup_chia_keys_generate failure surfaces descriptive die, not ERR trap" {
