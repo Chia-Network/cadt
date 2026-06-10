@@ -733,7 +733,7 @@ PY
   validate_yes_args
 }
 
-@test "validate_yes_args requires public address when public mirror is not advertised" {
+@test "validate_yes_args allows testing no public mirror without public address" {
   ASSUME_YES=true
   NETWORK=testneta
   PUBLIC_ADDRESS=""
@@ -742,9 +742,7 @@ PY
   IMPORT_KEY_FILE=""
   MNEMONIC_OUTPUT_FILE="${BATS_TEST_TMPDIR}/seed.txt"
 
-  run validate_yes_args
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"--public-address"* ]]
+  validate_yes_args
 }
 
 @test "validate_yes_args allows testing no public mirror with public address" {

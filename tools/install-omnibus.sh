@@ -262,7 +262,7 @@ validate_yes_args() {
   [[ "$ASSUME_YES" == true ]] || return 0
   local missing=()
   [[ -z "$NETWORK" ]] && missing+=("--network")
-  [[ -z "$PUBLIC_ADDRESS" ]] && missing+=("--public-address")
+  [[ -z "$PUBLIC_ADDRESS" && "$TESTING_NO_PUBLIC_MIRROR" != true ]] && missing+=("--public-address")
 
   if [[ "$KEY_MODE" == "import" ]]; then
     # Catch a missing/unreadable import path now, before apt mutates anything.
@@ -295,8 +295,9 @@ validate_testing_no_public_mirror_network() {
 
 warn_no_public_mirror() {
   warn "Testing mode: DataLayer file server URL will not be advertised."
-  echo "  By leaving DATALAYER_FILE_SERVER_URL blank, nobody on the CADT network"
-  echo "  will learn where to sync your data from. Only use this for testing purposes."
+  echo "  Your data will not sync to any other CADT participants or show up on observers"
+  echo "  and will be only available on this computer. However, you will be able to sync data"
+  echo "  from other CADT participants to this machine. Only use this for testing purposes."
 }
 
 validate_mnemonic_output_file_path() {
@@ -525,6 +526,7 @@ default. Aborts before any system mutation if anything below is missing:
 
   --network=...
   --public-address=...
+    (or --testing-no-public-mirror for testing-only installs)
   one of:
     --import-key-from-file=<path>     (preferred: bring your own seed)
     --mnemonic-output-file=<path>     (with --generate-key; cannot be /dev/null)
@@ -1088,6 +1090,9 @@ prompt_public_address() {
     warn_no_public_mirror
     if [[ "$ASSUME_YES" != true ]] && ! confirm "Is this really what you want?"; then
       TESTING_NO_PUBLIC_MIRROR=false
+    elif [[ -z "$PUBLIC_ADDRESS" ]]; then
+      LOCAL_ONLY=true
+      return 0
     fi
   fi
 
@@ -1112,6 +1117,8 @@ prompt_public_address() {
           warn_no_public_mirror
           if confirm "Is this really what you want?"; then
             TESTING_NO_PUBLIC_MIRROR=true
+            LOCAL_ONLY=true
+            return 0
           fi
           continue
           ;;
@@ -1788,8 +1795,13 @@ print_final_summary() {
   fi
   echo "  CADT API (local):  http://localhost:31310"
   if [[ "$TESTING_NO_PUBLIC_MIRROR" == true ]]; then
-    echo "  DataLayer files:   ${PUBLIC_URL}/data"
-    echo "                     not advertised in CADT config (testing only)"
+    if [[ -n "$PUBLIC_ADDRESS" ]]; then
+      echo "  DataLayer files:   ${PUBLIC_URL}/data"
+      echo "                     not advertised in CADT config (testing only)"
+    else
+      echo "  DataLayer files:   not advertised in CADT config (testing only)"
+      echo "                     no public DataLayer file server configured"
+    fi
   else
     echo "  DataLayer files:   ${DATALAYER_URL}"
   fi
@@ -1888,9 +1900,14 @@ BANNER
   local net
   net=$(get_chia_network_dir)
 
-  phase "Phase 5: Configuring nginx"
-  setup_datalayer_directory "$net"
-  configure_nginx "$net"
+  if [[ "$TESTING_NO_PUBLIC_MIRROR" == true && -z "$PUBLIC_ADDRESS" ]]; then
+    phase "Phase 5: Skipping public DataLayer mirror"
+    warn_no_public_mirror
+  else
+    phase "Phase 5: Configuring nginx"
+    setup_datalayer_directory "$net"
+    configure_nginx "$net"
+  fi
 
   phase "Phase 6: Configuring and starting CADT"
   start_cadt_and_wait
