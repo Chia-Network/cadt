@@ -116,6 +116,119 @@ wait_for_pid_exit() {
   [[ "$got" == "1.3.9" ]]
 }
 
+@test "fetch_releases_json surfaces curl failures with version flag hint" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  cat >"${bin}/curl" <<'EOF'
+#!/usr/bin/env bash
+echo "curl: (22) The requested URL returned error: 504" >&2
+exit 22
+EOF
+  chmod +x "${bin}/curl"
+  PATH="${bin}:$PATH"
+
+  run fetch_releases_json "https://api.example.invalid/releases" "${BATS_TEST_TMPDIR}/releases.json" "chia-blockchain-cli" "chia-version"
+
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"Could not fetch chia-blockchain-cli releases from GitHub"* ]]
+  [[ "$output" == *"--chia-version=<tag>"* ]]
+  [[ "$output" != *"Install failed at line"* ]]
+}
+
+@test "prompt_version_choice accepts exact flag value without fetching releases" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  cat >"${bin}/curl" <<'EOF'
+#!/usr/bin/env bash
+echo "curl should not be called for exact tags" >&2
+exit 99
+EOF
+  chmod +x "${bin}/curl"
+  PATH="${bin}:$PATH"
+
+  CHIA_VERSION_CHOICE="2.7.0"
+  CHIA_APT_VER=""
+
+  prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER false
+
+  [[ "$CHIA_APT_VER" == "2.7.0" ]]
+}
+
+@test "prompt_version_choice fetches releases for stable alias" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  local marker="${BATS_TEST_TMPDIR}/curl-called"
+  mkdir -p "$bin"
+  cat >"${bin}/curl" <<EOF
+#!/usr/bin/env bash
+touch "${marker}"
+while [[ "\${1:-}" != "-o" ]]; do
+  shift
+done
+cp "${fixture}" "\$2"
+EOF
+  chmod +x "${bin}/curl"
+  PATH="${bin}:$PATH"
+
+  CHIA_VERSION_CHOICE="stable"
+  CHIA_APT_VER=""
+
+  prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER false
+
+  [[ -f "$marker" ]]
+  [[ "$CHIA_APT_VER" == "2.7.0" ]]
+}
+
+@test "prompt_version_choice fetches releases for latest alias" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  local marker="${BATS_TEST_TMPDIR}/curl-called"
+  mkdir -p "$bin"
+  cat >"${bin}/curl" <<EOF
+#!/usr/bin/env bash
+touch "${marker}"
+while [[ "\${1:-}" != "-o" ]]; do
+  shift
+done
+cp "${fixture}" "\$2"
+EOF
+  chmod +x "${bin}/curl"
+  PATH="${bin}:$PATH"
+
+  CHIA_VERSION_CHOICE="latest"
+  CHIA_APT_VER=""
+
+  prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER false
+
+  [[ -f "$marker" ]]
+  [[ "$CHIA_APT_VER" == "2.7.0" ]]
+}
+
+@test "prompt_version_choice fetches releases for rc alias" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/cadt-releases.json"
+  local marker="${BATS_TEST_TMPDIR}/curl-called"
+  mkdir -p "$bin"
+  cat >"${bin}/curl" <<EOF
+#!/usr/bin/env bash
+touch "${marker}"
+while [[ "\${1:-}" != "-o" ]]; do
+  shift
+done
+cp "${fixture}" "\$2"
+EOF
+  chmod +x "${bin}/curl"
+  PATH="${bin}:$PATH"
+
+  CADT_VERSION_CHOICE="rc"
+  CADT_APT_VER=""
+
+  prompt_version_choice "cadt" "$GH_API_CADT" CADT_VERSION_CHOICE CADT_APT_VER true
+
+  [[ -f "$marker" ]]
+  [[ "$CADT_APT_VER" == "1.7.26-rc28" ]]
+}
+
 @test "strip_url_scheme removes http prefix" {
   [[ "$(strip_url_scheme "http://example.com")" == "example.com" ]]
 }

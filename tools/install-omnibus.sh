@@ -252,6 +252,13 @@ pick_release_from_json() {
   esac
 }
 
+version_choice_needs_release_fetch() {
+  case "${1,,}" in
+    stable | latest | prerelease | rc | pre-release) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 validate_min_disk_gb() {
   # Catch non-numeric values up front so check_min_specs doesn't blow up
   # inside an arithmetic context.
@@ -815,7 +822,7 @@ check_existing_install() {
 }
 
 fetch_releases_json() {
-  local url="$1" dest="$2"
+  local url="$1" dest="$2" label="${3:-release}" flag_hint="${4:-version}"
   local auth=()
   if [[ -n "${GH_TOKEN:-}" ]]; then
     auth=(-H "Authorization: Bearer ${GH_TOKEN}")
@@ -824,7 +831,18 @@ fetch_releases_json() {
   # doesn't bury the latest stable beyond the default first page.
   local sep="?"
   [[ "$url" == *\?* ]] && sep="&"
-  curl -fsSL "${auth[@]}" "${url}${sep}per_page=100" -o "$dest"
+  if ! curl -fsSL "${auth[@]}" "${url}${sep}per_page=100" -o "$dest"; then
+    die "Could not fetch ${label} releases from GitHub. Retry, set GH_TOKEN, or pass an exact --${flag_hint}=<tag> value."
+  fi
+}
+
+version_flag_for_label() {
+  case "$1" in
+    chia-blockchain-cli) echo "chia-version" ;;
+    chia-tools) echo "chia-tools-version" ;;
+    cadt) echo "cadt-version" ;;
+    *) echo "version" ;;
+  esac
 }
 
 resolve_version_choice() {
@@ -852,19 +870,23 @@ prompt_version_choice() {
   fi
   local current="${!var_choice}"
   if [[ -n "$current" ]]; then
-    local tmp
-    tmp=$(mktemp)
-    register_tmp_file "$tmp"
-    fetch_releases_json "$gh_url" "$tmp"
-    resolve_version_choice "$current" "$tmp" "$var_apt"
-    rm -f "$tmp"
+    if version_choice_needs_release_fetch "$current"; then
+      local tmp
+      tmp=$(mktemp)
+      register_tmp_file "$tmp"
+      fetch_releases_json "$gh_url" "$tmp" "$label" "$(version_flag_for_label "$label")"
+      resolve_version_choice "$current" "$tmp" "$var_apt"
+      rm -f "$tmp"
+    else
+      printf -v "$var_apt" '%s' "$current"
+    fi
     return 0
   fi
 
   local tmp
   tmp=$(mktemp)
   register_tmp_file "$tmp"
-  fetch_releases_json "$gh_url" "$tmp"
+  fetch_releases_json "$gh_url" "$tmp" "$label" "$(version_flag_for_label "$label")"
 
   echo ""
   info "Select ${label} version:"
