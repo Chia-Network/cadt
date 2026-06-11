@@ -1526,3 +1526,194 @@ EOF
   ! is_ipv4 "1.2.3"
   ! is_ipv4 "1.2.3.4.5"
 }
+
+# --- Interactive menu dispatch ---
+#
+# The numbered version menus in prompt_version_choice are the literal
+# "choose option N" flow real users drive. They read selections through
+# prompt_default, which blocks on /dev/tty. These tests replace
+# prompt_default with a queue of answers so the case-dispatch logic
+# (menu choice -> resolved tag) is exercised without a tty, and assert the
+# exact tag so a future re-ordering of menu branches can't pass silently.
+
+# Stub prompt_default with a FIFO queue of answers. Each call pops the next
+# queued value into the requested variable. Redefining the function here
+# overrides the sourced one for the remainder of the test.
+_queue_prompt_answers() {
+  PROMPT_QUEUE=("$@")
+  PROMPT_IDX=0
+  prompt_default() {
+    local var_name="$1"
+    printf -v "$var_name" '%s' "${PROMPT_QUEUE[$PROMPT_IDX]:-}"
+    PROMPT_IDX=$((PROMPT_IDX + 1))
+  }
+}
+
+# Stub curl so fetch_releases_json serves a local fixture instead of hitting
+# GitHub. Mirrors the copy-to-"-o"-target pattern used elsewhere in this file.
+_stub_curl_serves_fixture() {
+  local fixture="$1"
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  cat >"${bin}/curl" <<EOF
+#!/usr/bin/env bash
+while [[ "\${1:-}" != "-o" ]]; do shift; done
+cp "${fixture}" "\$2"
+EOF
+  chmod +x "${bin}/curl"
+  PATH="${bin}:$PATH"
+}
+
+@test "prompt_version_choice menu option 1 selects latest stable" {
+  _stub_curl_serves_fixture "${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  _queue_prompt_answers 1
+  CHIA_VERSION_CHOICE=""
+  CHIA_APT_VER=""
+
+  prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER true
+
+  [[ "$CHIA_APT_VER" == "2.7.0" ]]
+}
+
+@test "prompt_version_choice menu option 2 selects latest pre-release" {
+  _stub_curl_serves_fixture "${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  _queue_prompt_answers 2
+  CHIA_VERSION_CHOICE=""
+  CHIA_APT_VER=""
+
+  prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER true
+
+  [[ "$CHIA_APT_VER" == "2.7.1-rc2" ]]
+}
+
+@test "prompt_version_choice menu option 3 picks the chosen list index" {
+  _stub_curl_serves_fixture "${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  # Choice 3 (pick from list), then number 1 = first non-draft release.
+  _queue_prompt_answers 3 1
+  CHIA_VERSION_CHOICE=""
+  CHIA_APT_VER=""
+
+  prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER true
+
+  [[ "$CHIA_APT_VER" == "2.7.1-rc2" ]]
+}
+
+@test "prompt_version_choice stable-only menu option 1 selects latest stable" {
+  # chia-tools has no pre-release option: menu is 1) stable 2) pick-from-list.
+  _stub_curl_serves_fixture "${BATS_TEST_DIRNAME}/fixtures/chia-tools-releases.json"
+  _queue_prompt_answers 1
+  CHIA_TOOLS_VERSION_CHOICE=""
+  TOOLS_APT_VER=""
+
+  prompt_version_choice "chia-tools" "$GH_API_TOOLS" CHIA_TOOLS_VERSION_CHOICE TOOLS_APT_VER false
+
+  [[ "$TOOLS_APT_VER" == "1.3.9" ]]
+}
+
+@test "prompt_version_choice stable-only menu option 2 picks from stable list" {
+  _stub_curl_serves_fixture "${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  # Choice 2 (pick from list), then number 1 = first STABLE release (skips RCs).
+  _queue_prompt_answers 2 1
+  CHIA_VERSION_CHOICE=""
+  CHIA_APT_VER=""
+
+  prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER false
+
+  [[ "$CHIA_APT_VER" == "2.7.0" ]]
+}
+
+@test "prompt_version_choice dies on an out-of-range list selection" {
+  _stub_curl_serves_fixture "${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  _queue_prompt_answers 3 999
+  CHIA_VERSION_CHOICE=""
+  CHIA_APT_VER=""
+
+  run prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER true
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"Invalid selection"* ]]
+}
+
+@test "prompt_version_choice dies on an unknown top-level menu choice" {
+  _stub_curl_serves_fixture "${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  _queue_prompt_answers 9
+  CHIA_VERSION_CHOICE=""
+  CHIA_APT_VER=""
+
+  run prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER true
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"Invalid choice"* ]]
+}
+
+# --- nginx config generation ---
+#
+# write_nginx_*_config emit the server blocks via `sudo tee`. These tests
+# override sudo to capture the rendered config to a tmpfile, then assert the
+# option->outcome contract: --local-only must drop the `location /` reverse
+# proxy (so CADT stays loopback-only) while always keeping the /data/ file
+# alias, and the HTTPS variant must emit the 443 TLS block and the port-80
+# redirect. Pure text assertions (no nginx binary) keep this PR-cheap.
+
+# Override sudo (a plain command in the script) so `sudo tee <path>` writes the
+# heredoc to NGINX_CAPTURE and `sudo mkdir` is a no-op.
+_capture_sudo_tee() {
+  NGINX_CAPTURE="${BATS_TEST_TMPDIR}/cadt.conf"
+  : >"$NGINX_CAPTURE"
+  sudo() {
+    case "${1:-}" in
+      mkdir) return 0 ;;
+      tee) cat >"$NGINX_CAPTURE" ;;
+      *) command "$@" ;;
+    esac
+  }
+}
+
+@test "write_nginx_http_config includes the CADT reverse proxy by default" {
+  _capture_sudo_tee
+  PUBLIC_ADDRESS="cadt.example.com"
+  LOCAL_ONLY=false
+
+  write_nginx_http_config testneta
+
+  grep -q "location /data/" "$NGINX_CAPTURE"
+  grep -q "server_files_location_testneta/" "$NGINX_CAPTURE"
+  grep -q "proxy_pass http://127.0.0.1:31310" "$NGINX_CAPTURE"
+  grep -q "server_name cadt.example.com" "$NGINX_CAPTURE"
+}
+
+@test "write_nginx_http_config omits the reverse proxy under --local-only" {
+  _capture_sudo_tee
+  PUBLIC_ADDRESS="cadt.example.com"
+  LOCAL_ONLY=true
+
+  write_nginx_http_config testneta
+
+  # /data/ file serving stays; the CADT API proxy must be absent.
+  grep -q "location /data/" "$NGINX_CAPTURE"
+  ! grep -q "proxy_pass" "$NGINX_CAPTURE"
+}
+
+@test "write_nginx_https_config emits TLS block, redirect, and proxy by default" {
+  _capture_sudo_tee
+  PUBLIC_ADDRESS="cadt.example.com"
+  LOCAL_ONLY=false
+
+  write_nginx_https_config testneta
+
+  grep -q "listen 443 ssl" "$NGINX_CAPTURE"
+  grep -q "ssl_certificate /etc/letsencrypt/live/cadt.example.com/fullchain.pem" "$NGINX_CAPTURE"
+  grep -q "return 301 https://" "$NGINX_CAPTURE"
+  grep -q "location /data/" "$NGINX_CAPTURE"
+  grep -q "proxy_pass http://127.0.0.1:31310" "$NGINX_CAPTURE"
+}
+
+@test "write_nginx_https_config omits the reverse proxy under --local-only" {
+  _capture_sudo_tee
+  PUBLIC_ADDRESS="cadt.example.com"
+  LOCAL_ONLY=true
+
+  write_nginx_https_config testneta
+
+  grep -q "listen 443 ssl" "$NGINX_CAPTURE"
+  grep -q "location /data/" "$NGINX_CAPTURE"
+  ! grep -q "proxy_pass" "$NGINX_CAPTURE"
+}
