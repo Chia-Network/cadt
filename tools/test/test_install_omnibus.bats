@@ -316,6 +316,53 @@ EOF
   [[ "$CADT_APT_VER" == "1.7.26-rc28" ]]
 }
 
+@test "prompt_version_choice fetches Chia prerelease for beta alias" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  local marker="${BATS_TEST_TMPDIR}/curl-called"
+  mkdir -p "$bin"
+  cat >"${bin}/curl" <<EOF
+#!/usr/bin/env bash
+touch "${marker}"
+while [[ "\${1:-}" != "-o" ]]; do
+  shift
+done
+cp "${fixture}" "\$2"
+EOF
+  chmod +x "${bin}/curl"
+  PATH="${bin}:$PATH"
+
+  CHIA_VERSION_CHOICE="beta"
+  CHIA_APT_VER=""
+
+  prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER true
+
+  [[ -f "$marker" ]]
+  [[ "$CHIA_APT_VER" == "2.7.1-rc2" ]]
+}
+
+@test "prompt_version_choice rejects chia-tools beta alias" {
+  CHIA_TOOLS_VERSION_CHOICE="beta"
+  TOOLS_APT_VER=""
+
+  run prompt_version_choice "chia-tools" "$GH_API_TOOLS" CHIA_TOOLS_VERSION_CHOICE TOOLS_APT_VER false
+
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"chia-tools prerelease aliases are not supported"* ]]
+}
+
+@test "prompt_version_choice captures explicit chia-tools beta tag for validation" {
+  CHIA_TOOLS_VERSION_CHOICE="1.2.3-beta1"
+  TOOLS_APT_VER=""
+
+  prompt_version_choice "chia-tools" "$GH_API_TOOLS" CHIA_TOOLS_VERSION_CHOICE TOOLS_APT_VER false
+
+  [[ "$TOOLS_APT_VER" == "1.2.3-beta1" ]]
+  run validate_supported_apt_versions
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"chia-tools prerelease apt packages are not supported"* ]]
+}
+
 @test "strip_url_scheme removes http prefix" {
   [[ "$(strip_url_scheme "http://example.com")" == "example.com" ]]
 }
@@ -423,15 +470,12 @@ EOF
   [[ "$output" == *"Invalid network: testnet"* ]]
 }
 
-@test "validate_supported_apt_versions rejects unsupported Chia prereleases" {
+@test "validate_supported_apt_versions allows Chia prereleases" {
   CHIA_APT_VER="2.7.1-rc2"
   TOOLS_APT_VER="1.2.3"
   CADT_APT_VER="1.7.26-rc28"
 
-  run validate_supported_apt_versions
-
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"chia-blockchain-cli prerelease apt packages are not supported"* ]]
+  validate_supported_apt_versions
 }
 
 @test "validate_supported_apt_versions allows CADT prereleases" {
@@ -447,6 +491,16 @@ EOF
   # second guard would otherwise leave tools RC installs silently allowed.
   CHIA_APT_VER="2.7.1"
   TOOLS_APT_VER="1.2.3-rc1"
+  CADT_APT_VER="1.7.26"
+
+  run validate_supported_apt_versions
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"chia-tools prerelease apt packages are not supported"* ]]
+}
+
+@test "validate_supported_apt_versions rejects chia-tools beta tags" {
+  CHIA_APT_VER="2.7.1"
+  TOOLS_APT_VER="1.2.3-beta1"
   CADT_APT_VER="1.7.26"
 
   run validate_supported_apt_versions
@@ -504,6 +558,23 @@ EOF
   run verify_or_fallback_apt_version cadt CADT_APT_VER
   [[ "$status" -ne 0 ]]
   [[ "$output" == *"no compatible fallback"* ]]
+}
+
+@test "verify_or_fallback_apt_version keeps Chia beta on prerelease track" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  cat >"${bin}/apt-cache" <<'EOF'
+#!/usr/bin/env bash
+echo "  chia-blockchain-cli | 2.7.1-beta1 | https://repo.chia.net prerelease/main amd64 Packages"
+echo "  chia-blockchain-cli | 2.7.0       | https://repo.chia.net stable/main     amd64 Packages"
+EOF
+  chmod +x "${bin}/apt-cache"
+  PATH="${bin}:$PATH"
+  CHIA_APT_VER="2.7.1-beta1"
+
+  verify_or_fallback_apt_version chia-blockchain-cli CHIA_APT_VER
+
+  [[ "$CHIA_APT_VER" == "2.7.1-beta1" ]]
 }
 
 @test "verify_or_fallback_apt_version falls back to highest stable when stable pin missing" {
@@ -568,6 +639,186 @@ EOF
   CADT_APT_VER=""
   verify_or_fallback_apt_version cadt CADT_APT_VER
   [[ -z "$CADT_APT_VER" ]]
+}
+
+@test "setup_apt_repos adds Chia prerelease repo for rc CLI version" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  local capture="${BATS_TEST_TMPDIR}/apt-lists"
+  mkdir -p "$bin" "$capture"
+
+  cat >"${bin}/curl" <<'EOF'
+#!/usr/bin/env bash
+printf 'fake-gpg-key'
+EOF
+  cat >"${bin}/dpkg" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--print-architecture" ]]; then
+  echo amd64
+  exit 0
+fi
+exit 1
+EOF
+  cat >"${bin}/gpg" <<'EOF'
+#!/usr/bin/env bash
+cat >/dev/null
+exit 0
+EOF
+  cat >"${bin}/apt-get" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+  cat >"${bin}/sudo" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "gpg" ]]; then
+  shift
+  exec gpg "$@"
+fi
+if [[ "${1:-}" == "rm" ]]; then
+  exit 0
+fi
+if [[ "${1:-}" == "tee" ]]; then
+  dest="${2##*/}"
+  cat >"${CAPTURE_APT_LIST_DIR}/${dest}"
+  exit 0
+fi
+if [[ "${1:-}" == "apt-get" ]]; then
+  shift
+  exec apt-get "$@"
+fi
+exec "$@"
+EOF
+  chmod +x "${bin}/curl" "${bin}/dpkg" "${bin}/gpg" "${bin}/apt-get" "${bin}/sudo"
+  PATH="${bin}:$PATH"
+  export CAPTURE_APT_LIST_DIR="$capture"
+  LOG_FILE="${BATS_TEST_TMPDIR}/install.log"
+
+  CHIA_APT_VER="2.7.1-rc2"
+  CADT_APT_VER="1.7.26"
+
+  setup_apt_repos
+
+  [[ -f "${capture}/chia-blockchain-prerelease.list" ]]
+  [[ "$(cat "${capture}/chia-blockchain-prerelease.list")" == *"https://repo.chia.net/prerelease/debian/ prerelease main"* ]]
+}
+
+@test "setup_apt_repos adds Chia prerelease repo for beta CLI version" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  local capture="${BATS_TEST_TMPDIR}/apt-lists"
+  mkdir -p "$bin" "$capture"
+
+  cat >"${bin}/curl" <<'EOF'
+#!/usr/bin/env bash
+printf 'fake-gpg-key'
+EOF
+  cat >"${bin}/dpkg" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--print-architecture" ]]; then
+  echo amd64
+  exit 0
+fi
+exit 1
+EOF
+  cat >"${bin}/gpg" <<'EOF'
+#!/usr/bin/env bash
+cat >/dev/null
+exit 0
+EOF
+  cat >"${bin}/apt-get" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+  cat >"${bin}/sudo" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "gpg" ]]; then
+  shift
+  exec gpg "$@"
+fi
+if [[ "${1:-}" == "rm" ]]; then
+  exit 0
+fi
+if [[ "${1:-}" == "tee" ]]; then
+  dest="${2##*/}"
+  cat >"${CAPTURE_APT_LIST_DIR}/${dest}"
+  exit 0
+fi
+if [[ "${1:-}" == "apt-get" ]]; then
+  shift
+  exec apt-get "$@"
+fi
+exec "$@"
+EOF
+  chmod +x "${bin}/curl" "${bin}/dpkg" "${bin}/gpg" "${bin}/apt-get" "${bin}/sudo"
+  PATH="${bin}:$PATH"
+  export CAPTURE_APT_LIST_DIR="$capture"
+  LOG_FILE="${BATS_TEST_TMPDIR}/install.log"
+
+  CHIA_APT_VER="2.7.1-beta1"
+  CADT_APT_VER="1.7.26"
+
+  setup_apt_repos
+
+  [[ -f "${capture}/chia-blockchain-prerelease.list" ]]
+  [[ "$(cat "${capture}/chia-blockchain-prerelease.list")" == *"https://repo.chia.net/prerelease/debian/ prerelease main"* ]]
+}
+
+@test "setup_apt_repos only adds Chia prerelease repo for rc CLI version" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  local capture="${BATS_TEST_TMPDIR}/apt-lists"
+  mkdir -p "$bin" "$capture"
+
+  cat >"${bin}/curl" <<'EOF'
+#!/usr/bin/env bash
+printf 'fake-gpg-key'
+EOF
+  cat >"${bin}/dpkg" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--print-architecture" ]]; then
+  echo amd64
+  exit 0
+fi
+exit 1
+EOF
+  cat >"${bin}/gpg" <<'EOF'
+#!/usr/bin/env bash
+cat >/dev/null
+exit 0
+EOF
+  cat >"${bin}/apt-get" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+  cat >"${bin}/sudo" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "gpg" ]]; then
+  shift
+  exec gpg "$@"
+fi
+if [[ "${1:-}" == "rm" ]]; then
+  exit 0
+fi
+if [[ "${1:-}" == "tee" ]]; then
+  dest="${2##*/}"
+  cat >"${CAPTURE_APT_LIST_DIR}/${dest}"
+  exit 0
+fi
+if [[ "${1:-}" == "apt-get" ]]; then
+  shift
+  exec apt-get "$@"
+fi
+exec "$@"
+EOF
+  chmod +x "${bin}/curl" "${bin}/dpkg" "${bin}/gpg" "${bin}/apt-get" "${bin}/sudo"
+  PATH="${bin}:$PATH"
+  export CAPTURE_APT_LIST_DIR="$capture"
+  LOG_FILE="${BATS_TEST_TMPDIR}/install.log"
+
+  CHIA_APT_VER="2.7.1"
+  CADT_APT_VER="1.7.26-rc28"
+
+  setup_apt_repos
+
+  [[ ! -f "${capture}/chia-blockchain-prerelease.list" ]]
+  [[ -f "${capture}/cadt-test.list" ]]
 }
 
 @test "format_gib_from_kib renders fractional GiB with one decimal" {
@@ -1095,16 +1346,16 @@ Note that this key has not been added to the keychain. Run chia keys add"
   [[ -z "$out" ]]
 }
 
-@test "format_mnemonic_for_display numbers words in rows" {
+@test "format_mnemonic_for_display keeps seed copy-paste friendly" {
   local mnemonic formatted
   mnemonic=$(printf 'word%d ' {1..24})
+  mnemonic="${mnemonic% }"
 
   formatted=$(format_mnemonic_for_display "$mnemonic")
 
-  [[ "$formatted" == *" 1. word1"* ]]
-  [[ "$formatted" == *" 4. word4"* ]]
-  [[ "$formatted" == *"24. word24"* ]]
-  [[ "$(printf '%s\n' "$formatted" | wc -l)" -eq 6 ]]
+  [[ "$formatted" == "  $mnemonic" ]]
+  [[ "$formatted" != *"1."* ]]
+  [[ "$(printf '%s\n' "$formatted" | wc -l)" -eq 1 ]]
 }
 
 @test "setup_chia_keys_generate failure surfaces descriptive die, not ERR trap" {

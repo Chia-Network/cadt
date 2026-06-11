@@ -182,14 +182,15 @@ normalize_mnemonic_file() {
 }
 
 validate_supported_apt_versions() {
-  # Chia CLI and chia-tools apt repos publish stable only; the cadt-test repo
-  # is the one place where -rc packages are available (toggled in setup_apt_repos).
-  if [[ "$CHIA_APT_VER" == *-rc* ]]; then
-    die "chia-blockchain-cli prerelease apt packages are not supported; choose stable or an explicit stable tag."
-  fi
-  if [[ "$TOOLS_APT_VER" == *-rc* ]]; then
+  # chia-tools apt repos publish stable only. Chia CLI and CADT have separate
+  # prerelease/test repos toggled in setup_apt_repos when -rc packages are used.
+  if is_prerelease_version "$TOOLS_APT_VER"; then
     die "chia-tools prerelease apt packages are not supported; choose stable or an explicit stable tag."
   fi
+}
+
+is_prerelease_version() {
+  [[ "${1,,}" =~ (^|[-+~.])(alpha|beta|pre|preview|prerelease|rc)[0-9]*($|[-+~.]) ]]
 }
 
 cadt_health_curl_args() {
@@ -254,7 +255,7 @@ pick_release_from_json() {
 
 version_choice_needs_release_fetch() {
   case "${1,,}" in
-    stable | latest | prerelease | rc | pre-release) return 0 ;;
+    stable | latest | prerelease | rc | pre-release | beta) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -510,7 +511,7 @@ Run as a non-root user with sudo access.
 
 Options:
   --network=mainnet|testneta
-  --chia-version=stable|<stable-tag>
+  --chia-version=stable|prerelease|beta|<tag>
   --chia-tools-version=stable|<stable-tag>
   --cadt-version=stable|prerelease|<tag>
   --public-address=<domain-or-ip>  public address for this server
@@ -867,7 +868,7 @@ resolve_version_choice() {
     stable | latest)
       tag=$(pick_release_from_json "$json_file" stable)
       ;;
-    prerelease | rc | pre-release)
+    prerelease | rc | pre-release | beta)
       tag=$(pick_release_from_json "$json_file" prerelease)
       ;;
     *)
@@ -885,6 +886,9 @@ prompt_version_choice() {
   fi
   local current="${!var_choice}"
   if [[ -n "$current" ]]; then
+    if [[ "$allow_prerelease" != true && "$current" =~ ^([Pp]rerelease|[Rr][Cc]|[Pp]re-release|[Bb]eta)$ ]]; then
+      die "${label} prerelease aliases are not supported; choose stable or an explicit stable tag."
+    fi
     if version_choice_needs_release_fetch "$current"; then
       local tmp
       tmp=$(mktemp)
@@ -988,9 +992,10 @@ verify_or_fallback_apt_version() {
     return 0
   fi
 
-  # Track selection: -rc* tags come from cadt-test repo; non-rc from cadt repo.
+  # Track selection: prerelease tags come from prerelease/test repos; stable
+  # pins must not silently fall back to prerelease packages.
   local want_rc=false
-  [[ "$want" == *-rc* ]] && want_rc=true
+  is_prerelease_version "$want" && want_rc=true
 
   # sort -V -r already orders newest-first. Walk the list and pick the first
   # entry that is on the same track AND not newer than what was requested
@@ -1000,9 +1005,9 @@ verify_or_fallback_apt_version() {
   while IFS= read -r v; do
     [[ -z "$v" ]] && continue
     if [[ "$want_rc" == true ]]; then
-      [[ "$v" == *-rc* ]] || continue
+      is_prerelease_version "$v" || continue
     else
-      [[ "$v" == *-rc* ]] && continue
+      is_prerelease_version "$v" && continue
     fi
     # Skip versions newer than the user's pin — refusing to upgrade past the
     # requested version is what makes this a "fallback" and not a "drift".
@@ -1065,9 +1070,16 @@ setup_apt_repos() {
   local signed="deb [arch=${arch} signed-by=/usr/share/keyrings/chia.gpg]"
   # Remove any leftover *-test lists so a previous RC-targeted run can't pin
   # the new install to test sources unintentionally.
-  sudo rm -f /etc/apt/sources.list.d/chia-test.list /etc/apt/sources.list.d/cadt-test.list
+  sudo rm -f \
+    /etc/apt/sources.list.d/chia-test.list \
+    /etc/apt/sources.list.d/chia-blockchain-prerelease.list \
+    /etc/apt/sources.list.d/cadt-test.list
   echo "${signed} https://repo.chia.net/debian/ stable main" |
     sudo tee /etc/apt/sources.list.d/chia.list >/dev/null
+  if is_prerelease_version "$CHIA_APT_VER"; then
+    echo "${signed} https://repo.chia.net/prerelease/debian/ prerelease main" |
+      sudo tee /etc/apt/sources.list.d/chia-blockchain-prerelease.list >/dev/null
+  fi
   echo "${signed} https://repo.chia.net/cadt/debian/ stable main" |
     sudo tee /etc/apt/sources.list.d/cadt.list >/dev/null
   if [[ "$CADT_APT_VER" == *-rc* ]]; then
@@ -1227,7 +1239,7 @@ run_prompts() {
   validate_testing_no_public_mirror_network
 
   if [[ -z "$CHIA_APT_VER" ]]; then
-    prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER false
+    prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER true
   fi
   if [[ -z "$TOOLS_APT_VER" ]]; then
     prompt_version_choice "chia-tools" "$GH_API_TOOLS" CHIA_TOOLS_VERSION_CHOICE TOOLS_APT_VER false
@@ -1348,19 +1360,7 @@ extract_mnemonic_line() {
 
 format_mnemonic_for_display() {
   local mnemonic="$1"
-  local -a words
-  read -r -a words <<<"$mnemonic"
-
-  local i
-  for i in "${!words[@]}"; do
-    printf '%2d. %-12s' "$((i + 1))" "${words[$i]}"
-    if (((i + 1) % 4 == 0)); then
-      printf '\n'
-    fi
-  done
-  if ((${#words[@]} % 4 != 0)); then
-    printf '\n'
-  fi
+  printf '  %s\n' "$mnemonic"
 }
 
 add_chia_key_from_mnemonic() {
