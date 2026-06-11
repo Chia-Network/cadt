@@ -183,7 +183,7 @@ normalize_mnemonic_file() {
 
 validate_supported_apt_versions() {
   # chia-tools apt repos publish stable only. Chia CLI and CADT have separate
-  # prerelease/test repos toggled in setup_apt_repos when -rc packages are used.
+  # prerelease/test repos toggled in setup_apt_repos for prerelease packages.
   if is_prerelease_version "$TOOLS_APT_VER"; then
     die "chia-tools prerelease apt packages are not supported; choose stable or an explicit stable tag."
   fi
@@ -1082,7 +1082,7 @@ setup_apt_repos() {
   fi
   echo "${signed} https://repo.chia.net/cadt/debian/ stable main" |
     sudo tee /etc/apt/sources.list.d/cadt.list >/dev/null
-  if [[ "$CADT_APT_VER" == *-rc* ]]; then
+  if is_prerelease_version "$CADT_APT_VER"; then
     echo "${signed} https://repo.chia.net/cadt-test/debian/ stable main" |
       sudo tee /etc/apt/sources.list.d/cadt-test.list >/dev/null
   fi

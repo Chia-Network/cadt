@@ -821,6 +821,67 @@ EOF
   [[ -f "${capture}/cadt-test.list" ]]
 }
 
+@test "setup_apt_repos adds cadt-test repo for beta CADT version" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  local capture="${BATS_TEST_TMPDIR}/apt-lists"
+  mkdir -p "$bin" "$capture"
+
+  cat >"${bin}/curl" <<'EOF'
+#!/usr/bin/env bash
+printf 'fake-gpg-key'
+EOF
+  cat >"${bin}/dpkg" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--print-architecture" ]]; then
+  echo amd64
+  exit 0
+fi
+exit 1
+EOF
+  cat >"${bin}/gpg" <<'EOF'
+#!/usr/bin/env bash
+cat >/dev/null
+exit 0
+EOF
+  cat >"${bin}/apt-get" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+  cat >"${bin}/sudo" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "gpg" ]]; then
+  shift
+  exec gpg "$@"
+fi
+if [[ "${1:-}" == "rm" ]]; then
+  exit 0
+fi
+if [[ "${1:-}" == "tee" ]]; then
+  dest="${2##*/}"
+  cat >"${CAPTURE_APT_LIST_DIR}/${dest}"
+  exit 0
+fi
+if [[ "${1:-}" == "apt-get" ]]; then
+  shift
+  exec apt-get "$@"
+fi
+exec "$@"
+EOF
+  chmod +x "${bin}/curl" "${bin}/dpkg" "${bin}/gpg" "${bin}/apt-get" "${bin}/sudo"
+  PATH="${bin}:$PATH"
+  export CAPTURE_APT_LIST_DIR="$capture"
+  LOG_FILE="${BATS_TEST_TMPDIR}/install.log"
+
+  CHIA_APT_VER="2.7.1"
+  CADT_APT_VER="1.7.26-beta1"
+
+  setup_apt_repos
+
+  [[ ! -f "${capture}/chia-blockchain-prerelease.list" ]]
+  [[ -f "${capture}/cadt-test.list" ]]
+  [[ "$(cat "${capture}/cadt-test.list")" == *"https://repo.chia.net/cadt-test/debian/ stable main"* ]]
+}
+
 @test "format_gib_from_kib renders fractional GiB with one decimal" {
   # 7680 MiB == 7.5 GiB exact (matches the MIN_RAM_KIB constant)
   [[ "$(format_gib_from_kib $((7680 * 1024)))" == "7.5" ]]
