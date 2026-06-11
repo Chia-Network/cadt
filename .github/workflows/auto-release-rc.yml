@@ -35,8 +35,9 @@ jobs:
         run: |
           wait_for_release() {
             local tag="$1"
-            local attempts=30
+            local attempts=180
             local delay=60
+            local max_wait_minutes=$((attempts * delay / 60))
 
             for attempt in $(seq 1 "$attempts"); do
               if gh release view "$tag" > /dev/null 2>&1; then
@@ -45,7 +46,7 @@ jobs:
               fi
 
               if [ "$attempt" -eq "$attempts" ]; then
-                echo "Timed out waiting for release $tag after $attempts attempts."
+                echo "Timed out waiting for release $tag after ${max_wait_minutes} minutes."
                 return 1
               fi
 
