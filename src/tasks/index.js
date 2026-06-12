@@ -191,4 +191,27 @@ const stopAll = () => {
   });
 };
 
-export default { start, addJobToScheduler, jobRegistry, getJobStatus, stopAll };
+const pauseAll = () => {
+  Object.values(jobRegistry).forEach((job) => {
+    try {
+      job.stop();
+    } catch (error) {
+      logger.debug(`[SCHEDULER] pauseAll: could not stop job ${job.id}: ${error.message}`);
+    }
+  });
+};
+
+const resumeAll = () => {
+  Object.values(jobRegistry).forEach((job) => {
+    try {
+      const saved = job.schedule.runImmediately;
+      job.schedule.runImmediately = false;
+      job.start();
+      job.schedule.runImmediately = saved;
+    } catch (error) {
+      logger.debug(`[SCHEDULER] resumeAll: could not start job ${job.id}: ${error.message}`);
+    }
+  });
+};
+
+export default { start, addJobToScheduler, jobRegistry, getJobStatus, stopAll, pauseAll, resumeAll };

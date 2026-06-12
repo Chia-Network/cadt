@@ -14,6 +14,8 @@ import {
   addUuidIfNeeded,
   createV2TestProgramChain,
   verifyTestDatabaseConfiguration,
+  pauseSchedulerTasks,
+  resumeSchedulerTasks,
 } from '../utils/v2-test-helpers.js';
 
 describe('V2 Project API - Basic CRUD Tests', function () {
@@ -25,6 +27,10 @@ describe('V2 Project API - Basic CRUD Tests', function () {
   before(async function () {
     // Safety check: Verify test databases are being used
     await verifyTestDatabaseConfiguration();
+
+    // Pause background scheduler tasks to prevent mutex contention with
+    // the CRUD operations under test.
+    await pauseSchedulerTasks();
 
     console.log('Setting up V2 test environment...');
     await prepareV2Db();
@@ -41,8 +47,8 @@ describe('V2 Project API - Basic CRUD Tests', function () {
   });
 
   after(async function () {
+    await resumeSchedulerTasks();
     console.log('Cleaning up V2 test environment...');
-    // Cleanup handled by test framework
   });
 
   beforeEach(async function () {
