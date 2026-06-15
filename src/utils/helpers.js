@@ -51,6 +51,25 @@ export const optionallyPaginatedResponse = ({ count, rows }, page, limit) => {
   }
 };
 
+// `raw: true` rows return DATE columns as the dialect's stored value (SQLite
+// hands back a "YYYY-MM-DD HH:mm:ss.SSS +00:00" string) instead of a Date,
+// which would serialize differently from the prior Sequelize-instance ISO-8601
+// output. Re-normalize the given fields in place so the wire format is
+// unchanged. Mutates rows; unparseable/absent values are left as-is.
+export const normalizeRawTimestamps = (rows, fields) => {
+  for (const row of rows) {
+    for (const field of fields) {
+      const value = row[field];
+      if (value == null) continue;
+      const date = value instanceof Date ? value : new Date(value);
+      if (!Number.isNaN(date.getTime())) {
+        row[field] = date.toISOString();
+      }
+    }
+  }
+  return rows;
+};
+
 /**
  *
  * @param userColumns {string[]}

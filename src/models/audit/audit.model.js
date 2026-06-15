@@ -7,6 +7,7 @@ import ModelTypes from './audit.modeltypes.js';
 import findDuplicateIssuancesSql from './sql/find-duplicate-issuances.sql.js';
 import { Organization } from '../organizations/index.js';
 import { waitForSyncRegistriesTransaction } from '../../utils/model-utils.js';
+import { clearAuditCountCache } from '../../utils/audit-count-cache.js';
 
 class Audit extends Model {
   static async create(values, options) {
@@ -17,7 +18,9 @@ class Audit extends Model {
       };
       await AuditMirror.create(values, mirrorOptions);
     }, options?.mirrorTransaction);
-    return super.create(values, options);
+    const result = await super.create(values, options);
+    clearAuditCountCache();
+    return result;
   }
 
   static async bulkCreate(values, options) {
@@ -28,7 +31,9 @@ class Audit extends Model {
       };
       await AuditMirror.bulkCreate(values, mirrorOptions);
     }, options?.mirrorTransaction);
-    return super.bulkCreate(values, options);
+    const result = await super.bulkCreate(values, options);
+    clearAuditCountCache();
+    return result;
   }
 
   static async destroy(options) {
@@ -39,7 +44,9 @@ class Audit extends Model {
       };
       await AuditMirror.destroy(mirrorOptions);
     }, options?.mirrorTransaction);
-    return super.destroy(options);
+    const result = await super.destroy(options);
+    clearAuditCountCache();
+    return result;
   }
 
   static async upsert(values, options) {
@@ -50,7 +57,9 @@ class Audit extends Model {
       };
       await AuditMirror.upsert(values, mirrorOptions);
     }, options?.mirrorTransaction);
-    return super.upsert(values, options);
+    const result = await super.upsert(values, options);
+    clearAuditCountCache();
+    return result;
   }
 
   static async findConflicts() {
