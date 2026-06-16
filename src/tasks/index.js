@@ -203,13 +203,14 @@ const pauseAll = () => {
 
 const resumeAll = () => {
   Object.values(jobRegistry).forEach((job) => {
+    const saved = job.schedule.runImmediately;
     try {
-      const saved = job.schedule.runImmediately;
       job.schedule.runImmediately = false;
       job.start();
-      job.schedule.runImmediately = saved;
     } catch (error) {
       logger.debug(`[SCHEDULER] resumeAll: could not start job ${job.id}: ${error.message}`);
+    } finally {
+      job.schedule.runImmediately = saved;
     }
   });
 };
