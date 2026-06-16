@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
-import { prepareV2Db } from '../../../src/database/v2/index.js';
+import { prepareV2Db, sequelizeV2 } from '../../../src/database/v2/index.js';
 import { AuditV2, OrganizationsV2 } from '../../../src/models/v2/index.js';
 import { Audit } from '../../../src/models/index.js';
 import { createV2TestHomeOrg } from '../utils/v2-test-helpers.js';
@@ -435,7 +435,7 @@ describe('Phase 17.5: AuditV2 Comprehensive Integration Tests', function () {
         .query({
           orgUid: testOrgUid,
           page: 1,
-          limit: 10001, // Exceeds maximum of 10000
+          limit: 1001, // Exceeds maximum of 1000
         })
         .expect(400);
 
@@ -563,11 +563,13 @@ describe('Phase 17.5: AuditV2 Comprehensive Integration Tests', function () {
         .query({
           orgUid: testOrgUid,
           page: 1,
-          limit: 10000, // Maximum allowed
+          limit: 1000, // Maximum allowed
         })
         .expect(200);
 
-      expect(response.body.success).to.not.equal(false);
+      expect(response.body).to.have.property('page', 1);
+      expect(response.body).to.have.property('pageCount');
+      expect(response.body.data).to.be.an('array').with.length(1);
     });
 
     it('should accept valid order values (ASC)', async function () {
@@ -789,6 +791,90 @@ describe('Phase 17.5: AuditV2 Comprehensive Integration Tests', function () {
       expect(v2CountAfter).to.be.lessThan(v2CountBefore);
       // V1 count should remain unchanged
       expect(v1CountAfter).to.equal(v1CountBefore);
+    });
+  });
+
+  describe('GET /v2/audit - excludeChange parameter', function () {
+    beforeEach(async function () {
+      const now = Math.floor(Date.now() / 1000).toString();
+      await AuditV2.bulkCreate([
+        {
+          org_uid: testOrgUid,
+          registry_id: 'test-registry-1',
+          root_hash: 'hash1',
+          type: 'insert',
+          change: '{"test": "data1"}',
+          table: 'project',
+          onchain_confirmation_time_stamp: now,
+          generation: 1,
+        },
+      ]);
+    });
+
+    it('should include the change column by default', async function () {
+      const response = await supertest(app)
+        .get('/v2/audit')
+        .query({ orgUid: testOrgUid, page: 1, limit: 10 })
+        .expect(200);
+
+      expect(response.body.data).to.have.length(1);
+      expect(response.body.data[0]).to.have.property('change', '{"test": "data1"}');
+      // raw:true must not regress the timestamp wire format away from ISO-8601
+      expect(response.body.data[0].created_at).to.match(
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+      );
+    });
+
+    it('should omit the change column when excludeChange=true', async function () {
+      const response = await supertest(app)
+        .get('/v2/audit')
+        .query({ orgUid: testOrgUid, page: 1, limit: 10, excludeChange: true })
+        .expect(200);
+
+      expect(response.body.data).to.have.length(1);
+      expect(response.body.data[0]).to.not.have.property('change');
+      // Other columns are still present
+      expect(response.body.data[0]).to.have.property('generation', 1);
+    });
+
+    it('should preserve the paginated response shape', async function () {
+      const response = await supertest(app)
+        .get('/v2/audit')
+        .query({ orgUid: testOrgUid, page: 1, limit: 10, excludeChange: true })
+        .expect(200);
+
+      expect(response.body).to.have.property('page', 1);
+      expect(response.body).to.have.property('pageCount', 1);
+      expect(response.body).to.have.property('data').that.is.an('array');
+    });
+
+    it('should include the change column when excludeChange=false', async function () {
+      const response = await supertest(app)
+        .get('/v2/audit')
+        .query({ orgUid: testOrgUid, page: 1, limit: 10, excludeChange: false })
+        .expect(200);
+
+      expect(response.body.data).to.have.length(1);
+      expect(response.body.data[0]).to.have.property('change', '{"test": "data1"}');
+    });
+  });
+
+  describe('GET /v2/audit - query plan uses the covering index', function () {
+    it('serves the list query from the composite index without a temp sort', async function () {
+      const plan = await sequelizeV2.query(
+        `EXPLAIN QUERY PLAN SELECT * FROM audit
+         WHERE org_uid = :orgUid
+         ORDER BY onchain_confirmation_time_stamp DESC
+         LIMIT 1000`,
+        {
+          replacements: { orgUid: testOrgUid },
+          type: sequelizeV2.QueryTypes.SELECT,
+        },
+      );
+      const details = plan.map((row) => row.detail).join(' | ');
+
+      expect(details).to.include('audit_v2_org_uid_onchain_timestamp');
+      expect(details).to.not.match(/TEMP B-TREE/i);
     });
   });
 });

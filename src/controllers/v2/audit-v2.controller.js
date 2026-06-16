@@ -18,7 +18,7 @@ import {
  */
 export const findAll = async (req, res) => {
   try {
-    const { page, limit, orgUid, order } = req.query;
+    const { page, limit, orgUid, order, excludeChange } = req.query;
 
     // Validate pagination parameters BEFORE normalization to catch invalid values
     // This prevents normalization from masking validation errors
@@ -28,10 +28,10 @@ export const findAll = async (req, res) => {
 
     if (limit !== undefined && limit !== null && limit !== '') {
       const safeLimit = parseInt(limit, 10);
-      if (isNaN(safeLimit) || safeLimit < 1 || safeLimit > 10000) {
+      if (isNaN(safeLimit) || safeLimit < 1 || safeLimit > 1000) {
         return res.status(400).json({
           message: 'Cannot retrieve audit data',
-          error: 'Invalid limit value. Must be between 1 and 10000',
+          error: 'Invalid limit value. Must be between 1 and 1000',
           success: false,
         });
       }
@@ -64,6 +64,7 @@ export const findAll = async (req, res) => {
       validatedOrder,
       pagination.limit,
       validatedPage,
+      excludeChange,
     );
 
     return res.json(optionallyPaginatedResponse(auditResults, validatedPage, validatedLimit));

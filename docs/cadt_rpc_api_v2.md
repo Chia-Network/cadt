@@ -6298,8 +6298,9 @@ Options:
 |:---------:|:-----------------:|:------------------------------------------------------------------------------------------------------:|
 |  orgUid   | (Required) String |                            Display audit records matching this orgUid                            |
 |   order   |      String       |            Sort the audit records by `ASC` or `DESC` order based on confirmation timestamp             |
-|   limit   | (Required) Number | Limit the number of audit records to be displayed (must be used with page, eg `?page=5&limit=2`) |
+|   limit   | (Required) Number | Limit the number of audit records to be displayed, between 1 and 1000 (must be used with page, eg `?page=5&limit=2`) |
 |   page    | (Required) Number |       Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)       |
+| excludeChange | Boolean | When `true`, omit the large `change` column from each record to reduce response size (default `false`) |
 
 <a id="audit-get-examples"></a>
 ### GET Examples

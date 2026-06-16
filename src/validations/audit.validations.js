@@ -9,15 +9,16 @@ export const auditGetSchema = Joi.object()
       'number.max': 'Invalid page value. Must be between 1 and 100000',
       'any.required': 'page is required',
     }),
-    limit: Joi.number().integer().min(1).max(10000).required().messages({
+    limit: Joi.number().integer().min(1).max(1000).required().messages({
       'number.base': 'Invalid limit value. Must be a number',
       'number.integer': 'Invalid limit value. Must be an integer',
-      'number.min': 'Invalid limit value. Must be between 1 and 10000',
-      'number.max': 'Invalid limit value. Must be between 1 and 10000',
+      'number.min': 'Invalid limit value. Must be between 1 and 1000',
+      'number.max': 'Invalid limit value. Must be between 1 and 1000',
       'any.required': 'limit is required',
     }),
     orgUid: Joi.string().required(),
     order: Joi.string().optional(), // Allow any string, controller will default invalid values to DESC
+    excludeChange: Joi.boolean().optional(), // When true, omit the heavy `change` column from rows
   })
   .with('page', 'limit')
   .with('limit', 'page');
