@@ -4,7 +4,7 @@ import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
 import { RatingV2, ProjectV2, ProgramV2, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
-import { createV2TestHomeOrg, getV2HomeOrgId, resetV2StagingTable } from '../utils/v2-test-helpers.js';
+import { createV2TestHomeOrg, getV2HomeOrgId, resetV2StagingTable, pauseSchedulerTasks, resumeSchedulerTasks } from '../utils/v2-test-helpers.js';
 
 describe('Rating V2 Endpoint Integration Tests', function () {
   this.timeout(300000); // 5 minute timeout for comprehensive tests
@@ -13,6 +13,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
   let testProgramId;
 
   before(async function () {
+    await pauseSchedulerTasks();
     console.log('Setting up Rating V2 test environment...');
     await prepareV2Db();
 
@@ -46,6 +47,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
   });
 
   after(async function () {
+    await resumeSchedulerTasks();
     console.log('Rating V2 test cleanup completed');
   });
 
@@ -525,28 +527,27 @@ describe('Rating V2 Endpoint Integration Tests', function () {
         .post('/v2/rating')
         .send(ratingData);
 
+      expect(response.status, `POST /v2/rating failed: ${JSON.stringify(response.body)}`).to.equal(200);
+      expect(response.body.cadTrustRatingId, 'POST /v2/rating did not return cadTrustRatingId').to.exist;
+      expect(response.body.uuid, 'POST /v2/rating did not return uuid').to.exist;
       createdRatingId = response.body.cadTrustRatingId;
 
       // Commit the staging record so it exists for update
-      let stagingRecord = null;
-      if (response.body.uuid) {
-        stagingRecord = await StagingV2.findOne({
-          where: { uuid: response.body.uuid },
-        });
-      }
-      if (stagingRecord) {
-        await stagingRecord.update({ committed: true });
-        // Also create in main table for update test
-        await RatingV2.create({
-          cadTrustRatingId: createdRatingId,
-          ratingType: 'CDP',
-          ratingName: 'Rating to Update',
-          ratingValue: 'B+',
-          cadTrustProjectId: testProjectId,
-        });
-        // Clean up committed staging record to avoid pending commits errors
-        await stagingRecord.destroy();
-      }
+      const stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      expect(stagingRecord, 'Staging record not found after POST /v2/rating').to.exist;
+      await stagingRecord.update({ committed: true });
+      // Also create in main table for update test
+      await RatingV2.create({
+        cadTrustRatingId: createdRatingId,
+        ratingType: 'CDP',
+        ratingName: 'Rating to Update',
+        ratingValue: 'B+',
+        cadTrustProjectId: testProjectId,
+      });
+      // Clean up committed staging record to avoid pending commits errors
+      await stagingRecord.destroy();
     });
 
     it('should update a rating via API', async function () {
@@ -687,28 +688,27 @@ describe('Rating V2 Endpoint Integration Tests', function () {
         .post('/v2/rating')
         .send(ratingData);
 
+      expect(response.status, `POST /v2/rating failed: ${JSON.stringify(response.body)}`).to.equal(200);
+      expect(response.body.cadTrustRatingId, 'POST /v2/rating did not return cadTrustRatingId').to.exist;
+      expect(response.body.uuid, 'POST /v2/rating did not return uuid').to.exist;
       createdRatingId = response.body.cadTrustRatingId;
 
       // Commit the staging record so it exists for delete
-      let stagingRecord = null;
-      if (response.body.uuid) {
-        stagingRecord = await StagingV2.findOne({
-          where: { uuid: response.body.uuid },
-        });
-      }
-      if (stagingRecord) {
-        await stagingRecord.update({ committed: true });
-        // Also create in main table for delete test
-        await RatingV2.create({
-          cadTrustRatingId: createdRatingId,
-          ratingType: 'CDP',
-          ratingName: 'Rating to Delete',
-          ratingValue: 'C+',
-          cadTrustProjectId: testProjectId,
-        });
-        // Clean up committed staging record to avoid pending commits errors
-        await stagingRecord.destroy();
-      }
+      const stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      expect(stagingRecord, 'Staging record not found after POST /v2/rating').to.exist;
+      await stagingRecord.update({ committed: true });
+      // Also create in main table for delete test
+      await RatingV2.create({
+        cadTrustRatingId: createdRatingId,
+        ratingType: 'CDP',
+        ratingName: 'Rating to Delete',
+        ratingValue: 'C+',
+        cadTrustProjectId: testProjectId,
+      });
+      // Clean up committed staging record to avoid pending commits errors
+      await stagingRecord.destroy();
     });
 
     it('should delete a rating via API', async function () {
