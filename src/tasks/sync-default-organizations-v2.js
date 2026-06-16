@@ -7,6 +7,7 @@ import { getDefaultOrganizationListV2 } from '../utils/v2-data-loaders.js';
 import { MetaV2, OrganizationsV2 } from '../models/v2/index.js';
 import { loggerV2 } from '../config/logger.js';
 import { getConfig, getConfigV2 } from '../utils/config-loader.js';
+import { isGovernanceReady } from '../utils/governance-readiness.js';
 import {
   buildOrgListAllowSet,
   removeOrgsNotInOrgList,
@@ -120,7 +121,11 @@ const task = new Task('sync-default-organizations-v2', async () => {
         }
       });
 
-      if (onlyCadtSubscriptions) {
+      if (
+        onlyCadtSubscriptions &&
+        defaultOrgList.length > 0 &&
+        isGovernanceReady('v2')
+      ) {
         const { GOVERNANCE_BODY_ID } = getConfigV2().GOVERNANCE;
         const allowSet = buildOrgListAllowSet(defaultOrgList, GOVERNANCE_BODY_ID);
         await removeOrgsNotInOrgList({
@@ -134,15 +139,27 @@ const task = new Task('sync-default-organizations-v2', async () => {
           },
           unsubscribeFromOrganizationStores:
             OrganizationsV2.unsubscribeFromOrganizationStores.bind(OrganizationsV2),
+          isStoreUnsubscribed:
+            OrganizationsV2.areOrganizationStoresUnsubscribed.bind(OrganizationsV2),
           // Background removal of an off-orglist org is not a user deletion, so
           // it must not be recorded in the user-deleted suppression list.
           deleteAllOrganizationData: (orgUid) =>
             OrganizationsV2.deleteAllOrganizationData(orgUid, {
               recordUserDeleted: false,
+              useCommittedBatches: true,
             }),
           logger: loggerV2,
           apiVersionLabel: 'v2',
+          graceCycles: CONFIG.ONLY_CADT_SUBSCRIPTIONS_PURGE_GRACE_CYCLES,
         });
+      } else if (
+        onlyCadtSubscriptions &&
+        defaultOrgList.length > 0 &&
+        !isGovernanceReady('v2')
+      ) {
+        loggerV2.debug(
+          '[v2]: ONLY_CADT_SUBSCRIPTIONS: skipping off-orglist purge until governance sync completes',
+        );
       }
     }
   } catch (error) {

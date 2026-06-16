@@ -31,9 +31,17 @@ import {
 import {
   buildOrgListAllowSet,
   removeOrgsNotInOrgList,
+  resolvePurgeGraceCycles,
+  resetOrgListReconcileState,
 } from '../../../src/utils/orglist-subscription-reconcile.js';
 import { purgeV2OrganizationData } from '../../../src/utils/v2-org-data-purge.js';
 import { defaultConfig } from '../../../src/utils/defaultConfig.js';
+import { getConfig } from '../../../src/utils/config-loader.js';
+import {
+  isGovernanceReady,
+  markGovernanceReady,
+  resetGovernanceReadiness,
+} from '../../../src/utils/governance-readiness.js';
 import { v4 as uuidv4 } from 'uuid';
 
 const GOVERNANCE_BODY_ID = defaultConfig.V2.GOVERNANCE.GOVERNANCE_BODY_ID;
@@ -99,6 +107,8 @@ describe('orglist-subscription-reconcile (V2)', function () {
     // Clear the persisted user-deleted suppression list so recordUserDeleted
     // assertions don't leak across tests.
     await MetaV2.destroy({ where: {} });
+    resetOrgListReconcileState();
+    resetGovernanceReadiness();
   });
 
   describe('buildOrgListAllowSet', function () {
@@ -124,14 +134,16 @@ describe('orglist-subscription-reconcile (V2)', function () {
         organizationModel: OrganizationsV2,
         fieldNames,
         unsubscribeFromOrganizationStores: unsubscribeStub,
+        isStoreUnsubscribed: async () => true,
         deleteAllOrganizationData: deleteStub,
         logger: { info: () => {}, warn: () => {} },
+        graceCycles: 1,
       });
       expect(unsubscribeStub.called).to.equal(false);
       expect(deleteStub.called).to.equal(false);
     });
 
-    it('should remove orgs not on orglist but keep home and governance body', async function () {
+    it('should remove orgs after the grace cycle but keep home and governance body', async function () {
       await createOrg({ org_uid: ORG_A, name: 'Org A' });
       await createOrg({ org_uid: ORG_C, name: 'Org C' });
       await createOrg({ org_uid: GOVERNANCE_BODY_ID, name: 'Governance' });
@@ -148,15 +160,59 @@ describe('orglist-subscription-reconcile (V2)', function () {
         fieldNames,
         unsubscribeFromOrganizationStores: async (org) => {
           unsubscribed.push(org.org_uid);
+          await OrganizationsV2.update(
+            { subscribed: false },
+            { where: { org_uid: org.org_uid } },
+          );
         },
+        isStoreUnsubscribed: async () => true,
         deleteAllOrganizationData: async (orgUid) => {
           deleted.push(orgUid);
           await OrganizationsV2.destroy({ where: { org_uid: orgUid } });
         },
         logger: { info: () => {}, warn: () => {} },
+        graceCycles: 2,
       });
 
       expect(unsubscribed).to.deep.equal([ORG_C]);
+      expect(deleted).to.deep.equal([]);
+
+      await removeOrgsNotInOrgList({
+        defaultOrgList,
+        allowSet,
+        organizationModel: OrganizationsV2,
+        fieldNames,
+        unsubscribeFromOrganizationStores: async (org) => {
+          unsubscribed.push(org.org_uid);
+        },
+        isStoreUnsubscribed: async () => true,
+        deleteAllOrganizationData: async (orgUid) => {
+          deleted.push(orgUid);
+          await OrganizationsV2.destroy({ where: { org_uid: orgUid } });
+        },
+        logger: { info: () => {}, warn: () => {} },
+        graceCycles: 2,
+      });
+
+      expect(deleted).to.deep.equal([]);
+
+      await removeOrgsNotInOrgList({
+        defaultOrgList,
+        allowSet,
+        organizationModel: OrganizationsV2,
+        fieldNames,
+        unsubscribeFromOrganizationStores: async (org) => {
+          unsubscribed.push(org.org_uid);
+        },
+        isStoreUnsubscribed: async () => true,
+        deleteAllOrganizationData: async (orgUid) => {
+          deleted.push(orgUid);
+          await OrganizationsV2.destroy({ where: { org_uid: orgUid } });
+        },
+        logger: { info: () => {}, warn: () => {} },
+        graceCycles: 2,
+      });
+
       expect(deleted).to.deep.equal([ORG_C]);
 
       const orgA = await OrganizationsV2.findOne({ where: { org_uid: ORG_A }, raw: true });
@@ -185,16 +241,141 @@ describe('orglist-subscription-reconcile (V2)', function () {
         organizationModel: OrganizationsV2,
         fieldNames,
         unsubscribeFromOrganizationStores: unsubscribeStub,
+        isStoreUnsubscribed: async () => true,
         deleteAllOrganizationData: async (orgUid) => {
           deleted.push(orgUid);
           await OrganizationsV2.destroy({ where: { org_uid: orgUid } });
         },
         logger: { info: () => {}, warn: () => {} },
+        graceCycles: 1,
       });
 
       // Already unsubscribed -> DataLayer unsubscribe is skipped, but data is purged.
       expect(unsubscribeStub.called).to.equal(false);
       expect(deleted).to.deep.equal([ORG_C]);
+    });
+
+    it('should defer purge while the org stores are still subscribed', async function () {
+      await createOrg({ org_uid: ORG_C, name: 'Org C', subscribed: false });
+
+      const deleteStub = sinon.stub().resolves();
+      const defaultOrgList = [{ orgUid: ORG_A }];
+      await removeOrgsNotInOrgList({
+        defaultOrgList,
+        allowSet: buildOrgListAllowSet(defaultOrgList, GOVERNANCE_BODY_ID),
+        organizationModel: OrganizationsV2,
+        fieldNames,
+        unsubscribeFromOrganizationStores: sinon.stub().resolves(),
+        isStoreUnsubscribed: async () => false,
+        deleteAllOrganizationData: deleteStub,
+        logger: { info: () => {}, warn: () => {} },
+        graceCycles: 1,
+      });
+
+      expect(deleteStub.called).to.equal(false);
+      const orgC = await OrganizationsV2.findOne({ where: { org_uid: ORG_C }, raw: true });
+      expect(orgC).to.not.equal(null);
+    });
+
+    it('should restart the grace streak if unsubscribe confirmation is interrupted', async function () {
+      await createOrg({ org_uid: ORG_C, name: 'Org C', subscribed: false });
+
+      const deleted = [];
+      let isUnsubscribed = true;
+      let confirmationError = null;
+      const reconcile = () =>
+        removeOrgsNotInOrgList({
+          defaultOrgList: [{ orgUid: ORG_A }],
+          allowSet: buildOrgListAllowSet([{ orgUid: ORG_A }], GOVERNANCE_BODY_ID),
+          organizationModel: OrganizationsV2,
+          fieldNames,
+          unsubscribeFromOrganizationStores: async () => {},
+          isStoreUnsubscribed: async () => {
+            if (confirmationError) {
+              throw confirmationError;
+            }
+            return isUnsubscribed;
+          },
+          deleteAllOrganizationData: async (orgUid) => {
+            deleted.push(orgUid);
+          },
+          logger: { info: () => {}, warn: () => {}, debug: () => {} },
+          graceCycles: 2,
+        });
+
+      await reconcile();
+      expect(deleted).to.deep.equal([]);
+
+      confirmationError = new Error('datalayer unreachable');
+      await reconcile();
+      expect(deleted).to.deep.equal([]);
+
+      confirmationError = null;
+      await reconcile();
+      expect(deleted).to.deep.equal([]);
+
+      isUnsubscribed = false;
+      await reconcile();
+      expect(deleted).to.deep.equal([]);
+
+      isUnsubscribed = true;
+      await reconcile();
+      expect(deleted).to.deep.equal([]);
+
+      await reconcile();
+      expect(deleted).to.deep.equal([ORG_C]);
+    });
+
+    it('should clear the off-orglist streak when an org returns to the allow list', async function () {
+      await createOrg({ org_uid: ORG_C, name: 'Org C', subscribed: false });
+
+      const deleted = [];
+      await removeOrgsNotInOrgList({
+        defaultOrgList: [{ orgUid: ORG_A }],
+        allowSet: buildOrgListAllowSet([{ orgUid: ORG_A }], GOVERNANCE_BODY_ID),
+        organizationModel: OrganizationsV2,
+        fieldNames,
+        unsubscribeFromOrganizationStores: sinon.stub().resolves(),
+        isStoreUnsubscribed: async () => true,
+        deleteAllOrganizationData: async (orgUid) => {
+          deleted.push(orgUid);
+        },
+        logger: { info: () => {}, warn: () => {}, debug: () => {} },
+        graceCycles: 2,
+      });
+
+      await removeOrgsNotInOrgList({
+        defaultOrgList: [{ orgUid: ORG_A }, { orgUid: ORG_C }],
+        allowSet: buildOrgListAllowSet(
+          [{ orgUid: ORG_A }, { orgUid: ORG_C }],
+          GOVERNANCE_BODY_ID,
+        ),
+        organizationModel: OrganizationsV2,
+        fieldNames,
+        unsubscribeFromOrganizationStores: sinon.stub().resolves(),
+        isStoreUnsubscribed: async () => true,
+        deleteAllOrganizationData: async (orgUid) => {
+          deleted.push(orgUid);
+        },
+        logger: { info: () => {}, warn: () => {}, debug: () => {} },
+        graceCycles: 2,
+      });
+
+      await removeOrgsNotInOrgList({
+        defaultOrgList: [{ orgUid: ORG_A }],
+        allowSet: buildOrgListAllowSet([{ orgUid: ORG_A }], GOVERNANCE_BODY_ID),
+        organizationModel: OrganizationsV2,
+        fieldNames,
+        unsubscribeFromOrganizationStores: sinon.stub().resolves(),
+        isStoreUnsubscribed: async () => true,
+        deleteAllOrganizationData: async (orgUid) => {
+          deleted.push(orgUid);
+        },
+        logger: { info: () => {}, warn: () => {}, debug: () => {} },
+        graceCycles: 2,
+      });
+
+      expect(deleted).to.deep.equal([]);
     });
 
     it('should never remove a PENDING (in-progress) org record', async function () {
@@ -209,8 +390,10 @@ describe('orglist-subscription-reconcile (V2)', function () {
         organizationModel: OrganizationsV2,
         fieldNames,
         unsubscribeFromOrganizationStores: unsubscribeStub,
+        isStoreUnsubscribed: async () => true,
         deleteAllOrganizationData: deleteStub,
         logger: { info: () => {}, warn: () => {} },
+        graceCycles: 1,
       });
 
       expect(deleteStub.called).to.equal(false);
@@ -235,8 +418,10 @@ describe('orglist-subscription-reconcile (V2)', function () {
         unsubscribeFromOrganizationStores: async () => {
           throw new Error('datalayer unreachable');
         },
+        isStoreUnsubscribed: async () => true,
         deleteAllOrganizationData: deleteStub,
         logger: { info: () => {}, warn: () => {} },
+        graceCycles: 1,
       });
 
       expect(deleteStub.called).to.equal(false);
@@ -245,7 +430,12 @@ describe('orglist-subscription-reconcile (V2)', function () {
     });
 
     it('should purge synced registry data via deleteAllOrganizationData', async function () {
-      await createOrg({ org_uid: ORG_C, name: 'Org C', registry_id: 'reg-c' });
+      await createOrg({
+        org_uid: ORG_C,
+        name: 'Org C',
+        registry_id: 'reg-c',
+        subscribed: false,
+      });
       await ProjectV2.create({
         cadTrustProjectId: uuidv4(),
         orgUid: ORG_C,
@@ -261,9 +451,11 @@ describe('orglist-subscription-reconcile (V2)', function () {
         organizationModel: OrganizationsV2,
         fieldNames,
         unsubscribeFromOrganizationStores: async () => {},
+        isStoreUnsubscribed: async () => true,
         deleteAllOrganizationData:
           OrganizationsV2.deleteAllOrganizationData.bind(OrganizationsV2),
         logger: { info: () => {}, warn: () => {} },
+        graceCycles: 1,
       });
 
       const orgC = await OrganizationsV2.findOne({ where: { org_uid: ORG_C }, raw: true });
@@ -277,7 +469,7 @@ describe('orglist-subscription-reconcile (V2)', function () {
     // Number of rows seeded by seedOrgGraph for one org (one row per table
     // below). Kept in sync with the seed body so the exact deleted-row count
     // can be asserted.
-    const SEEDED_ROWS_PER_ORG = 20;
+    const SEEDED_ROWS_PER_ORG = 22;
 
     // Build a full registry graph for an org: a project plus every
     // project-scoped child, the verification -> issuance chain, a unit with a
@@ -288,6 +480,8 @@ describe('orglist-subscription-reconcile (V2)', function () {
       const verificationId = uuidv4();
       const unitId = uuidv4();
       const aefT1SubmissionId = uuidv4();
+      const aefT5Id = uuidv4();
+      const aefT2Id = uuidv4();
 
       await ProjectV2.create({
         cadTrustProjectId: projectId,
@@ -389,7 +583,7 @@ describe('orglist-subscription-reconcile (V2)', function () {
         aefT1SubmissionSubmissionDate: '2024-01-01',
       });
       await AefT5AuthorizedEntitiesV2.create({
-        cadTrustAefT5AuthorizedEntitiesId: uuidv4(),
+        cadTrustAefT5AuthorizedEntitiesId: aefT5Id,
         aefT5AuthorizedEntitiesAuthorizationDate: '2024-01-01',
         aefT5AuthorizedEntitiesName: `entity-${suffix}`,
         aefT5AuthorizedEntitiesId: `t5-${suffix}`,
@@ -399,23 +593,57 @@ describe('orglist-subscription-reconcile (V2)', function () {
         cadTrustAefT1SubmissionId: aefT1SubmissionId,
       });
       await AefT2AuthorizationsV2.create({
-        cadTrustAefT2AuthorizationsId: uuidv4(),
+        cadTrustAefT2AuthorizationsId: aefT2Id,
         aefT2AuthorizationsId: `t2-${suffix}`,
         aefT2AuthorizationsDate: '2024-01-01',
         aefT2AuthorizationsCooperativeApproachId: `coop2-${suffix}`,
         aefT2AuthorizationsAuthorizedPartyId: `party2-${suffix}`,
         cadTrustProjectId: projectId,
         cadTrustUnitId: unitId,
+        cadTrustAefT5AuthorizedEntitiesId: aefT5Id,
+      });
+      await AefT3ActionsV2.create({
+        cadTrustAefT3ActionsId: uuidv4(),
+        aefT3ActionsDate: '2024-01-01',
+        aefT3ActionsCoopoerativeApproachId: `coop3-${suffix}`,
+        aefT3ActionsAuthorizationId: `auth3-${suffix}`,
+        aefT3ActionsFirstTransferringPartyId: `first3-${suffix}`,
+        aefT3ActionsPartyItmoRegistryId: `registry3-${suffix}`,
+        aefT3ActionsItmoFirstId: `itmo-first-${suffix}`,
+        aefT3ActionsItmoLastId: `itmo-last-${suffix}`,
+        aefT3ActionsUnitRegistryId: `unit-registry3-${suffix}`,
+        aefT3ActionsUnitFirstId: `unit-first-${suffix}`,
+        aefT3ActionsUnitLastId: `unit-last-${suffix}`,
+        aefT3ActionsQuantityTCo2: 1,
+        aefT3ActionsVintageYear: 2024,
+        aefT3ActionsTransferringPartyId: `transfer3-${suffix}`,
+        aefT3ActionsAcquiringPartyId: `acquire3-${suffix}`,
+        cadTrustAefT2AuthorizationsId: aefT2Id,
+      });
+      await AefT4HoldingsV2.create({
+        cadTrustAefT4HoldingsId: uuidv4(),
+        aefT4HoldingsCoopoerativeApproachId: `coop4-${suffix}`,
+        aefT4HoldingsAuthorizationId: `auth4-${suffix}`,
+        aefT4HoldingsFirstTransferringPartyId: `first4-${suffix}`,
+        aefT4HoldingsPartyItmoRegistryId: `registry4-${suffix}`,
+        aefT4HoldingsItmoFirstId: `itmo-first4-${suffix}`,
+        aefT4HoldingsItmoLastId: `itmo-last4-${suffix}`,
+        aefT4HoldingsUnitRegistryId: `unit-registry4-${suffix}`,
+        aefT4HoldingsUnitFirstId: `unit-first4-${suffix}`,
+        aefT4HoldingsUnitLastId: `unit-last4-${suffix}`,
+        aefT4HoldingsQuantityTCo2: 1,
+        aefT4HoldingsVintageYear: 2024,
+        cadTrustAefT2AuthorizationsId: aefT2Id,
       });
       await FilestoreV2.create({
         sha256: `sha-${suffix}`,
         org_uid: orgUid,
       });
 
-      return { projectId, verificationId, unitId, aefT1SubmissionId };
+      return { projectId, verificationId, unitId, aefT1SubmissionId, aefT2Id };
     };
 
-    const countOrgRows = async (orgUid, projectId, verificationId, unitId) => ({
+    const countOrgRows = async (orgUid, projectId, verificationId, unitId, aefT2Id) => ({
       projects: await ProjectV2.count({ where: { orgUid } }),
       units: await UnitV2.count({ where: { orgUid } }),
       methodologies: await MethodologyV2.count({ where: { orgUid } }),
@@ -440,6 +668,8 @@ describe('orglist-subscription-reconcile (V2)', function () {
       unitLabels: await UnitLabelV2.count({ where: { cadTrustUnitId: unitId } }),
       aefT5: await AefT5AuthorizedEntitiesV2.count({ where: { cadTrustProjectId: projectId } }),
       aefT2: await AefT2AuthorizationsV2.count({ where: { cadTrustProjectId: projectId } }),
+      aefT3: await AefT3ActionsV2.count({ where: { cadTrustAefT2AuthorizationsId: aefT2Id } }),
+      aefT4: await AefT4HoldingsV2.count({ where: { cadTrustAefT2AuthorizationsId: aefT2Id } }),
     });
 
     it('should delete every traced record of the removed org and preserve other orgs', async function () {
@@ -454,6 +684,7 @@ describe('orglist-subscription-reconcile (V2)', function () {
         removed.projectId,
         removed.verificationId,
         removed.unitId,
+        removed.aefT2Id,
       );
       for (const [table, count] of Object.entries(removedCounts)) {
         expect(count, `removed org still has ${table}`).to.equal(0);
@@ -464,6 +695,7 @@ describe('orglist-subscription-reconcile (V2)', function () {
         kept.projectId,
         kept.verificationId,
         kept.unitId,
+        kept.aefT2Id,
       );
       for (const [table, count] of Object.entries(keptCounts)) {
         expect(count, `other org lost ${table}`).to.equal(1);
@@ -501,6 +733,85 @@ describe('orglist-subscription-reconcile (V2)', function () {
       ).to.equal(0);
     });
 
+    it('should delete AEF rows owned through T5 and T2 parent links', async function () {
+      const aefT1SubmissionId = uuidv4();
+      await AefT1SubmissionV2.create({
+        cadTrustAefT1SubmissionId: aefT1SubmissionId,
+        orgUid: ORG_C,
+        aefT1SubmissionParty: 'party-c',
+        aefT1SubmissionVersion: '1',
+        aefT1SubmissionReportYear: 2024,
+        aefT1SubmissionSubmissionDate: '2024-01-01',
+      });
+      const aefT5Id = uuidv4();
+      await AefT5AuthorizedEntitiesV2.create({
+        cadTrustAefT5AuthorizedEntitiesId: aefT5Id,
+        aefT5AuthorizedEntitiesAuthorizationDate: '2024-01-01',
+        aefT5AuthorizedEntitiesName: 'entity-c',
+        aefT5AuthorizedEntitiesId: 't5-parent-c',
+        aefT5AuthorizedEntitiesCooperativeApproachId: 'coop-c',
+        cadTrustAefT1SubmissionId: aefT1SubmissionId,
+      });
+      const aefT2Id = uuidv4();
+      await AefT2AuthorizationsV2.create({
+        cadTrustAefT2AuthorizationsId: aefT2Id,
+        aefT2AuthorizationsId: 't2-child-c',
+        aefT2AuthorizationsDate: '2024-01-01',
+        aefT2AuthorizationsCooperativeApproachId: 'coop2-c',
+        aefT2AuthorizationsAuthorizedPartyId: 'party2-c',
+        cadTrustAefT5AuthorizedEntitiesId: aefT5Id,
+      });
+      const aefT3Id = uuidv4();
+      await AefT3ActionsV2.create({
+        cadTrustAefT3ActionsId: aefT3Id,
+        aefT3ActionsDate: '2024-01-01',
+        aefT3ActionsCoopoerativeApproachId: 'coop3-c',
+        aefT3ActionsAuthorizationId: 'auth3-c',
+        aefT3ActionsFirstTransferringPartyId: 'first3-c',
+        aefT3ActionsPartyItmoRegistryId: 'registry3-c',
+        aefT3ActionsItmoFirstId: 'itmo-first-c',
+        aefT3ActionsItmoLastId: 'itmo-last-c',
+        aefT3ActionsUnitRegistryId: 'unit-registry3-c',
+        aefT3ActionsUnitFirstId: 'unit-first-c',
+        aefT3ActionsUnitLastId: 'unit-last-c',
+        aefT3ActionsQuantityTCo2: 1,
+        aefT3ActionsVintageYear: 2024,
+        aefT3ActionsTransferringPartyId: 'transfer3-c',
+        aefT3ActionsAcquiringPartyId: 'acquire3-c',
+        cadTrustAefT2AuthorizationsId: aefT2Id,
+      });
+      const aefT4Id = uuidv4();
+      await AefT4HoldingsV2.create({
+        cadTrustAefT4HoldingsId: aefT4Id,
+        aefT4HoldingsCoopoerativeApproachId: 'coop4-c',
+        aefT4HoldingsAuthorizationId: 'auth4-c',
+        aefT4HoldingsFirstTransferringPartyId: 'first4-c',
+        aefT4HoldingsPartyItmoRegistryId: 'registry4-c',
+        aefT4HoldingsItmoFirstId: 'itmo-first4-c',
+        aefT4HoldingsItmoLastId: 'itmo-last4-c',
+        aefT4HoldingsUnitRegistryId: 'unit-registry4-c',
+        aefT4HoldingsUnitFirstId: 'unit-first4-c',
+        aefT4HoldingsUnitLastId: 'unit-last4-c',
+        aefT4HoldingsQuantityTCo2: 1,
+        aefT4HoldingsVintageYear: 2024,
+        cadTrustAefT2AuthorizationsId: aefT2Id,
+      });
+
+      await purgeV2OrganizationData(ORG_C, { batchSize: 1 });
+
+      expect(
+        await AefT2AuthorizationsV2.count({
+          where: { cadTrustAefT2AuthorizationsId: aefT2Id },
+        }),
+      ).to.equal(0);
+      expect(
+        await AefT3ActionsV2.count({ where: { cadTrustAefT3ActionsId: aefT3Id } }),
+      ).to.equal(0);
+      expect(
+        await AefT4HoldingsV2.count({ where: { cadTrustAefT4HoldingsId: aefT4Id } }),
+      ).to.equal(0);
+    });
+
     it('should purge standalone org data even when the org has no projects or units', async function () {
       await MethodologyV2.create({
         cadTrustMethodologyId: uuidv4(),
@@ -515,6 +826,22 @@ describe('orglist-subscription-reconcile (V2)', function () {
       expect(deletedCount).to.equal(2);
       expect(await MethodologyV2.count({ where: { orgUid: ORG_C } })).to.equal(0);
       expect(await FilestoreV2.count({ where: { org_uid: ORG_C } })).to.equal(0);
+    });
+
+    it('should delete V2 org data across multiple batches', async function () {
+      await seedOrgGraph(ORG_C, 'batch-c-1');
+      await seedOrgGraph(ORG_C, 'batch-c-2');
+      await seedOrgGraph(ORG_A, 'batch-a-1');
+
+      const deletedCount = await purgeV2OrganizationData(ORG_C, {
+        batchSize: 1,
+      });
+
+      expect(deletedCount).to.equal(SEEDED_ROWS_PER_ORG * 2);
+      expect(await ProjectV2.count({ where: { orgUid: ORG_C } })).to.equal(0);
+      expect(await VerificationV2.count()).to.equal(1);
+      expect(await IssuanceV2.count()).to.equal(1);
+      expect(await ProjectV2.count({ where: { orgUid: ORG_A } })).to.equal(1);
     });
 
     it('should be a no-op for a falsy orgUid', async function () {
@@ -547,6 +874,35 @@ describe('orglist-subscription-reconcile (V2)', function () {
 
       const userDeleted = (await MetaV2.getUserDeletedOrgUids()) || [];
       expect(userDeleted).to.not.include(ORG_C);
+    });
+
+    it('should delete V2 org data through the full model path across multiple batches', async function () {
+      const config = getConfig();
+      const originalBatchSize = config.APP.ORG_PURGE_DELETE_BATCH_SIZE;
+      config.APP.ORG_PURGE_DELETE_BATCH_SIZE = 1;
+      try {
+        await createOrg({ org_uid: ORG_C, name: 'Org C' });
+        for (let i = 0; i < 3; i += 1) {
+          await ProjectV2.create({
+            cadTrustProjectId: uuidv4(),
+            orgUid: ORG_C,
+            projectRegistryName: `Registry ${i}`,
+            projectId: `full-delete-proj-${i}`,
+            projectName: `Project ${i}`,
+          });
+        }
+
+        const deletedCount = await OrganizationsV2.deleteAllOrganizationData(ORG_C, {
+          recordUserDeleted: false,
+          useCommittedBatches: true,
+        });
+
+        expect(deletedCount).to.be.greaterThan(3);
+        expect(await ProjectV2.count({ where: { orgUid: ORG_C } })).to.equal(0);
+        expect(await OrganizationsV2.count({ where: { org_uid: ORG_C } })).to.equal(0);
+      } finally {
+        config.APP.ORG_PURGE_DELETE_BATCH_SIZE = originalBatchSize;
+      }
     });
 
     it('should record the org as user-deleted by default', async function () {
@@ -605,23 +961,59 @@ describe('orglist-subscription-reconcile (V2)', function () {
         organizationModel: OrganizationsV2,
         fieldNames,
         unsubscribeFromOrganizationStores: async () => {},
+        isStoreUnsubscribed: async () => true,
         deleteAllOrganizationData: async (orgUid) => {
           await OrganizationsV2.destroy({ where: { org_uid: orgUid } });
         },
         logger: { info: infoSpy, warn: warnSpy },
+        graceCycles: 1,
       });
 
       const summaryWarn = warnSpy
         .getCalls()
-        .some((call) => /reconcile removed 5 organization/.test(call.args[0]));
+        .some((call) =>
+          /handled off-orgList organization\(s\): 5 removed, 0 deferred, 0 failed/.test(
+            call.args[0],
+          )
+        );
       expect(summaryWarn).to.equal(true);
       sinon.restore();
     });
   });
 
   describe('defaultConfig', function () {
+    it('should report whether a V2 governance download included orgList', async function () {
+      const withoutOrgList = await GovernanceV2.upsertGovernanceDownload('gov-store', {
+        glossary: '[]',
+        pickList: '[]',
+      });
+      expect(withoutOrgList.hasOrgList).to.equal(false);
+
+      const withOrgList = await GovernanceV2.upsertGovernanceDownload('gov-store', {
+        orgList: '[]',
+        glossary: '[]',
+        pickList: '[]',
+      });
+      expect(withOrgList.hasOrgList).to.equal(true);
+    });
+
+    it('should clear V2 governance readiness when sync does not provide orgList', async function () {
+      markGovernanceReady('v2');
+
+      await GovernanceV2.sync();
+
+      expect(isGovernanceReady('v2')).to.equal(false);
+    });
+
     it('should default ONLY_CADT_SUBSCRIPTIONS to true', function () {
       expect(defaultConfig.APP.ONLY_CADT_SUBSCRIPTIONS).to.equal(true);
+      expect(defaultConfig.APP.ONLY_CADT_SUBSCRIPTIONS_PURGE_GRACE_CYCLES).to.equal(3);
+      expect(defaultConfig.APP.ORG_PURGE_DELETE_BATCH_SIZE).to.equal(5000);
+      expect(resolvePurgeGraceCycles('invalid')).to.equal(3);
+      expect(resolvePurgeGraceCycles('2cycles')).to.equal(3);
+      expect(resolvePurgeGraceCycles('2.5')).to.equal(3);
+      expect(resolvePurgeGraceCycles(0)).to.equal(3);
+      expect(resolvePurgeGraceCycles(2)).to.equal(2);
     });
   });
 });

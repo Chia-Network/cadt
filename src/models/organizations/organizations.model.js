@@ -10,6 +10,10 @@ import wallet from '../../datalayer/wallet.js';
 import { logger } from '../../config/logger';
 import { Audit, FileStore, Meta, ModelKeys, Staging } from '../';
 import { getConfig } from '../../utils/config-loader';
+import {
+  destroyByPrimaryKeyBatches,
+  resolveDeleteBatchSize,
+} from '../../utils/batched-delete.js';
 const { USE_SIMULATOR, AUTO_SUBSCRIBE_FILESTORE } = getConfig().APP;
 
 import ModelTypes from './organizations.modeltypes.js';
@@ -1588,20 +1592,11 @@ class Organization extends Model {
       throw new Error('failed to get subscriptions from datalayer');
     }
 
-    const storesToUnsubscribe = [
-      organizationStores.orgUid,
-      organizationStores.dataModelVersionStoreId,
-      organizationStores.registryId,
-    ];
+    const storesToUnsubscribe =
+      Organization.getOrganizationStoreIds(organizationStores);
     const failedUnsubscribes = [];
 
-    storesToUnsubscribe.forEach((storeId) => {
-      if (!storeId) {
-        const message = `organization stores cannot be nil. found nil store id associated with organization ${organizationStores.orgUid}`;
-        logger.error(message);
-        throw new Error(message);
-      }
-    });
+    Organization.assertOrganizationStoreIdsPresent(organizationStores);
 
     for (const storeId of storesToUnsubscribe) {
       if (subscriptionIds.includes(storeId)) {
@@ -1638,6 +1633,36 @@ class Organization extends Model {
     }
   }
 
+  static getOrganizationStoreIds(organizationStores) {
+    return [
+      organizationStores.orgUid,
+      organizationStores.dataModelVersionStoreId,
+      organizationStores.registryId,
+    ];
+  }
+
+  static assertOrganizationStoreIdsPresent(organizationStores) {
+    Organization.getOrganizationStoreIds(organizationStores).forEach((storeId) => {
+      if (!storeId) {
+        throw new Error(
+          `organization stores cannot be nil. found nil store id associated with organization ${organizationStores.orgUid}`,
+        );
+      }
+    });
+  }
+
+  static async areOrganizationStoresUnsubscribed(organizationStores) {
+    const { storeIds: subscriptionIds, success } = await getSubscriptions();
+    if (!success) {
+      throw new Error('failed to get subscriptions from datalayer');
+    }
+
+    Organization.assertOrganizationStoreIdsPresent(organizationStores);
+    const subscribedStoreIds = new Set(subscriptionIds);
+    return Organization.getOrganizationStoreIds(organizationStores)
+      .every((storeId) => !subscribedStoreIds.has(storeId));
+  }
+
   /**
    * removes all records of an organization from all models with an `orgUid` column
    * @param orgUid
@@ -1651,11 +1676,23 @@ class Organization extends Model {
    *   recorded in the meta user-deleted list so default-org sync will not
    *   re-import it. Background orglist reconcile passes `false`: an org removed
    *   because it left the governance orgList is not a user deletion.
+   * @param {boolean} [options.useCommittedBatches=false] - When true, each
+   *   purge batch is committed independently so background purges release SQLite
+   *   write locks between batches. Manual API deletes keep one transaction by
+   *   default.
+   * @returns {Promise<number>} total number of local database rows deleted
    */
   static async deleteAllOrganizationData(
     orgUid,
-    { skipStagingTruncate = false, recordUserDeleted = true } = {},
+    {
+      skipStagingTruncate = false,
+      recordUserDeleted = true,
+      useCommittedBatches = false,
+    } = {},
   ) {
+    const batchSize = resolveDeleteBatchSize(
+      getConfig().APP.ORG_PURGE_DELETE_BATCH_SIZE,
+    );
     logger.verbose('[v1]: acquiring add/delete org mutex to delete organization');
     const releaseAddDeleteMutex =
       await addOrDeleteOrganizationRecordMutex.acquire();
@@ -1666,54 +1703,101 @@ class Organization extends Model {
     const releaseAuditTransactionMutex =
       await processingSyncRegistriesTransactionMutex.acquire();
 
-    // Release both mutexes exactly once on every exit path.
     let mutexesReleased = false;
     const releaseMutexes = () => {
-      if (mutexesReleased) {
-        return;
+      if (!mutexesReleased) {
+        mutexesReleased = true;
+        releaseAuditTransactionMutex();
+        releaseAddDeleteMutex();
       }
-      mutexesReleased = true;
-      releaseAddDeleteMutex();
-      releaseAuditTransactionMutex();
     };
 
-    // Create the transaction inside the try so a failure to open it still
-    // routes through releaseMutexes() rather than leaking the locks.
-    let transaction;
+    let sharedTransaction;
+
+    const runDeleteBatch = async (operation) => {
+      if (sharedTransaction) {
+        return await operation(sharedTransaction);
+      }
+
+      let transaction;
+      try {
+        transaction = await sequelize.transaction();
+        const result = await operation(transaction);
+        await transaction.commit();
+        return result;
+      } catch (error) {
+        try {
+          if (transaction) {
+            await transaction.rollback();
+          }
+        } catch (rollbackError) {
+          logger.error(
+            `[v1]: rollback failed while deleting organization ${orgUid}: ${rollbackError.message}`,
+          );
+        }
+        throw error;
+      }
+    };
+
+    let deletedRowCount = 0;
     try {
-      transaction = await sequelize.transaction();
-      await Organization.destroy({ where: { orgUid }, transaction });
+      if (!useCommittedBatches) {
+        sharedTransaction = await sequelize.transaction();
+      }
 
       for (const modelKey of Object.keys(ModelKeys)) {
-        await ModelKeys[modelKey].destroy({ where: { orgUid }, transaction });
+        deletedRowCount += await destroyByPrimaryKeyBatches(ModelKeys[modelKey], {
+          where: { orgUid },
+          batchSize,
+          transactionRunner: runDeleteBatch,
+        });
       }
 
       if (!skipStagingTruncate) {
-        await Staging.truncate({ transaction });
+        await runDeleteBatch((transaction) =>
+          Staging.truncate({ transaction }),
+        );
       }
-      await FileStore.destroy({ where: { orgUid }, transaction });
-      await Audit.destroy({ where: { orgUid }, transaction });
+      deletedRowCount += await destroyByPrimaryKeyBatches(FileStore, {
+        where: { orgUid },
+        batchSize,
+        transactionRunner: runDeleteBatch,
+      });
+      deletedRowCount += await destroyByPrimaryKeyBatches(Audit, {
+        where: { orgUid },
+        batchSize,
+        transactionRunner: runDeleteBatch,
+        findOptions: { hooks: false },
+      });
+      deletedRowCount += await destroyByPrimaryKeyBatches(Organization, {
+        where: { orgUid },
+        batchSize,
+        transactionRunner: runDeleteBatch,
+      });
 
-      await transaction.commit();
+      if (sharedTransaction) {
+        await sharedTransaction.commit();
+        sharedTransaction = null;
+      }
     } catch (error) {
-      logger.error(
-        `failed to delete all db records for organization ${orgUid}, rolling back changes. Error: ${error.message}`,
-      );
-      // Defensive rollback: a throwing rollback must not bypass the mutex
-      // release and leak the locks. transaction may be undefined if it failed
-      // to open.
       try {
-        if (transaction) {
-          await transaction.rollback();
+        if (sharedTransaction) {
+          await sharedTransaction.rollback();
+          sharedTransaction = null;
         }
       } catch (rollbackError) {
         logger.error(
           `[v1]: rollback failed while deleting organization ${orgUid}: ${rollbackError.message}`,
         );
       }
+      logger.error(
+        `[v1]: failed to delete all db records for organization ${orgUid}. Error: ${error.message}`,
+      );
       releaseMutexes();
       throw new Error(
-        `an error occurred while deleting records corresponding to organization ${orgUid}. no changes have been made`,
+        useCommittedBatches
+          ? `an error occurred while deleting records corresponding to organization ${orgUid}. some committed batches may be retried on the next run`
+          : `an error occurred while deleting records corresponding to organization ${orgUid}`,
       );
     }
 
@@ -1729,6 +1813,8 @@ class Organization extends Model {
     } finally {
       releaseMutexes();
     }
+
+    return deletedRowCount;
   }
 
   /**
