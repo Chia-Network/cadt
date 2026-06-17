@@ -579,12 +579,12 @@ describe('orglist-subscription-reconcile (V1)', function () {
     expect(isGovernanceReady('v1')).to.equal(false);
   });
 
-  it('should clear V1 governance readiness when sync does not provide orgList', async function () {
-    markGovernanceReady('v1');
+  it('should mark V1 governance ready after fallback governance sync', async function () {
+    markGovernanceNotReady('v1');
 
     await Governance.sync();
 
-    expect(isGovernanceReady('v1')).to.equal(false);
+    expect(isGovernanceReady('v1')).to.equal(true);
   });
 
   it('should report whether a governance download included orgList', async function () {

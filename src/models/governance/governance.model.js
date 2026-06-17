@@ -199,6 +199,7 @@ class Governance extends Model {
         metaValue: JSON.stringify(PickListStub),
         confirmed: true,
       });
+      markGovernanceReady('v1');
       return;
     }
 
