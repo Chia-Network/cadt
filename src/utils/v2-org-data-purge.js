@@ -2,6 +2,10 @@
 
 import { Op } from 'sequelize';
 import {
+  destroyByPrimaryKeyBatches,
+  resolveDeleteBatchSize,
+} from './batched-delete.js';
+import {
   ProjectV2,
   UnitV2,
   VerificationV2,
@@ -26,6 +30,16 @@ import {
   FilestoreV2,
 } from '../models/v2/index.js';
 
+const chunkValues = (values, batchSize) => {
+  const chunks = [];
+  for (let index = 0; index < values.length; index += batchSize) {
+    chunks.push(values.slice(index, index + batchSize));
+  }
+  return chunks;
+};
+
+const uniqueValues = (values) => [...new Set(values.filter(Boolean))];
+
 /**
  * Hard-delete every V2 registry record owned by an organization.
  *
@@ -48,18 +62,79 @@ import {
  * cascade: this is a local-only "remove the whole org from this node" purge,
  * and the caller has opted out of reference checks.
  *
- * Organization and audit rows are intentionally NOT removed here — the caller
- * (OrganizationsV2.deleteAllOrganizationData) removes those alongside its meta
- * bookkeeping within the same transaction.
+ * Organization and audit rows are intentionally NOT removed here. The caller
+ * removes them after registry data, deleting the organization row last so an
+ * interrupted purge remains visible and can be retried.
  *
  * @param {string} orgUid
- * @param {{ transaction?: import('sequelize').Transaction }} [options]
+ * @param {{ transaction?: import('sequelize').Transaction, batchSize?: number, transactionRunner?: Function }} [options]
  * @returns {Promise<number>} total number of registry rows deleted
  */
-export const purgeV2OrganizationData = async (orgUid, { transaction } = {}) => {
+export const purgeV2OrganizationData = async (
+  orgUid,
+  { transaction, batchSize, transactionRunner } = {},
+) => {
   if (!orgUid) {
     return 0;
   }
+  const deleteBatchSize = resolveDeleteBatchSize(batchSize);
+
+  const destroyBatches = (model, where) =>
+    destroyByPrimaryKeyBatches(model, {
+      where,
+      batchSize: deleteBatchSize,
+      transactionRunner:
+        transactionRunner ||
+        (transaction
+          ? (operation) => operation(transaction)
+          : undefined),
+    });
+
+  const destroyByIdChunks = async (model, attributeName, values) => {
+    let deleted = 0;
+    for (const chunk of chunkValues(values, deleteBatchSize)) {
+      deleted += await destroyBatches(model, {
+        [attributeName]: { [Op.in]: chunk },
+      });
+    }
+    return deleted;
+  };
+
+  const findIdsByChunks = async (
+    model,
+    lookupAttributeName,
+    lookupValues,
+    idAttributeName,
+  ) => {
+    const ids = [];
+    for (const chunk of chunkValues(lookupValues, deleteBatchSize)) {
+      const rows = await model.findAll({
+        where: { [lookupAttributeName]: { [Op.in]: chunk } },
+        attributes: [idAttributeName],
+        raw: true,
+        transaction,
+      });
+      ids.push(...rows.map((row) => row[idAttributeName]).filter(Boolean));
+    }
+    return ids;
+  };
+
+  const findIdsByAnyRelationship = async (model, idAttributeName, relationships) => {
+    const ids = [];
+    for (const [lookupAttributeName, lookupValues] of relationships) {
+      if (lookupValues.length > 0) {
+        ids.push(
+          ...(await findIdsByChunks(
+            model,
+            lookupAttributeName,
+            lookupValues,
+            idAttributeName,
+          )),
+        );
+      }
+    }
+    return uniqueValues(ids);
+  };
 
   const projects = await ProjectV2.findAll({
     where: { orgUid },
@@ -91,15 +166,12 @@ export const purgeV2OrganizationData = async (orgUid, { transaction } = {}) => {
 
   let verificationIds = [];
   if (projectIds.length > 0) {
-    const verifications = await VerificationV2.findAll({
-      where: { cadTrustProjectId: { [Op.in]: projectIds } },
-      attributes: ['cadTrustVerificationId'],
-      raw: true,
-      transaction,
-    });
-    verificationIds = verifications
-      .map((verification) => verification.cadTrustVerificationId)
-      .filter(Boolean);
+    verificationIds = await findIdsByChunks(
+      VerificationV2,
+      'cadTrustProjectId',
+      projectIds,
+      'cadTrustVerificationId',
+    );
   }
 
   let totalDeleted = 0;
@@ -108,7 +180,6 @@ export const purgeV2OrganizationData = async (orgUid, { transaction } = {}) => {
   if (projectIds.length > 0) {
     const projectScopedModels = [
       ValidationV2,
-      VerificationV2,
       LocationV2,
       EstimationV2,
       RatingV2,
@@ -117,56 +188,94 @@ export const purgeV2OrganizationData = async (orgUid, { transaction } = {}) => {
       StakeholderProjectV2,
     ];
     for (const model of projectScopedModels) {
-      totalDeleted += await model.destroy({
-        where: { cadTrustProjectId: { [Op.in]: projectIds } },
-        transaction,
-      });
+      totalDeleted += await destroyByIdChunks(
+        model,
+        'cadTrustProjectId',
+        projectIds,
+      );
     }
   }
 
-  // Issuance hangs off verification.
+  // Issuance hangs off verification, so delete it before verification rows.
   if (verificationIds.length > 0) {
-    totalDeleted += await IssuanceV2.destroy({
-      where: { cadTrustVerificationId: { [Op.in]: verificationIds } },
-      transaction,
-    });
+    totalDeleted += await destroyByIdChunks(
+      IssuanceV2,
+      'cadTrustVerificationId',
+      verificationIds,
+    );
+  }
+  if (projectIds.length > 0) {
+    totalDeleted += await destroyByIdChunks(
+      VerificationV2,
+      'cadTrustProjectId',
+      projectIds,
+    );
   }
 
   // Unit labels hang off unit.
   if (unitIds.length > 0) {
-    totalDeleted += await UnitLabelV2.destroy({
-      where: { cadTrustUnitId: { [Op.in]: unitIds } },
-      transaction,
-    });
+    totalDeleted += await destroyByIdChunks(UnitLabelV2, 'cadTrustUnitId', unitIds);
   }
 
-  // AEF tier tables reference the project, unit, and/or aef_t1_submission. A
-  // tier row owned by the org via its T1 submission alone (null project/unit)
-  // must still be removed, so trace all three relationships.
-  const aefOrConditions = [];
-  if (projectIds.length > 0) {
-    aefOrConditions.push({ cadTrustProjectId: { [Op.in]: projectIds } });
+  const aefOwnershipRelationships = [
+    ['cadTrustProjectId', projectIds],
+    ['cadTrustUnitId', unitIds],
+    ['cadTrustAefT1SubmissionId', aefT1SubmissionIds],
+  ];
+
+  const ownedAefT5Ids = await findIdsByAnyRelationship(
+    AefT5AuthorizedEntitiesV2,
+    'cadTrustAefT5AuthorizedEntitiesId',
+    aefOwnershipRelationships,
+  );
+  const ownedAefT2Ids = await findIdsByAnyRelationship(
+    AefT2AuthorizationsV2,
+    'cadTrustAefT2AuthorizationsId',
+    [
+      ...aefOwnershipRelationships,
+      ['cadTrustAefT5AuthorizedEntitiesId', ownedAefT5Ids],
+    ],
+  );
+
+  // AEF tier tables can reference project, unit, T1, or parent AEF rows.
+  for (const [lookupAttributeName, lookupValues] of [
+    ...aefOwnershipRelationships,
+    ['cadTrustAefT2AuthorizationsId', ownedAefT2Ids],
+  ]) {
+    if (lookupValues.length > 0) {
+      totalDeleted += await destroyByIdChunks(
+        AefT3ActionsV2,
+        lookupAttributeName,
+        lookupValues,
+      );
+      totalDeleted += await destroyByIdChunks(
+        AefT4HoldingsV2,
+        lookupAttributeName,
+        lookupValues,
+      );
+    }
   }
-  if (unitIds.length > 0) {
-    aefOrConditions.push({ cadTrustUnitId: { [Op.in]: unitIds } });
+
+  for (const [lookupAttributeName, lookupValues] of [
+    ...aefOwnershipRelationships,
+    ['cadTrustAefT5AuthorizedEntitiesId', ownedAefT5Ids],
+  ]) {
+    if (lookupValues.length > 0) {
+      totalDeleted += await destroyByIdChunks(
+        AefT2AuthorizationsV2,
+        lookupAttributeName,
+        lookupValues,
+      );
+    }
   }
-  if (aefT1SubmissionIds.length > 0) {
-    aefOrConditions.push({
-      cadTrustAefT1SubmissionId: { [Op.in]: aefT1SubmissionIds },
-    });
-  }
-  if (aefOrConditions.length > 0) {
-    const aefModels = [
-      AefT5AuthorizedEntitiesV2,
-      AefT2AuthorizationsV2,
-      AefT3ActionsV2,
-      AefT4HoldingsV2,
-    ];
-    for (const model of aefModels) {
-      totalDeleted += await model.destroy({
-        where: { [Op.or]: aefOrConditions },
-        transaction,
-      });
+
+  for (const [lookupAttributeName, lookupValues] of aefOwnershipRelationships) {
+    if (lookupValues.length > 0) {
+      totalDeleted += await destroyByIdChunks(
+        AefT5AuthorizedEntitiesV2,
+        lookupAttributeName,
+        lookupValues,
+      );
     }
   }
 
@@ -181,14 +290,11 @@ export const purgeV2OrganizationData = async (orgUid, { transaction } = {}) => {
     AefT1SubmissionV2,
   ];
   for (const model of orgUidOwnedModels) {
-    totalDeleted += await model.destroy({ where: { orgUid }, transaction });
+    totalDeleted += await destroyBatches(model, { orgUid });
   }
 
   // Filestore cache exposes the snake-case `org_uid` attribute.
-  totalDeleted += await FilestoreV2.destroy({
-    where: { org_uid: orgUid },
-    transaction,
-  });
+  totalDeleted += await destroyBatches(FilestoreV2, { org_uid: orgUid });
 
   return totalDeleted;
 };
