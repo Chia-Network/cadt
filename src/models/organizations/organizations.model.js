@@ -18,7 +18,6 @@ import {
   getRoot,
   getLocalRoot,
   getSubscriptions,
-  getDataLayerStoreSyncStatus,
   pushChangeListToDataLayer,
 } from '../../datalayer/persistance.js';
 import {
@@ -990,7 +989,8 @@ class Organization extends Model {
    * @throws Error on failure. call in a try block
    */
   static async reconcileOrganization(organization, { skipOnUnsynced = false } = {}) {
-    if (USE_SIMULATOR) {
+    const { USE_SIMULATOR: useSimulator } = getConfig().APP;
+    if (useSimulator) {
       return;
     }
 
@@ -1069,7 +1069,7 @@ class Organization extends Model {
 
     let orgStatusErr;
     try {
-      const orgSyncStatus = await getDataLayerStoreSyncStatus(orgUid);
+      const orgSyncStatus = await datalayer.getDataLayerStoreSyncStatus(orgUid);
       if (!isDlStoreSynced(orgSyncStatus?.sync_status)) {
         orgStatusErr = `org store ${orgUid} not yet synced`;
       }
@@ -1081,22 +1081,55 @@ class Organization extends Model {
       return;
     }
 
-    // Check the singleton (data model version) store before the blocking fetch inside
-    // subscribeToOrganization so that an unsynced singleton doesn't stall the background task.
-    if (dataModelVersionStoreId) {
-      let singletonStatusErr;
-      try {
-        const singletonSyncStatus = await getDataLayerStoreSyncStatus(dataModelVersionStoreId);
-        if (!isDlStoreSynced(singletonSyncStatus?.sync_status)) {
-          singletonStatusErr = `singleton store ${dataModelVersionStoreId} for org ${orgUid} not yet synced`;
-        }
-      } catch (error) {
-        singletonStatusErr = `could not check sync status for singleton store ${dataModelVersionStoreId}: ${error.message}`;
+    let orgStoreData;
+    let orgDataErr;
+    try {
+      orgStoreData = await datalayer.getCurrentStoreData(orgUid);
+      if (!orgStoreData) {
+        orgDataErr = `could not get current data for org store ${orgUid}`;
       }
-      if (singletonStatusErr) {
-        skipOrThrow(singletonStatusErr);
-        return;
+    } catch (error) {
+      orgDataErr = `could not get current data for org store ${orgUid}: ${error.message}`;
+    }
+    if (orgDataErr) {
+      skipOrThrow(orgDataErr);
+      return;
+    }
+
+    // Subscribe to and check the singleton store before the blocking fetch inside
+    // subscribeToOrganization so an unsynced singleton doesn't stall the background task.
+    const singletonStoreId = orgStoreData?.registryId || dataModelVersionStoreId;
+    if (!singletonStoreId) {
+      skipOrThrow(`could not determine singleton store for org ${orgUid}`);
+      return;
+    }
+
+    let singletonSubscribeErr;
+    try {
+      const singletonSubscribed = await datalayer.subscribeToStoreOnDataLayer(singletonStoreId);
+      if (!singletonSubscribed) {
+        singletonSubscribeErr = `could not subscribe to singleton store ${singletonStoreId} for org ${orgUid}`;
       }
+    } catch (error) {
+      singletonSubscribeErr = `could not subscribe to singleton store ${singletonStoreId} for org ${orgUid}: ${error.message}`;
+    }
+    if (singletonSubscribeErr) {
+      skipOrThrow(singletonSubscribeErr);
+      return;
+    }
+
+    let singletonStatusErr;
+    try {
+      const singletonSyncStatus = await datalayer.getDataLayerStoreSyncStatus(singletonStoreId);
+      if (!isDlStoreSynced(singletonSyncStatus?.sync_status)) {
+        singletonStatusErr = `singleton store ${singletonStoreId} for org ${orgUid} not yet synced`;
+      }
+    } catch (error) {
+      singletonStatusErr = `could not check sync status for singleton store ${singletonStoreId}: ${error.message}`;
+    }
+    if (singletonStatusErr) {
+      skipOrThrow(singletonStatusErr);
+      return;
     }
 
     logger.debug(
@@ -1157,7 +1190,7 @@ class Organization extends Model {
     }
 
     // note that we only update the data model version store hash here because the other two store hashes are updated elsewhere
-    const dataModelVersionStoreSyncStatus = await getDataLayerStoreSyncStatus(
+    const dataModelVersionStoreSyncStatus = await datalayer.getDataLayerStoreSyncStatus(
       datalayerDataModelVersionStoreId,
     );
 
@@ -1775,7 +1808,7 @@ class Organization extends Model {
           }
 
           try {
-            const syncStatus = await getDataLayerStoreSyncStatus(organization.orgUid);
+            const syncStatus = await datalayer.getDataLayerStoreSyncStatus(organization.orgUid);
             if (!isDlStoreSynced(syncStatus?.sync_status)) {
               logger.info(
                 `[v1]: syncOrganizationMeta: org store ${organization.orgUid} not yet synced, skipping this run.`,

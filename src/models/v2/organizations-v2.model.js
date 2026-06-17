@@ -1441,11 +1441,12 @@ class OrganizationsV2 extends Model {
    */
   static async getRegistryStoreIdFromSingleton(dataModelVersionStoreId, requiredVersion = 'v2') {
     loggerV2.debug(`[v2]: Getting registry store ID from singleton ${dataModelVersionStoreId}, required version: ${requiredVersion}`);
+    const { USE_SIMULATOR: useSimulator } = getConfig().APP;
 
     // Get singleton data - use getStoreDataPromise in simulator mode, getSubscribedStoreData otherwise
     let singletonData = null;
 
-    if (USE_SIMULATOR) {
+    if (useSimulator) {
       // In simulator mode, use getStoreDataPromise directly (no subscription needed)
       const storeData = await getStoreDataPromise(dataModelVersionStoreId);
       if (storeData && storeData.keys_values) {
@@ -1508,6 +1509,7 @@ class OrganizationsV2 extends Model {
       loggerV2.info('[v2]: cannot subscribe to a home organization while its pending.');
       throw new Error('Cannot subscribe to PENDING organization');
     }
+    const { USE_SIMULATOR: useSimulator } = getConfig().APP;
 
     loggerV2.debug(`[v2]: Running the organization subscription process on organization ${orgUid}`);
 
@@ -1524,7 +1526,7 @@ class OrganizationsV2 extends Model {
     loggerV2.debug(`[v2]: Determining datamodel version singleton id for org ${orgUid}`);
     let orgStoreData = null;
 
-    if (USE_SIMULATOR) {
+    if (useSimulator) {
       // In simulator mode, use getStoreDataPromise directly
       const storeData = await getStoreDataPromise(orgUid);
       if (storeData && storeData.keys_values) {
@@ -1582,7 +1584,7 @@ class OrganizationsV2 extends Model {
       await datalayer.subscribeToStoreOnDataLayer(registryStoreId);
     // In simulator mode, subscribeToStoreOnDataLayer returns undefined (no-op)
     // In production mode, it returns true/false
-    if (!USE_SIMULATOR && !subscribedToRegistryStore) {
+    if (!useSimulator && !subscribedToRegistryStore) {
       throw new Error(
         `Failed to subscribe to or validate subscription for registry store ${registryStoreId}`,
       );
@@ -1952,16 +1954,20 @@ class OrganizationsV2 extends Model {
    *   throwing, never silently skipping — otherwise a datalayer hiccup causes
    *   data deletion without reconciliation.
    * @returns {Promise<void>}
-   * @throws When `skipOnUnsynced` is false and any of: the org store subscribe
-   *   fails, the org or singleton store is unsynced, or a sync-status RPC fails.
+   * @throws When `skipOnUnsynced` is false and any of: the org or singleton
+   *   store subscribe fails, org-store data is unavailable, either store is
+   *   unsynced, or a sync-status RPC fails.
    */
   static async reconcileOrganization(organization, { skipOnUnsynced = false } = {}) {
     const { org_uid, is_home, data_model_version_store_id } = organization;
+    // Tests override config at call time; module-level callers keep their
+    // import-time behavior.
+    const { USE_SIMULATOR: useSimulator } = getConfig().APP;
 
     loggerV2.info(`[v2]: Reconciling organization ${org_uid}`);
 
     // Validate store ownership if home org (skip in simulator mode)
-    if (is_home && !USE_SIMULATOR) {
+    if (is_home && !useSimulator) {
       try {
         await assertStoreIsOwned(org_uid);
       } catch {
@@ -1990,7 +1996,8 @@ class OrganizationsV2 extends Model {
     // errors, so guard on both.  Without the falsy-return check, the dominant
     // datalayer-unreachable failure would slip past the try/catch and the
     // subsequent "not yet synced" skip log would be misleading.
-    if (!USE_SIMULATOR) {
+    let orgData;
+    if (!useSimulator) {
       let subscribeErr;
       try {
         const subscribed = await datalayer.subscribeToStoreOnDataLayer(org_uid);
@@ -2019,20 +2026,52 @@ class OrganizationsV2 extends Model {
         return;
       }
 
-      if (data_model_version_store_id) {
-        let singletonStatusErr;
-        try {
-          const singletonSyncStatus = await datalayer.getDataLayerStoreSyncStatus(data_model_version_store_id);
-          if (!isDlStoreSynced(singletonSyncStatus?.sync_status)) {
-            singletonStatusErr = `singleton store ${data_model_version_store_id} for org ${org_uid} not yet synced`;
-          }
-        } catch (error) {
-          singletonStatusErr = `could not check sync status for singleton store ${data_model_version_store_id}: ${error.message}`;
+      let orgDataErr;
+      try {
+        orgData = await datalayer.getCurrentStoreData(org_uid);
+        if (!orgData) {
+          orgDataErr = `could not get current data for org store ${org_uid}`;
         }
-        if (singletonStatusErr) {
-          skipOrThrow(singletonStatusErr);
-          return;
+      } catch (error) {
+        orgDataErr = `could not get current data for org store ${org_uid}: ${error.message}`;
+      }
+      if (orgDataErr) {
+        skipOrThrow(orgDataErr);
+        return;
+      }
+
+      const singletonStoreId = orgData?.registryId || data_model_version_store_id;
+      if (!singletonStoreId) {
+        skipOrThrow(`could not determine singleton store for org ${org_uid}`);
+        return;
+      }
+
+      let singletonSubscribeErr;
+      try {
+        const singletonSubscribed = await datalayer.subscribeToStoreOnDataLayer(singletonStoreId);
+        if (!singletonSubscribed) {
+          singletonSubscribeErr = `could not subscribe to singleton store ${singletonStoreId} for org ${org_uid}`;
         }
+      } catch (error) {
+        singletonSubscribeErr = `could not subscribe to singleton store ${singletonStoreId} for org ${org_uid}: ${error.message}`;
+      }
+      if (singletonSubscribeErr) {
+        skipOrThrow(singletonSubscribeErr);
+        return;
+      }
+
+      let singletonStatusErr;
+      try {
+        const singletonSyncStatus = await datalayer.getDataLayerStoreSyncStatus(singletonStoreId);
+        if (!isDlStoreSynced(singletonSyncStatus?.sync_status)) {
+          singletonStatusErr = `singleton store ${singletonStoreId} for org ${org_uid} not yet synced`;
+        }
+      } catch (error) {
+        singletonStatusErr = `could not check sync status for singleton store ${singletonStoreId}: ${error.message}`;
+      }
+      if (singletonStatusErr) {
+        skipOrThrow(singletonStatusErr);
+        return;
       }
     }
 
@@ -2040,8 +2079,7 @@ class OrganizationsV2 extends Model {
     const storeIds = await OrganizationsV2.subscribeToOrganization(org_uid);
 
     // Get current data from datalayer
-    let orgData;
-    if (USE_SIMULATOR) {
+    if (useSimulator) {
       // In simulator mode, use getStoreDataPromise directly
       const storeData = await getStoreDataPromise(org_uid);
       if (storeData && storeData.keys_values) {
@@ -2054,8 +2092,7 @@ class OrganizationsV2 extends Model {
         throw new Error(`Failed to get organization data for ${org_uid} in simulator mode`);
       }
     } else {
-      // In production mode, use getCurrentStoreData
-      orgData = await datalayer.getCurrentStoreData(org_uid);
+      // Production pre-checks already fetched current org-store data.
       if (!orgData) {
         throw new Error(`Failed to get organization data for ${org_uid}`);
       }
@@ -2098,7 +2135,7 @@ class OrganizationsV2 extends Model {
 
     // Update data_model_version_store_hash if store is synced
     // Skip in simulator mode as there's no real datalayer
-    if (!USE_SIMULATOR) {
+    if (!useSimulator) {
       const dataModelVersionStoreSyncStatus = await datalayer.getDataLayerStoreSyncStatus(
         storeIds.dataModelVersionStoreId,
       );
