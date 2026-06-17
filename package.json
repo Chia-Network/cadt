@@ -98,7 +98,7 @@
     "@babel/cli": "^7.28.6",
     "@babel/core": "^7.29.0",
     "@babel/plugin-syntax-import-attributes": "^7.28.6",
-    "@babel/preset-env": "^7.29.0",
+    "@babel/preset-env": "^7.29.7",
     "@babel/register": "^7.28.6",
     "@commitlint/cli": "^20.4.1",
     "@commitlint/config-conventional": "^21.0.2",
