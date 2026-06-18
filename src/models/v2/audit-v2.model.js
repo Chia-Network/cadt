@@ -8,6 +8,11 @@ import OrganizationsV2 from './organizations-v2.model.js';
 import { loggerV2 } from '../../config/logger.js';
 
 import ModelTypes from './audit-v2.modeltypes.js';
+import {
+  getCachedCount,
+  clearAuditCountCache,
+} from '../../utils/audit-count-cache.js';
+import { normalizeRawTimestamps } from '../../utils/helpers.js';
 
 class AuditV2 extends Model {
   static async create(values, options) {
@@ -19,6 +24,7 @@ class AuditV2 extends Model {
       await AuditV2Mirror.create(values, mirrorOptions);
     }, options?.mirrorTransaction);
     const result = await super.create(values, options);
+    clearAuditCountCache();
     if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
@@ -32,6 +38,7 @@ class AuditV2 extends Model {
       await AuditV2Mirror.bulkCreate(values, mirrorOptions);
     }, options?.mirrorTransaction);
     const result = await super.bulkCreate(values, options);
+    clearAuditCountCache();
     if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
@@ -45,6 +52,7 @@ class AuditV2 extends Model {
       await AuditV2Mirror.update(values, mirrorOptions);
     }, options?.mirrorTransaction);
     const result = await super.update(values, options);
+    clearAuditCountCache();
     if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
@@ -58,6 +66,7 @@ class AuditV2 extends Model {
       await AuditV2Mirror.upsert(values, mirrorOptions);
     }, options?.mirrorTransaction);
     const result = await super.upsert(values, options);
+    clearAuditCountCache();
     if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
@@ -71,6 +80,7 @@ class AuditV2 extends Model {
       await AuditV2Mirror.destroy(mirrorOptions);
     }, options?.mirrorTransaction);
     const result = await super.destroy(options);
+    clearAuditCountCache();
     if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
@@ -82,10 +92,11 @@ class AuditV2 extends Model {
    * @param {string} order - Sort order ('ASC' or 'DESC', defaults to 'DESC')
    * @param {number} limit - Number of records per page
    * @param {number} page - Page number (1-indexed)
+   * @param {boolean} excludeChange - When true, omit the heavy `change` column
    * @returns {Promise<{rows: Array, count: number}>} Audit records with total count
    * @throws {Error} If orgUid is invalid
    */
-  static async findAuditHistory(orgUid, order = 'DESC', limit, page) {
+  static async findAuditHistory(orgUid, order = 'DESC', limit, page, excludeChange = false) {
     // Validate orgUid exists in V2 organizations if provided
     if (orgUid) {
       // Get all organizations and check if orgUid exists
@@ -113,16 +124,24 @@ class AuditV2 extends Model {
     const queryOptions = {
       where,
       order: [['onchain_confirmation_time_stamp', safeOrder]],
+      // Plain objects instead of Sequelize instances to avoid the
+      // dataValues/_previousDataValues memory overhead on large pages.
+      raw: true,
     };
+
+    if (excludeChange) {
+      queryOptions.attributes = { exclude: ['change'] };
+    }
 
     // Add pagination if limit and page are provided
     // Validate and sanitize limit and page to prevent SQL injection
-    if (limit && page) {
+    const isPaginated = Boolean(limit && page);
+    if (isPaginated) {
       // Validate limit is a safe integer
       const safeLimit = parseInt(limit, 10);
-      if (isNaN(safeLimit) || safeLimit < 1 || safeLimit > 10000) {
+      if (isNaN(safeLimit) || safeLimit < 1 || safeLimit > 1000) {
         loggerV2.warn('[v2]: Invalid limit value in findAuditHistory', { providedLimit: limit });
-        throw new Error('Invalid limit value. Must be between 1 and 10000');
+        throw new Error('Invalid limit value. Must be between 1 and 1000');
       }
 
       // Validate page is a safe integer
@@ -137,8 +156,15 @@ class AuditV2 extends Model {
       queryOptions.offset = offset;
     }
 
-    // Call Sequelize's findAndCountAll directly (not overridden)
-    return await AuditV2.findAndCountAll(queryOptions);
+    // Decouple rows from the count: only the paginated response needs a total,
+    // and the cached count avoids re-running COUNT(*) on every deep page.
+    const rows = await AuditV2.findAll(queryOptions);
+    normalizeRawTimestamps(rows, ['created_at', 'updated_at']);
+    const count = isPaginated
+      ? await getCachedCount(`v2:${orgUid}`, () => AuditV2.count({ where }))
+      : rows.length;
+
+    return { count, rows };
   }
 
   /**

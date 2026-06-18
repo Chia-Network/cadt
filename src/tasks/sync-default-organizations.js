@@ -7,6 +7,7 @@ import { getDefaultOrganizationList } from '../utils/data-loaders.js';
 import { Meta, Organization } from '../models/index.js';
 import { logger } from '../config/logger.js';
 import { getConfig } from '../utils/config-loader.js';
+import { isGovernanceReady } from '../utils/governance-readiness.js';
 import {
   buildOrgListAllowSet,
   removeOrgsNotInOrgList,
@@ -109,7 +110,11 @@ const task = new Task('sync-default-organizations', async () => {
         }
       });
 
-      if (onlyCadtSubscriptions) {
+      if (
+        onlyCadtSubscriptions &&
+        defaultOrgRecords.length > 0 &&
+        isGovernanceReady('v1')
+      ) {
         const { GOVERNANCE_BODY_ID } = CONFIG.GOVERNANCE;
         const allowSet = buildOrgListAllowSet(defaultOrgRecords, GOVERNANCE_BODY_ID);
         await removeOrgsNotInOrgList({
@@ -123,6 +128,8 @@ const task = new Task('sync-default-organizations', async () => {
           },
           unsubscribeFromOrganizationStores:
             Organization.unsubscribeFromOrganizationStores.bind(Organization),
+          isStoreUnsubscribed:
+            Organization.areOrganizationStoresUnsubscribed.bind(Organization),
           // Background removal of a remote org must not wipe the home org's
           // pending staged changes (global, un-scoped staging table), and is
           // not a user deletion so it must not populate the suppression list.
@@ -130,10 +137,20 @@ const task = new Task('sync-default-organizations', async () => {
             Organization.deleteAllOrganizationData(orgUid, {
               skipStagingTruncate: true,
               recordUserDeleted: false,
+              useCommittedBatches: true,
             }),
           logger,
           apiVersionLabel: 'v1',
+          graceCycles: CONFIG.APP.ONLY_CADT_SUBSCRIPTIONS_PURGE_GRACE_CYCLES,
         });
+      } else if (
+        onlyCadtSubscriptions &&
+        defaultOrgRecords.length > 0 &&
+        !isGovernanceReady('v1')
+      ) {
+        logger.debug(
+          '[v1]: ONLY_CADT_SUBSCRIPTIONS: skipping off-orglist purge until governance sync completes',
+        );
       }
     }
   } catch (error) {

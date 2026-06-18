@@ -7,6 +7,10 @@ import { getConfig, getConfigV2 } from '../utils/config-loader.js';
 import { loggerV2 } from '../config/logger.js';
 import { GovernanceV2 } from '../models/v2/index.js';
 import { OrganizationsV2 } from '../models/v2/index.js';
+import {
+  markGovernanceNotReady,
+  markGovernanceReady,
+} from '../utils/governance-readiness.js';
 
 const CONFIG = getConfig().APP;
 const CONFIG_V2 = getConfigV2();
@@ -23,6 +27,7 @@ const task = new Task('sync-governance-meta-v2', async () => {
       return;
     }
 
+    markGovernanceNotReady('v2');
     await assertDataLayerAvailable();
     await assertWalletIsSynced();
 
@@ -44,6 +49,7 @@ const task = new Task('sync-governance-meta-v2', async () => {
       if (!v2HomeOrg || v2HomeOrg.org_uid !== GOVERNANCE_BODY_ID) {
         await GovernanceV2.sync();
       } else {
+        markGovernanceReady('v2');
         loggerV2.debug(
           '[v2]: This node is the governance body, skipping governance sync',
         );

@@ -8,6 +8,10 @@ import { keyValueToChangeList, isDlStoreSynced } from '../../utils/datalayer-uti
 import { getConfig } from '../../utils/config-loader';
 import { logger } from '../../config/logger.js';
 import {
+  markGovernanceNotReady,
+  markGovernanceReady,
+} from '../../utils/governance-readiness.js';
+import {
   assertStoreIsOwned,
   assertOwnedStoreLocalDataIntact,
 } from '../../utils/data-assertions';
@@ -106,7 +110,8 @@ class Governance extends Model {
 
     const updates = [];
 
-    if (governanceData.orgList) {
+    const hasOrgList = Boolean(governanceData.orgList);
+    if (hasOrgList) {
       updates.push({
         metaKey: 'orgList',
         metaValue: governanceData.orgList,
@@ -164,7 +169,7 @@ class Governance extends Model {
 
     logger.debug('upserting governance data from governance body store');
     await Promise.all(updates.map(async (update) => Governance.upsert(update)));
-    return { changed };
+    return { changed, hasOrgList };
   }
 
   static _lastHeartbeat = 0;
@@ -183,6 +188,7 @@ class Governance extends Model {
 
   static async sync() {
     logger.debug('[v1]: running governance model sync()');
+    markGovernanceNotReady('v1');
 
     // Check simulator/dev mode first to match V2 behavior and avoid errors
     // in test/dev environments that may not have GOVERNANCE_BODY_ID configured.
@@ -193,6 +199,7 @@ class Governance extends Model {
         metaValue: JSON.stringify(PickListStub),
         confirmed: true,
       });
+      markGovernanceReady('v1');
       return;
     }
 
@@ -260,11 +267,14 @@ class Governance extends Model {
         logger.info(
           `[v1]: using legacy governance upsert method for governance store ${GOVERNANCE_BODY_ID}`,
         );
-        const { changed } = await Governance.upsertGovernanceDownload(GOVERNANCE_BODY_ID, governanceData);
+        const { changed, hasOrgList } = await Governance.upsertGovernanceDownload(GOVERNANCE_BODY_ID, governanceData);
         if (changed) {
           logger.info('[v1]: Successfully synced legacy governance data');
         } else {
           logger.debug('[v1]: Legacy governance data unchanged, no update needed');
+        }
+        if (hasOrgList) {
+          markGovernanceReady('v1');
         }
         return;
       }
@@ -322,11 +332,14 @@ class Governance extends Model {
         false,
       );
 
-      const { changed } = await Governance.upsertGovernanceDownload(GOVERNANCE_BODY_ID, versionedGovernanceData);
+      const { changed, hasOrgList } = await Governance.upsertGovernanceDownload(GOVERNANCE_BODY_ID, versionedGovernanceData);
       if (changed) {
         logger.info('[v1]: Successfully synced versioned governance data');
       } else {
         logger.debug('[v1]: Versioned governance data unchanged, no update needed');
+      }
+      if (hasOrgList) {
+        markGovernanceReady('v1');
       }
     } catch (error) {
       logger.error(

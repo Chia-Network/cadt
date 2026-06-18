@@ -211,6 +211,36 @@ export const verifyTestDatabaseConfiguration = async () => {
   }
 };
 
+// Scheduler control — pause background tasks to prevent mutex contention
+// during CRUD-only test suites that don't need the sync loop.
+let releasePausedSyncRegistriesTaskMutexV2;
+
+export const pauseSchedulerTasks = async () => {
+  const scheduler = (await import('../../../src/tasks/index.js')).default;
+  scheduler.pauseAll();
+
+  // Hold the task mutex while paused so a just-invoked sync task cannot
+  // acquire it after scheduler intervals have been stopped.
+  const { syncRegistriesTaskMutexV2, processingSyncRegistriesTransactionMutexV2 } =
+    await import('../../../src/utils/v2-mutex-utils.js');
+  if (!releasePausedSyncRegistriesTaskMutexV2) {
+    releasePausedSyncRegistriesTaskMutexV2 = await syncRegistriesTaskMutexV2.acquire();
+  }
+  if (processingSyncRegistriesTransactionMutexV2.isLocked()) {
+    await processingSyncRegistriesTransactionMutexV2.waitForUnlock();
+  }
+};
+
+export const resumeSchedulerTasks = async () => {
+  if (releasePausedSyncRegistriesTaskMutexV2) {
+    releasePausedSyncRegistriesTaskMutexV2();
+    releasePausedSyncRegistriesTaskMutexV2 = undefined;
+  }
+
+  const scheduler = (await import('../../../src/tasks/index.js')).default;
+  scheduler.resumeAll();
+};
+
 // V2 staging table utilities
 export const resetV2StagingTable = async () => {
   const { StagingV2 } = await import('../../../src/models/v2/index.js');

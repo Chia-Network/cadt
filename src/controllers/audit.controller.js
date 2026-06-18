@@ -3,22 +3,39 @@ import _ from 'lodash';
 import {
   paginationParams,
   optionallyPaginatedResponse,
+  normalizeRawTimestamps,
 } from '../utils/helpers';
+import { getCachedCount } from '../utils/audit-count-cache.js';
 import { assertIfReadOnlyMode } from '../utils/data-assertions.js';
 
 export const findAll = async (req, res) => {
   try {
-    const { page, limit, orgUid, order } = req.query;
+    const { page, limit, orgUid, order, excludeChange } = req.query;
 
     const pagination = paginationParams(page, limit);
+    const where = { orgUid };
 
-    const auditResults = await Audit.findAndCountAll({
-      where: { orgUid },
+    const queryOptions = {
+      where,
       order: [['onchainConfirmationTimeStamp', order || 'DESC']],
       ...pagination,
-    });
+      raw: true,
+    };
 
-    return res.json(optionallyPaginatedResponse(auditResults, page, limit));
+    if (excludeChange) {
+      queryOptions.attributes = { exclude: ['change'] };
+    }
+
+    const rows = await Audit.findAll(queryOptions);
+    normalizeRawTimestamps(rows, ['createdAt', 'updatedAt']);
+
+    // Only the paginated response needs a total; cache it so deep pagination
+    // does not re-run an identical COUNT(*) on every page.
+    const count = page && limit
+      ? await getCachedCount(`v1:${orgUid}`, () => Audit.count({ where }))
+      : rows.length;
+
+    return res.json(optionallyPaginatedResponse({ count, rows }, page, limit));
   } catch (error) {
     res.status(400).json({
       message: 'Can not retrieve audit data',

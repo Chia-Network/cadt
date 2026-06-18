@@ -8,6 +8,10 @@ import {
 import { getConfig } from '../utils/config-loader';
 import { logger } from '../config/logger.js';
 import { Organization } from '../models';
+import {
+  markGovernanceNotReady,
+  markGovernanceReady,
+} from '../utils/governance-readiness.js';
 
 const CONFIG = getConfig();
 
@@ -23,6 +27,7 @@ const task = new Task('sync-governance-meta', async () => {
       return;
     }
 
+    markGovernanceNotReady('v1');
     await assertDataLayerAvailable();
     await assertWalletIsSynced();
 
@@ -39,6 +44,8 @@ const task = new Task('sync-governance-meta', async () => {
         CONFIG.GOVERNANCE.GOVERNANCE_BODY_ID
       ) {
         await Governance.sync();
+      } else {
+        markGovernanceReady('v1');
       }
     }
   } catch (error) {
