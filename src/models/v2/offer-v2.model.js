@@ -361,7 +361,7 @@ class OfferV2 {
       const offerParsed = JSON.parse(offerFile);
 
       // Set default fee
-      offerParsed.fee = _.get(CONFIG, 'DEFAULT_FEE', 300000000);
+      offerParsed.fee = _.get(CONFIG, 'DEFAULT_FEE', 3000);
       delete offerParsed.success;
       const offerJSON = JSON.stringify(offerParsed);
 

@@ -97,7 +97,7 @@ export const importOfferFile = async (req, res) => {
     const offerFileBuffer = req.file.buffer;
     const offerFile = offerFileBuffer.toString('utf-8');
     const offerParsed = JSON.parse(offerFile);
-    offerParsed.fee = _.get(CONFIG, 'DEFAULT_FEE', 300000000);
+    offerParsed.fee = _.get(CONFIG, 'DEFAULT_FEE', 3000);
     delete offerParsed.success;
     const offerJSON = JSON.stringify(offerParsed);
 
