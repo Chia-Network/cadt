@@ -997,12 +997,12 @@ describe('orglist-subscription-reconcile (V2)', function () {
       expect(withOrgList.hasOrgList).to.equal(true);
     });
 
-    it('should clear V2 governance readiness when sync does not provide orgList', async function () {
-      markGovernanceReady('v2');
+    it('should mark V2 governance ready after fallback governance sync', async function () {
+      resetGovernanceReadiness();
 
       await GovernanceV2.sync();
 
-      expect(isGovernanceReady('v2')).to.equal(false);
+      expect(isGovernanceReady('v2')).to.equal(true);
     });
 
     it('should default ONLY_CADT_SUBSCRIPTIONS to true', function () {
