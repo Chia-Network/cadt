@@ -25,7 +25,7 @@ jobs:
       - uses: Chia-Network/actions/clean-workspace@main
 
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.3
 
       - name: Ignore Husky
         run: npm pkg delete scripts.prepare
@@ -61,7 +61,7 @@ jobs:
       - uses: Chia-Network/actions/clean-workspace@main
 
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.3
 
       - name: Ignore Husky
         run: npm pkg delete scripts.prepare
@@ -100,7 +100,7 @@ jobs:
       - uses: Chia-Network/actions/clean-workspace@main
 
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.3
 
       - name: Ignore Husky
         run: npm pkg delete scripts.prepare
@@ -637,7 +637,7 @@ jobs:
       - uses: Chia-Network/actions/clean-workspace@main
 
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.3
 
       - name: Ignore Husky
         run: npm pkg delete scripts.prepare
@@ -1174,7 +1174,7 @@ jobs:
       - uses: Chia-Network/actions/clean-workspace@main
 
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.3
 
       - name: Ignore Husky
         run: npm pkg delete scripts.prepare
@@ -1635,7 +1635,7 @@ jobs:
       - uses: Chia-Network/actions/clean-workspace@main
 
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.3
 
       - name: Ignore Husky
         run: npm pkg delete scripts.prepare
@@ -2172,7 +2172,7 @@ jobs:
       - uses: Chia-Network/actions/clean-workspace@main
 
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.3
 
       - name: Ignore Husky
         run: npm pkg delete scripts.prepare
@@ -2663,7 +2663,7 @@ jobs:
       - uses: Chia-Network/actions/clean-workspace@main
 
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.3
 
       - name: Ignore Husky
         run: npm pkg delete scripts.prepare
@@ -2923,7 +2923,7 @@ jobs:
       - uses: Chia-Network/actions/clean-workspace@main
 
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.3
 
       - name: Ignore Husky
         run: npm pkg delete scripts.prepare
@@ -3287,7 +3287,7 @@ jobs:
       - uses: Chia-Network/actions/clean-workspace@main
 
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.3
 
       - name: Ignore Husky
         run: npm pkg delete scripts.prepare
@@ -4499,7 +4499,7 @@ jobs:
       - uses: Chia-Network/actions/clean-workspace@main
 
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.3
 
       - name: Ignore Husky
         run: npm pkg delete scripts.prepare
@@ -5383,7 +5383,7 @@ jobs:
       - uses: Chia-Network/actions/clean-workspace@main
 
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.3
 
       - name: Ignore Husky
         run: npm pkg delete scripts.prepare
@@ -5706,7 +5706,7 @@ jobs:
       - uses: Chia-Network/actions/clean-workspace@main
 
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.3
 
       - name: Ignore Husky
         run: npm pkg delete scripts.prepare
@@ -6029,7 +6029,7 @@ jobs:
       - uses: Chia-Network/actions/clean-workspace@main
 
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.3
 
       - name: Ignore Husky
         run: npm pkg delete scripts.prepare

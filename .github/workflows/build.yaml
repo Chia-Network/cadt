@@ -63,7 +63,7 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.3
 
       - name: Setup Node 24.x
         uses: actions/setup-node@v6
@@ -323,7 +323,7 @@ jobs:
   #     - uses: Chia-Network/actions/clean-workspace@main
 
   #     - name: Checkout Code
-  #       uses: actions/checkout@v6
+  #       uses: actions/checkout@v6.0.3
 
   #     - name: Determine npm cache key
   #       id: npm-cache
@@ -367,7 +367,7 @@ jobs:
             platform: arm64
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.3
 
       - name: Download Linux artifacts
         uses: actions/download-artifact@v8
