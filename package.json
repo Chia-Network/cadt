@@ -76,7 +76,7 @@
     "express": "^5.2.1",
     "express-joi-validation": "^6.1.0",
     "express-rate-limit": "^8.5.1",
-    "joi": "^17.13.3",
+    "joi": "^17.13.4",
     "js-yaml": "^4.3.0",
     "lodash": "^4.18.1",
     "log-update": "^7.0.2",
