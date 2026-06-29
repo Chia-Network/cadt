@@ -13,9 +13,9 @@ export const aefT3ActionsV2Schema = Joi.object({
     'date.iso': 'aefT3ActionsDate must be a valid ISO 8601 date',
   }),
 
-  aefT3ActionsCoopoerativeApproachId: Joi.string().max(255).required().messages({
-    'any.required': 'aefT3ActionsCoopoerativeApproachId is required',
-    'string.max': 'aefT3ActionsCoopoerativeApproachId must not exceed 255 characters',
+  aefT3ActionsCooperativeApproachId: Joi.string().max(255).required().messages({
+    'any.required': 'aefT3ActionsCooperativeApproachId is required',
+    'string.max': 'aefT3ActionsCooperativeApproachId must not exceed 255 characters',
   }),
 
   aefT3ActionsAuthorizationId: Joi.string().max(255).required().messages({

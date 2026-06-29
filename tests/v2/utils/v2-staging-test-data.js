@@ -337,7 +337,7 @@ export const generateV2AefT3ActionsData = async (overrides = {}) => {
     aef_t3_actions_date: generateDate(),
     aef_t3_actions_type: getRandomPicklistValue('aefT3ActionsType') || 'Transfer',
     aef_t3_actions_subtype: 'Test subtype',
-    aef_t3_actions_coopoerative_approach_id: `COOP-${Date.now()}`,
+    aef_t3_actions_cooperative_approach_id: `COOP-${Date.now()}`,
     aef_t3_actions_authorization_id: `AUTH-${Date.now()}`,
     aef_t3_actions_first_transferring_party_id: `PARTY-${Date.now()}`,
     aef_t3_actions_party_itmo_registry_id: `ITMO-${Date.now()}`,
@@ -370,7 +370,7 @@ export const generateV2AefT4HoldingsData = async (overrides = {}) => {
 
   return {
     cad_trust_aef_t4_holdings_id: generateUuid(),
-    aef_t4_holdings_coopoerative_approach_id: `COOP-${Date.now()}`,
+    aef_t4_holdings_cooperative_approach_id: `COOP-${Date.now()}`,
     aef_t4_holdings_authorization_id: `AUTH-${Date.now()}`,
     aef_t4_holdings_first_transferring_party_id: `PARTY-${Date.now()}`,
     aef_t4_holdings_party_itmo_registry_id: `ITMO-${Date.now()}`,

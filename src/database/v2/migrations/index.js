@@ -46,6 +46,9 @@ import DropGovernanceFromMirrorV2 from './20250219120000-drop-governance-from-mi
 // V2 Owner Field Migration
 import AddOrgUidToStandaloneTablesV2 from './20260220120000-add-org-uid-to-standalone-tables-v2.js';
 
+// V2 AEF Field Name Corrections
+import RenameAefCooperativeApproachColumnsV2 from './20260629210000-rename-aef-cooperative-approach-columns-v2.js';
+
 export const migrations = [
   {
     migration: CreateStagingV2,
@@ -182,5 +185,9 @@ export const migrations = [
   {
     migration: AddOrgUidToStandaloneTablesV2,
     name: '20260220120000-add-org-uid-to-standalone-tables-v2',
+  },
+  {
+    migration: RenameAefCooperativeApproachColumnsV2,
+    name: '20260629210000-rename-aef-cooperative-approach-columns-v2',
   },
 ];

@@ -5820,7 +5820,7 @@ Fields:
 | Field | Type | Required | [Picklist](#get-picklist-data) | Description |
 |:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
 | aefT3ActionsDate | Date | x | | Action date (ISO 8601 format) |
-| aefT3ActionsCoopoerativeApproachId | String | x | | Cooperative approach identifier (max 255 characters) |
+| aefT3ActionsCooperativeApproachId | String | x | | Cooperative approach identifier (max 255 characters) |
 | aefT3ActionsAuthorizationId | String | x | | Authorization identifier (max 255 characters) |
 | aefT3ActionsFirstTransferringPartyId | String | x | | First transferring party identifier (max 255 characters) |
 | aefT3ActionsPartyItmoRegistryId | String | x | | Party ITMO registry identifier (max 255 characters) |
@@ -5859,7 +5859,7 @@ curl --location --request POST 'localhost:31310/v2/aef-t3-actions' \
 --header 'Content-Type: application/json' \
 --data-raw '{
   "aefT3ActionsDate": "2022-03-01",
-  "aefT3ActionsCoopoerativeApproachId": "TEST-CA-001",
+  "aefT3ActionsCooperativeApproachId": "TEST-CA-001",
   "aefT3ActionsAuthorizationId": "TEST-AUTH-001",
   "aefT3ActionsFirstTransferringPartyId": "TEST-PARTY-001",
   "aefT3ActionsPartyItmoRegistryId": "TEST-REGISTRY-001",
@@ -5921,7 +5921,7 @@ curl --location --request PUT 'localhost:31310/v2/aef-t3-actions/d4e5f6a7-b8c9-0
 --header 'Content-Type: application/json' \
 --data-raw '{
   "aefT3ActionsDate": "2022-03-05",
-  "aefT3ActionsCoopoerativeApproachId": "TEST-CA-001",
+  "aefT3ActionsCooperativeApproachId": "TEST-CA-001",
   "aefT3ActionsAuthorizationId": "TEST-AUTH-001",
   "aefT3ActionsFirstTransferringPartyId": "TEST-PARTY-001",
   "aefT3ActionsPartyItmoRegistryId": "TEST-REGISTRY-001",
@@ -6055,7 +6055,7 @@ Fields:
 
 | Field | Type | Required | [Picklist](#get-picklist-data) | Description |
 |:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
-| aefT4HoldingsCoopoerativeApproachId | String | x | | Cooperative approach identifier (max 255 characters) |
+| aefT4HoldingsCooperativeApproachId | String | x | | Cooperative approach identifier (max 255 characters) |
 | aefT4HoldingsAuthorizationId | String | x | | Authorization identifier (max 255 characters) |
 | aefT4HoldingsFirstTransferringPartyId | String | x | | First transferring party identifier (max 255 characters) |
 | aefT4HoldingsPartyItmoRegistryId | String | x | | Party ITMO registry identifier (max 255 characters) |
@@ -6083,7 +6083,7 @@ Request
 curl --location --request POST 'localhost:31310/v2/aef-t4-holdings' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "aefT4HoldingsCoopoerativeApproachId": "TEST-CA-001",
+  "aefT4HoldingsCooperativeApproachId": "TEST-CA-001",
   "aefT4HoldingsAuthorizationId": "TEST-AUTH-001",
   "aefT4HoldingsFirstTransferringPartyId": "TEST-PARTY-001",
   "aefT4HoldingsPartyItmoRegistryId": "TEST-REGISTRY-001",
@@ -6134,7 +6134,7 @@ Request
 curl --location --request PUT 'localhost:31310/v2/aef-t4-holdings/e5f6a7b8-c9d0-1234-ef56-567890123456' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "aefT4HoldingsCoopoerativeApproachId": "TEST-CA-001",
+  "aefT4HoldingsCooperativeApproachId": "TEST-CA-001",
   "aefT4HoldingsAuthorizationId": "TEST-AUTH-001",
   "aefT4HoldingsFirstTransferringPartyId": "TEST-PARTY-001",
   "aefT4HoldingsPartyItmoRegistryId": "TEST-REGISTRY-001",

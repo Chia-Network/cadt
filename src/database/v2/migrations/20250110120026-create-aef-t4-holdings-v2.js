@@ -12,7 +12,7 @@ export default {
         unique: true,
         comment: 'generated UUID'
       },
-      aef_t4_holdings_coopoerative_approach_id: {
+      aef_t4_holdings_cooperative_approach_id: {
         type: Sequelize.STRING,
         allowNull: false,
       },
@@ -116,7 +116,7 @@ export default {
     });
 
     // Add indexes for better performance
-    await queryInterface.addIndex('aef_t4_holdings', ['aef_t4_holdings_coopoerative_approach_id']);
+    await queryInterface.addIndex('aef_t4_holdings', ['aef_t4_holdings_cooperative_approach_id']);
     await queryInterface.addIndex('aef_t4_holdings', ['aef_t4_holdings_authorization_id']);
     await queryInterface.addIndex('aef_t4_holdings', ['aef_t4_holdings_vintage_year']);
     await queryInterface.addIndex('aef_t4_holdings', ['cad_trust_aef_t1_submission_id']);
