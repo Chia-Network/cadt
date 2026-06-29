@@ -67,9 +67,15 @@ async function renameStagingDataKeys(queryInterface, Sequelize, table, oldColumn
   );
 
   for (const record of records) {
-    const parsedData = JSON.parse(record.data);
-    const rows = Array.isArray(parsedData) ? parsedData : [parsedData];
+    let parsedData;
+    try {
+      parsedData = JSON.parse(record.data);
+    } catch (error) {
+      console.warn(`Skipping invalid staging data for ${table} row ${record.id}: ${error.message}`);
+      continue;
+    }
 
+    const rows = Array.isArray(parsedData) ? parsedData : [parsedData];
     for (const row of rows) {
       renameKey(row, oldColumn, newColumn);
     }
