@@ -14,6 +14,7 @@ import {
 import { resolveOrgUid } from '../../utils/owner-utils.js';
 import { paginationParams, optionallyPaginatedResponse } from '../../utils/helpers.js';
 import { loggerV2 } from '../../config/logger.js';
+import { checkReferences, buildReferenceConflictBody } from '../../utils/v2-reference-guards.js';
 
 export const createProjectMethodologyV2 = async (req, res) => {
   try {
@@ -366,6 +367,13 @@ export const deleteProjectMethodologyV2 = async (req, res) => {
         message: 'Project-Methodology relationship not found',
         success: false,
       });
+    }
+
+    const refResult = await checkReferences('project_methodology', cadTrustProjectMethodologyId);
+    if (refResult.hasReferences) {
+      return res.status(409).json(
+        buildReferenceConflictBody('project-methodology relationship', refResult),
+      );
     }
 
     // Stage the delete

@@ -54,7 +54,7 @@ describe('Phase 17.1: AuditV2 Model Methods', function () {
 
     it('should return audit records with pagination', async function () {
       // Snapshot baseline — background sync can insert audit records for testOrgUid
-      const baseline = await AuditV2.findAuditHistory(testOrgUid, 'DESC', 10000, 1);
+      const baseline = await AuditV2.findAuditHistory(testOrgUid, 'DESC', 1000, 1);
       const baselineCount = baseline.count;
 
       // Use timestamps far in the future so test records always sort last/first
@@ -102,7 +102,7 @@ describe('Phase 17.1: AuditV2 Model Methods', function () {
     });
 
     it('should return audit records ordered ASC', async function () {
-      const baseline = await AuditV2.findAuditHistory(testOrgUid, 'ASC', 10000, 1);
+      const baseline = await AuditV2.findAuditHistory(testOrgUid, 'ASC', 1000, 1);
       const baselineCount = baseline.count;
 
       const futureTs = '9999999991';
@@ -129,7 +129,7 @@ describe('Phase 17.1: AuditV2 Model Methods', function () {
         },
       ]);
 
-      const result = await AuditV2.findAuditHistory(testOrgUid, 'ASC', 10000, 1);
+      const result = await AuditV2.findAuditHistory(testOrgUid, 'ASC', 1000, 1);
 
       expect(result.count).to.equal(baselineCount + 2);
       // Verify our test records appear in ASC order at the end
@@ -140,7 +140,7 @@ describe('Phase 17.1: AuditV2 Model Methods', function () {
     });
 
     it('should filter by orgUid', async function () {
-      const baseline = await AuditV2.findAuditHistory(testOrgUid, 'DESC', 10000, 1);
+      const baseline = await AuditV2.findAuditHistory(testOrgUid, 'DESC', 1000, 1);
       const baselineCount = baseline.count;
 
       const otherOrg = await OrganizationsV2.create({
@@ -175,7 +175,7 @@ describe('Phase 17.1: AuditV2 Model Methods', function () {
         },
       ]);
 
-      const result = await AuditV2.findAuditHistory(testOrgUid, 'DESC', 10000, 1);
+      const result = await AuditV2.findAuditHistory(testOrgUid, 'DESC', 1000, 1);
 
       // Only one new record for testOrgUid; the other-org record is excluded
       expect(result.count).to.equal(baselineCount + 1);
@@ -217,7 +217,7 @@ describe('Phase 17.1: AuditV2 Model Methods', function () {
 
     it('should throw error for invalid limit value (too large)', async function () {
       try {
-        await AuditV2.findAuditHistory(testOrgUid, 'DESC', 10001, 1);
+        await AuditV2.findAuditHistory(testOrgUid, 'DESC', 1001, 1);
         expect.fail('Should have thrown an error');
       } catch (error) {
         expect(error.message).to.include('Invalid limit value');
@@ -270,7 +270,7 @@ describe('Phase 17.1: AuditV2 Model Methods', function () {
     });
 
     it('should accept valid limit and page at maximum bounds', async function () {
-      const baseline = await AuditV2.findAuditHistory(testOrgUid, 'DESC', 10000, 1);
+      const baseline = await AuditV2.findAuditHistory(testOrgUid, 'DESC', 1000, 1);
       const baselineCount = baseline.count;
 
       const futureTs = '9999999991';
@@ -287,7 +287,7 @@ describe('Phase 17.1: AuditV2 Model Methods', function () {
         },
       ]);
 
-      const result = await AuditV2.findAuditHistory(testOrgUid, 'DESC', 10000, 1);
+      const result = await AuditV2.findAuditHistory(testOrgUid, 'DESC', 1000, 1);
       expect(result.count).to.equal(baselineCount + 1);
     });
 
@@ -317,7 +317,7 @@ describe('Phase 17.1: AuditV2 Model Methods', function () {
       ]);
 
       // Invalid order should default to DESC — our future-timestamped records come first
-      const result = await AuditV2.findAuditHistory(testOrgUid, 'INVALID', 10000, 1);
+      const result = await AuditV2.findAuditHistory(testOrgUid, 'INVALID', 1000, 1);
       const testRows = result.rows.filter((r) => r.root_hash.startsWith('order-'));
       expect(testRows).to.have.length(2);
       // DESC: 9902 before 9901

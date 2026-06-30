@@ -11,22 +11,33 @@ import { migrations } from './migrations';
 import { seeders } from './seeders';
 
 import dotenv from 'dotenv';
+import { installSqlitePragmas } from '../sqlite-pragmas.js';
+import { matchingUpdatedAtAttr, isMirrorInSync } from '../mirror-sync-gate.js';
 dotenv.config({ quiet: true });
 
 // possible values: local, test
 const nodeEnv = process.env.NODE_ENV;
-const dbConfigKey = nodeEnv ? `v2${nodeEnv.charAt(0).toUpperCase() + nodeEnv.slice(1)}` : 'v2Local';
+const dbConfigKey = nodeEnv
+  ? `v2${nodeEnv.charAt(0).toUpperCase() + nodeEnv.slice(1)}`
+  : 'v2Local';
 
 // Safety check: In test mode, ensure we're using test database configuration
 if (nodeEnv === 'test') {
   const testConfig = config[dbConfigKey];
-  if (!testConfig || !testConfig.storage || !testConfig.storage.includes('test')) {
+  if (
+    !testConfig ||
+    !testConfig.storage ||
+    !testConfig.storage.includes('test')
+  ) {
     const errorMsg = `SAFETY CHECK FAILED: Test mode detected but V2 database config '${dbConfigKey}' does not appear to be a test database. Storage: ${testConfig?.storage || 'undefined'}. This prevents accidental production database access.`;
     console.error(errorMsg);
     throw new Error(errorMsg);
   }
   // Additional check: test database should be under tests/test-dbs/, not in home directory
-  if (testConfig.storage.includes('~') || testConfig.storage.includes(os.homedir())) {
+  if (
+    testConfig.storage.includes('~') ||
+    testConfig.storage.includes(os.homedir())
+  ) {
     const errorMsg = `SAFETY CHECK FAILED: V2 test database path appears to be in home directory: ${testConfig.storage}. Test databases must be under tests/test-dbs/.`;
     console.error(errorMsg);
     throw new Error(errorMsg);
@@ -39,6 +50,7 @@ if (nodeEnv === 'test') {
 }
 
 export const sequelizeV2 = new Sequelize(config[dbConfigKey]);
+installSqlitePragmas(sequelizeV2, loggerV2);
 
 // Determine if MySQL mirror is configured by checking the actual config values
 // This allows MySQL mirror to work in any environment (local, test, production)
@@ -53,7 +65,9 @@ const mysqlMirrorConfigured =
 // Use MySQL config (v2Mirror) if configured, otherwise fall back to SQLite test config
 const mirrorConfig = mysqlMirrorConfigured ? 'v2Mirror' : 'v2MirrorTest';
 
-loggerV2.info(`[v2]: Mirror DB config selected: ${mirrorConfig} (MySQL configured: ${!!mysqlMirrorConfigured})`);
+loggerV2.info(
+  `[v2]: Mirror DB config selected: ${mirrorConfig} (MySQL configured: ${!!mysqlMirrorConfigured})`,
+);
 
 // Test-only override for isMysqlMirrorConfiguredForReconnectV2(). Tests set
 // this to simulate "MySQL is configured" (or not) independently of the actual
@@ -80,6 +94,7 @@ const isMysqlMirrorConfiguredForReconnectV2 = () => {
 };
 
 export const sequelizeV2Mirror = new Sequelize(config[mirrorConfig]);
+installSqlitePragmas(sequelizeV2Mirror, loggerV2);
 
 // Snapshot of "is the mirror Sequelize instance actually pointing at MySQL"
 // taken at module-load time, alongside sequelizeV2Mirror construction.
@@ -123,6 +138,15 @@ let v2MirrorSetupPromise = null;
 // issued after the reconnect are serialized behind it so the mirror is in a
 // caught-up state before new operations are applied.
 let v2ReconnectBackfillPromise = null;
+
+// Single in-flight backfillMirrorV2 call. Symmetric with V1's
+// backfillInFlightPromise: prevents a race between the prepareV2Db startup
+// backfill and any other caller (reconnect path, test harness) from
+// running two full passes in parallel. V2 hasn't been observed to race in
+// production - V2 models do not call safeMirrorDbHandlerV2 at module-load
+// time the way V1 historically did - but the guard is cheap insurance
+// against future call sites and matches V1's defence in depth.
+let v2BackfillInFlightPromise = null;
 
 export const mirrorDBEnabledV2 = () => {
   // Mirror DB is only enabled if MySQL is actually configured.
@@ -188,8 +212,8 @@ export const validateMirrorDbNames = (v1Config, v2Config) => {
   if (v1DbName && v2DbName && v1DbName === v2DbName) {
     throw new Error(
       `V1 and V2 mirror databases must use different database names, ` +
-      `but both are set to '${v1DbName}'. ` +
-      `Update MIRROR_DB.DB_NAME in your config.yaml so V1 and V2 have distinct values.`,
+        `but both are set to '${v1DbName}'. ` +
+        `Update MIRROR_DB.DB_NAME in your config.yaml so V1 and V2 have distinct values.`,
     );
   }
 };
@@ -210,10 +234,7 @@ const startV2ReconnectBackfill = () => {
       // configurations - the SQLite test fallback never needs setup retries
       // and would otherwise log a spurious "still failing" error on every
       // call when tests force the mirror enabled via the test override.
-      if (
-        !v2MirrorSetupSucceeded &&
-        isMysqlMirrorConfiguredForReconnectV2()
-      ) {
+      if (!v2MirrorSetupSucceeded && isMysqlMirrorConfiguredForReconnectV2()) {
         const ok = await prepareMysqlMirrorV2();
         if (!ok) {
           loggerV2.error(
@@ -313,6 +334,21 @@ export const safeMirrorDbHandlerV2 = (callback) => {
   });
 };
 
+// Synchronous mirror write when a mirrorTransaction is provided; fire-and-
+// forget via safeMirrorDbHandlerV2 otherwise.  See mirrorWrite in the V1
+// database module for full rationale.
+export const mirrorWriteV2 = async (callback, mirrorTransaction) => {
+  if (mirrorTransaction) {
+    try {
+      await callback();
+    } catch (e) {
+      loggerV2.error(`v2_mirror_error:${e.message}`);
+    }
+  } else {
+    safeMirrorDbHandlerV2(callback);
+  }
+};
+
 // Initialize a V2 mirror Sequelize Model synchronously at module-load time.
 //
 // Model.init() only registers schema metadata on the Sequelize instance; it
@@ -331,9 +367,7 @@ export const initMirrorModelV2 = (initFn) => {
   try {
     initFn();
   } catch (error) {
-    loggerV2.error(
-      `[v2]: Failed to initialize mirror model: ${error.message}`,
-    );
+    loggerV2.error(`[v2]: Failed to initialize mirror model: ${error.message}`);
   }
 };
 
@@ -373,9 +407,13 @@ export const checkForV2Migrations = async (db) => {
     });
 
     // Special handling for FTS triggers migration - verify triggers exist even if marked complete
-    const ftsTriggersMigration = migrations.find(m => m.name === '20250110120032-create-fts5-triggers-v2');
+    const ftsTriggersMigration = migrations.find(
+      (m) => m.name === '20250110120032-create-fts5-triggers-v2',
+    );
     if (ftsTriggersMigration && db.getDialect() === 'sqlite') {
-      const isCompleted = completedMigrations.some(m => m.name === ftsTriggersMigration.name);
+      const isCompleted = completedMigrations.some(
+        (m) => m.name === ftsTriggersMigration.name,
+      );
       if (isCompleted) {
         // Verify triggers actually exist
         const triggerCheck = await db.query(
@@ -383,7 +421,9 @@ export const checkForV2Migrations = async (db) => {
           { type: Sequelize.QueryTypes.SELECT },
         );
         if (triggerCheck.length !== 6) {
-          loggerV2.warn(`FTS triggers missing (found ${triggerCheck.length}, expected 6), re-running migration`);
+          loggerV2.warn(
+            `FTS triggers missing (found ${triggerCheck.length}, expected 6), re-running migration`,
+          );
           // Remove from completed migrations so it runs again
           await db.query('DELETE FROM `SequelizeMetaV2` WHERE name = :name', {
             replacements: { name: ftsTriggersMigration.name },
@@ -410,23 +450,32 @@ export const checkForV2Migrations = async (db) => {
         const isAlreadyExistsError =
           errorMessage.includes('already exists') ||
           errorMessage.includes('duplicate column name') ||
-          (e.parent && (
+          (e.parent &&
             e.parent.code === 'SQLITE_ERROR' &&
-            (e.parent.message?.includes('already exists') || e.parent.message?.includes('duplicate')
-          )));
+            (e.parent.message?.includes('already exists') ||
+              e.parent.message?.includes('duplicate')));
 
         if (isAlreadyExistsError) {
-          loggerV2.warn(`V2 Migration ${notCompleted.name} encountered "already exists" error, marking as complete:`, errorMessage);
+          loggerV2.warn(
+            `V2 Migration ${notCompleted.name} encountered "already exists" error, marking as complete:`,
+            errorMessage,
+          );
           // Mark migration as complete even if some parts already exist
           try {
-            await db.query('INSERT INTO `SequelizeMetaV2` (name) VALUES(:name)', {
-              type: Sequelize.QueryTypes.INSERT,
-              replacements: { name: notCompleted.name },
-            });
+            await db.query(
+              'INSERT INTO `SequelizeMetaV2` (name) VALUES(:name)',
+              {
+                type: Sequelize.QueryTypes.INSERT,
+                replacements: { name: notCompleted.name },
+              },
+            );
           } catch (insertError) {
             // Ignore if already in meta table
             if (!insertError.message?.includes('UNIQUE constraint')) {
-              loggerV2.error('Error marking migration as complete', insertError);
+              loggerV2.error(
+                'Error marking migration as complete',
+                insertError,
+              );
             }
           }
         } else {
@@ -466,57 +515,191 @@ export const backfillMirrorV2 = async () => {
     return;
   }
 
+  // Coalesce concurrent calls so two callers don't each run a full pass.
+  // See V1's backfillInFlightPromise for the full rationale.
+  if (v2BackfillInFlightPromise) {
+    return v2BackfillInFlightPromise;
+  }
+
+  v2BackfillInFlightPromise = (async () => {
+    await runBackfillMirrorV2();
+  })().finally(() => {
+    v2BackfillInFlightPromise = null;
+  });
+
+  return v2BackfillInFlightPromise;
+};
+
+const runBackfillMirrorV2 = async () => {
   loggerV2.info('[v2]: Starting MySQL mirror backfill from SQLite...');
 
   try {
     // Dynamic import to avoid circular dependency
     // (model files import sequelizeV2/safeMirrorDbHandlerV2 from this file)
+    // eslint-disable-next-line no-restricted-syntax -- circular dep guard
     const models = await import('../../models/v2/index.js');
 
     // All 23 source/mirror pairs - covers every model that has a mirror
     const mirrorPairs = [
-      { source: models.OrganizationsV2, mirror: models.OrganizationsV2Mirror, name: 'organizations' },
-      { source: models.ProgramV2, mirror: models.ProgramV2Mirror, name: 'program' },
-      { source: models.MethodologyV2, mirror: models.MethodologyV2Mirror, name: 'methodology' },
-      { source: models.ProjectV2, mirror: models.ProjectV2Mirror, name: 'project' },
-      { source: models.ValidationV2, mirror: models.ValidationV2Mirror, name: 'validation' },
-      { source: models.VerificationV2, mirror: models.VerificationV2Mirror, name: 'verification' },
-      { source: models.IssuanceV2, mirror: models.IssuanceV2Mirror, name: 'issuance' },
+      {
+        source: models.OrganizationsV2,
+        mirror: models.OrganizationsV2Mirror,
+        name: 'organizations',
+      },
+      {
+        source: models.ProgramV2,
+        mirror: models.ProgramV2Mirror,
+        name: 'program',
+      },
+      {
+        source: models.MethodologyV2,
+        mirror: models.MethodologyV2Mirror,
+        name: 'methodology',
+      },
+      {
+        source: models.ProjectV2,
+        mirror: models.ProjectV2Mirror,
+        name: 'project',
+      },
+      {
+        source: models.ValidationV2,
+        mirror: models.ValidationV2Mirror,
+        name: 'validation',
+      },
+      {
+        source: models.VerificationV2,
+        mirror: models.VerificationV2Mirror,
+        name: 'verification',
+      },
+      {
+        source: models.IssuanceV2,
+        mirror: models.IssuanceV2Mirror,
+        name: 'issuance',
+      },
       { source: models.UnitV2, mirror: models.UnitV2Mirror, name: 'unit' },
-      { source: models.LocationV2, mirror: models.LocationV2Mirror, name: 'location' },
-      { source: models.EstimationV2, mirror: models.EstimationV2Mirror, name: 'estimation' },
-      { source: models.RatingV2, mirror: models.RatingV2Mirror, name: 'rating' },
-      { source: models.CoBenefitV2, mirror: models.CoBenefitV2Mirror, name: 'co_benefit' },
-      { source: models.ProjectMethodologyV2, mirror: models.ProjectMethodologyV2Mirror, name: 'project_methodology' },
-      { source: models.StakeholderV2, mirror: models.StakeholderV2Mirror, name: 'stakeholder' },
-      { source: models.StakeholderProjectV2, mirror: models.StakeholderProjectV2Mirror, name: 'stakeholder_projects' },
+      {
+        source: models.LocationV2,
+        mirror: models.LocationV2Mirror,
+        name: 'location',
+      },
+      {
+        source: models.EstimationV2,
+        mirror: models.EstimationV2Mirror,
+        name: 'estimation',
+      },
+      {
+        source: models.RatingV2,
+        mirror: models.RatingV2Mirror,
+        name: 'rating',
+      },
+      {
+        source: models.CoBenefitV2,
+        mirror: models.CoBenefitV2Mirror,
+        name: 'co_benefit',
+      },
+      {
+        source: models.ProjectMethodologyV2,
+        mirror: models.ProjectMethodologyV2Mirror,
+        name: 'project_methodology',
+      },
+      {
+        source: models.StakeholderV2,
+        mirror: models.StakeholderV2Mirror,
+        name: 'stakeholder',
+      },
+      {
+        source: models.StakeholderProjectV2,
+        mirror: models.StakeholderProjectV2Mirror,
+        name: 'stakeholder_projects',
+      },
       { source: models.LabelV2, mirror: models.LabelV2Mirror, name: 'label' },
-      { source: models.UnitLabelV2, mirror: models.UnitLabelV2Mirror, name: 'unit_label' },
-      { source: models.AefT1SubmissionV2, mirror: models.AefT1SubmissionV2Mirror, name: 'aef_t1_submission' },
-      { source: models.AefT5AuthorizedEntitiesV2, mirror: models.AefT5AuthorizedEntitiesV2Mirror, name: 'aef_t5_authorized_entities' },
-      { source: models.AefT2AuthorizationsV2, mirror: models.AefT2AuthorizationsV2Mirror, name: 'aef_t2_authorizations' },
-      { source: models.AefT3ActionsV2, mirror: models.AefT3ActionsV2Mirror, name: 'aef_t3_actions' },
-      { source: models.AefT4HoldingsV2, mirror: models.AefT4HoldingsV2Mirror, name: 'aef_t4_holdings' },
+      {
+        source: models.UnitLabelV2,
+        mirror: models.UnitLabelV2Mirror,
+        name: 'unit_label',
+      },
+      {
+        source: models.AefT1SubmissionV2,
+        mirror: models.AefT1SubmissionV2Mirror,
+        name: 'aef_t1_submission',
+      },
+      {
+        source: models.AefT5AuthorizedEntitiesV2,
+        mirror: models.AefT5AuthorizedEntitiesV2Mirror,
+        name: 'aef_t5_authorized_entities',
+      },
+      {
+        source: models.AefT2AuthorizationsV2,
+        mirror: models.AefT2AuthorizationsV2Mirror,
+        name: 'aef_t2_authorizations',
+      },
+      {
+        source: models.AefT3ActionsV2,
+        mirror: models.AefT3ActionsV2Mirror,
+        name: 'aef_t3_actions',
+      },
+      {
+        source: models.AefT4HoldingsV2,
+        mirror: models.AefT4HoldingsV2Mirror,
+        name: 'aef_t4_holdings',
+      },
       { source: models.AuditV2, mirror: models.AuditV2Mirror, name: 'audit' },
     ];
 
     let totalSynced = 0;
     let totalOrphansRemoved = 0;
+    let totalGateSkipped = 0;
 
     for (const { source, mirror, name } of mirrorPairs) {
       try {
         // Verify mirror model is initialized (init may not have completed if mirror was just configured)
-        if (!mirror.rawAttributes || Object.keys(mirror.rawAttributes).length === 0) {
-          loggerV2.warn(`[v2]: Mirror backfill: ${name} - mirror model not initialized, skipping`);
+        if (
+          !mirror.rawAttributes ||
+          Object.keys(mirror.rawAttributes).length === 0
+        ) {
+          loggerV2.warn(
+            `[v2]: Mirror backfill: ${name} - mirror model not initialized, skipping`,
+          );
           continue;
         }
 
-        // Orphan sweep pass - snapshot mirror PKs BEFORE source PKs so that
-        // rows inserted concurrently (after mirror snapshot) are not wrongly
-        // treated as orphans. See function-level comment for the full
-        // concurrency argument.
+        // Orphan sweep first (mirror snapshot before source snapshot) so
+        // concurrent inserts aren't wrongly classified as orphans. The
+        // sweep runs UNCONDITIONALLY - before the in-sync gate below -
+        // because the gate's COUNT(*) + MAX(updatedAt) check cannot
+        // distinguish a healthy mirror from one where rows were
+        // delete+inserted with a different PK during an outage (count
+        // and MAX preserved, but the row identities differ). Running
+        // the sweep first makes such drift visible to the gate via the
+        // post-sweep count mismatch, which then falls through to the
+        // full upsert. See V1's backfillMirror and PR review for the
+        // reproducer.
         const orphansRemoved = await sweepMirrorOrphansV2(source, mirror, name);
         totalOrphansRemoved += orphansRemoved;
+
+        // Fast in-sync gate (post-sweep). See isMirrorInSync in
+        // ../mirror-sync-gate.js for the full rationale; in short, skip
+        // the bulk upsert when COUNT(*) matches and the mirror's
+        // MAX(updatedAt) is at least as new as source's. Falls through
+        // to the full sync on any mismatch so outage-recovery semantics
+        // are preserved. See V1's backfillMirror for the same
+        // correctness invariant and the known non-max-row-UPDATE
+        // limitation.
+        const updatedAtAttr = matchingUpdatedAtAttr(source, mirror);
+        if (updatedAtAttr) {
+          const inSync = await isMirrorInSync(
+            source,
+            mirror,
+            name,
+            updatedAtAttr,
+            loggerV2,
+            '[v2]: ',
+          );
+          if (inSync) {
+            totalGateSkipped += 1;
+            continue;
+          }
+        }
 
         // Determine which fields to update on duplicate key conflict.
         // Include all non-primary-key attributes so the mirror stays in sync
@@ -553,7 +736,9 @@ export const backfillMirrorV2 = async () => {
           // eslint-disable-next-line no-constant-condition
           while (true) {
             const where =
-              lastPk === null ? undefined : { [pk]: { [Sequelize.Op.gt]: lastPk } };
+              lastPk === null
+                ? undefined
+                : { [pk]: { [Sequelize.Op.gt]: lastPk } };
             // NOTE: Do NOT pass `raw: true` to findAll. With raw:true
             // Sequelize returns SQLite values as-stored (strings),
             // including DATE columns as "YYYY-MM-DD HH:mm:ss.SSS +00:00".
@@ -613,17 +798,21 @@ export const backfillMirrorV2 = async () => {
         if (synced === 0) {
           loggerV2.debug(`[v2]: Mirror backfill: ${name} - no records to sync`);
         } else {
-          loggerV2.info(`[v2]: Mirror backfill: ${name} - synced ${synced} records`);
+          loggerV2.info(
+            `[v2]: Mirror backfill: ${name} - synced ${synced} records`,
+          );
         }
         totalSynced += synced;
       } catch (error) {
-        loggerV2.error(`[v2]: Mirror backfill error for ${name}: ${error.message}`);
+        loggerV2.error(
+          `[v2]: Mirror backfill error for ${name}: ${error.message}`,
+        );
         // Continue with next table - don't let one failure stop the entire backfill
       }
     }
 
     loggerV2.info(
-      `[v2]: MySQL mirror backfill completed - ${totalSynced} records upserted, ${totalOrphansRemoved} orphan rows removed`,
+      `[v2]: MySQL mirror backfill completed - ${totalSynced} records upserted, ${totalOrphansRemoved} orphan rows removed, ${totalGateSkipped} tables skipped (already in sync)`,
     );
   } catch (error) {
     loggerV2.error(
@@ -645,7 +834,12 @@ export const backfillMirrorV2 = async () => {
  * mirror snapshot and IS classified as orphan - correct behavior.
  *
  * Skips tables with composite primary keys (none exist in V2 today; fall
- * back to log-and-continue if one is introduced later).
+ * back to log-and-continue if one is introduced later). NOTE: when this
+ * early-returns for composite PKs, the in-sync gate that runs after it
+ * in backfillMirrorV2 operates on raw (un-swept) state. If a
+ * composite-PK mirror is introduced later, the gate's PK-swap
+ * protection no longer applies and the gate would need to be
+ * disabled for that table or replaced with a stronger check.
  */
 const sweepMirrorOrphansV2 = async (source, mirror, name) => {
   const pkAttrs = mirror.primaryKeyAttributes;
@@ -783,9 +977,7 @@ export const prepareMysqlMirrorV2 = async () => {
 
       try {
         const dbName = mirrorDbConfig.DB_NAME;
-        await connection.query(
-          `CREATE DATABASE IF NOT EXISTS \`${dbName}\`;`,
-        );
+        await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\`;`);
         loggerV2.info(
           `[v2]: MySQL mirror database '${dbName}' created/verified`,
         );
@@ -823,7 +1015,7 @@ export const prepareV2Db = async () => {
     try {
       const tables = await sequelizeV2.query(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='governance'",
-        { type: sequelizeV2.QueryTypes.SELECT }
+        { type: sequelizeV2.QueryTypes.SELECT },
       );
       if (tables && tables.length > 0) {
         // Tables exist, safe to return
@@ -835,7 +1027,10 @@ export const prepareV2Db = async () => {
       prepareV2DbPromise = null;
     } catch (error) {
       // Database not accessible, reset and re-run
-      loggerV2.warn('[v2]: Database check failed, re-running prepareV2Db():', error.message);
+      loggerV2.warn(
+        '[v2]: Database check failed, re-running prepareV2Db():',
+        error.message,
+      );
       prepareV2DbCompleted = false;
       prepareV2DbPromise = null;
     }
@@ -871,12 +1066,34 @@ export const prepareV2Db = async () => {
       await prepareMysqlMirrorV2();
     } else {
       // No MySQL mirror configured - mirror operations will be no-ops
-      loggerV2.info('[v2]: No MySQL mirror configured, mirror operations disabled');
+      loggerV2.info(
+        '[v2]: No MySQL mirror configured, mirror operations disabled',
+      );
     }
 
-    loggerV2.info('[v2]: About to run main database migrations (sequelizeV2)...');
+    loggerV2.info(
+      '[v2]: About to run main database migrations (sequelizeV2)...',
+    );
     await checkForV2Migrations(sequelizeV2);
     loggerV2.info('[v2]: Main database migrations completed');
+
+    // FTS5 deferral crash-recovery (SQLite only). See V1 prepareDb for
+    // the full rationale. Failure here is logged and swallowed - stale
+    // FTS reads are preferable to a dead app on boot, and the next sync
+    // tick will re-try the restore once all subscribed orgs are caught
+    // up.
+    if (sequelizeV2.getDialect() === 'sqlite') {
+      try {
+        const { restoreV2FtsTriggersAndRebuildIfDeferred } =
+          // eslint-disable-next-line no-restricted-syntax -- circular dep guard
+          await import('../../utils/fts5-deferral-v2.js');
+        await restoreV2FtsTriggersAndRebuildIfDeferred();
+      } catch (error) {
+        loggerV2.error(
+          `[v2]: FTS5 deferral recovery on boot failed; FTS reads may be stale until the next caught-up sync tick re-runs the restore: ${error?.message || error}`,
+        );
+      }
+    }
 
     // Backfill mirror database from SQLite source data (idempotent upsert).
     // Runs after both mirror and main migrations are complete so all tables exist.
@@ -902,10 +1119,14 @@ export const prepareV2Db = async () => {
 async function setV2WALMode() {
   try {
     await sequelizeV2.authenticate();
-    await sequelizeV2.query('PRAGMA journal_mode=WAL;', { type: QueryTypes.RAW });
+    await sequelizeV2.query('PRAGMA journal_mode=WAL;', {
+      type: QueryTypes.RAW,
+    });
     // Set busy_timeout to 30 seconds (30000ms) to handle concurrent access
     // This tells SQLite to wait up to 30 seconds before returning SQLITE_BUSY
-    await sequelizeV2.query('PRAGMA busy_timeout=30000;', { type: QueryTypes.RAW });
+    await sequelizeV2.query('PRAGMA busy_timeout=30000;', {
+      type: QueryTypes.RAW,
+    });
     console.log('V2 WAL mode set successfully.');
     console.log('V2 busy_timeout set to 30000ms.');
   } catch (error) {

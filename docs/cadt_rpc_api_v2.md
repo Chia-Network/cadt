@@ -35,6 +35,78 @@ The CADT RPC API V2 is exposed by default on port 31310. This document will give
 
 If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to your `curl` request.
 
+## System endpoints
+
+Several routes are mounted on the server root (not under `/v1` or `/v2`). They are for monitoring and troubleshooting. Unlike most API routes, they are not blocked when the wallet or DataLayer is still syncing or migrations are in progress.
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /health` | CADT process liveness; includes disk-space summary for the Chia root partition |
+| `GET /v1/health` | V1 API liveness (same disk-space fields as `/health`) |
+| `GET /v2/health` | V2 API liveness (same disk-space fields as `/health`) |
+| `GET /v1/health/wallet` | V1 wallet sync and pending-transaction summary |
+| `GET /v2/health/wallet` | V2 wallet sync and pending-transaction summary |
+| `GET /diagnostics` | System-wide debug snapshot (CADT, Chia, DataLayer, host) |
+
+If `CADT_API_KEY` is set, these endpoints use the same global `x-api-key` check as the rest of the API.
+
+<a id="diagnostics"></a>
+### Diagnostics snapshot (`GET /diagnostics`)
+
+Returns one JSON object summarizing CADT configuration, Chia wallet/full-node/DataLayer status, DataLayer subscriptions, local Chia processes, and host CPU/memory/disk. Each major subsection may include a `status` of `ok`, `warning`, or `critical`, plus an optional `message` when attention is needed. External calls use per-section timeouts and degrade gracefully when a subsystem is down.
+
+- **Not available on read-only nodes:** returns **403** when `READ_ONLY` is `true` for V1 or V2.
+- **Response time:** usually well under a second on a healthy install; individual probes can take up to about 10 seconds each, with a worst-case total near 30 seconds when something is wedged.
+
+Request (include the header when an API key is configured):
+
+```shell
+curl -s -H 'x-api-key: <your-api-key-here>' http://localhost:31310/diagnostics
+```
+
+Response (top-level shape; nested fields vary with the environment):
+
+```json
+{
+  "timestamp": "2024-01-15T12:00:00.000Z",
+  "cadt": {
+    "version": "1.0.0",
+    "configDir": "/home/user/.chia/mainnet/cadt",
+    "v1": { "enabled": true, "readOnly": false },
+    "v2": { "enabled": true, "readOnly": false }
+  },
+  "network": { "cadt": "mainnet", "chia": "mainnet", "matches": true, "status": "ok" },
+  "chia": {
+    "version": "2.4.0",
+    "wallet": { "reachable": true, "synced": true },
+    "fullNode": { "reachable": false },
+    "datalayer": { "reachable": true, "subscriptions": [] },
+    "runningProcesses": { "matches": [] }
+  },
+  "system": {
+    "platform": "linux",
+    "cpu": { "cores": 8 },
+    "memory": { "percentUsed": 42 },
+    "disk": { "percentUsed": 55 }
+  }
+}
+```
+
+<a id="health-check"></a>
+### V2 health check (`GET /v2/health`)
+
+```shell
+curl --location --request GET 'http://localhost:31310/v2/health' --header 'Content-Type: application/json'
+```
+
+```json
+{
+  "message": "V2 API is running",
+  "timestamp": "2024-01-15T12:00:00.000Z",
+  "diskSpace": {}
+}
+```
+
 ### Organization Filtering
 
 All GET list endpoints support the `?orgUid=` query parameter to filter records by organization:
@@ -45,6 +117,12 @@ All GET list endpoints support the `?orgUid=` query parameter to filter records 
 For tables with a direct `orgUid` column (project, unit, methodology, program, stakeholder, label, aef_t1_submission), this filters by the record's own `orgUid` field.
 
 For child tables (location, estimation, rating, co_benefit, validation, verification, project_methodology, stakeholder_projects, unit_label, issuance, aef_t2-t5), this filters by the parent project's or unit's `orgUid` through an automatic JOIN.
+
+### Ownership Restrictions
+
+V2 `PUT` and `DELETE` requests can only stage mutations for records owned by the home organization. For tables with a direct `orgUid` column, the record's `orgUid` must match the home organization. For child and relationship tables, ownership is resolved through the referenced owner records, such as project, unit, program, methodology, label, stakeholder, and AEF parent records.
+
+Requests that attempt to update, delete, or retarget a staged mutation to another organization's record are rejected with a `Restricted data` error.
 
 ### Pagination
 
@@ -165,6 +243,9 @@ These files use `NEW-<n>` placeholder IDs and demonstrate the expected column na
 
 ## Commands
 
+- [System endpoints](#system-endpoints)
+  - [Diagnostics snapshot](#diagnostics)
+  - [V2 health check](#health-check)
 - [`organizations`](#organizations)
   - [GET Examples](#organizations-get-examples)
     - [List all organizations](#list-all-organizations)
@@ -475,9 +556,7 @@ These files use `NEW-<n>` placeholder IDs and demonstrate the expected column na
     - [Unsubscribe from filestore](#unsubscribe-from-filestore)
   - [DELETE Examples](#filestore-delete-examples)
     - [Delete file from filestore](#delete-file-from-filestore)
-- [`health`](#health)
-  - [GET Examples](#health-get-examples)
-    - [Health check](#health-check)
+
 ---
 
 ## Reference
@@ -1890,7 +1969,7 @@ Response
 
 **Note**: The ID in the URL path is the `cadTrustMethodologyId`.
 
-**Referential integrity**: If any committed or staged (`INSERT`/`UPDATE`) `project_methodology` records reference this methodology, the request returns `409 Conflict`. Pass `?force=true` to bypass the guard and stage the delete anyway.
+**Referential integrity**: If any committed or staged (`INSERT`/`UPDATE`) `project_methodology` records reference this methodology, the request returns `409 Conflict` until those references are removed. References from any synced registry count the same.
 
 Request
 ```shell
@@ -1910,16 +1989,10 @@ Response (409 — references exist)
 ```json
 {
   "success": false,
-  "message": "Cannot delete methodology: referenced by 2 project-methodology links",
-  "references": [{ "table": "project_methodology", "count": 2 }],
-  "hint": "Remove all references first, or use ?force=true to delete anyway"
+  "message": "Cannot delete methodology: it is still referenced by 2 project-methodology links. Remove those references before deleting this methodology.",
+  "error": "Referenced records must be removed before deletion",
+  "references": [{ "table": "project_methodology", "count": 2 }]
 }
-```
-
-Force delete (bypass guard)
-```shell
-curl --location --request DELETE 'localhost:31310/v2/methodology/9b9bb857-c71b-4649-b805-a289db27dc1c?force=true' \
---header 'Content-Type: application/json'
 ```
 
 ---
@@ -2076,7 +2149,7 @@ Response
 
 **Note**: The ID in the URL path is the `cadTrustProgramId`.
 
-**Referential integrity**: If any committed or staged (`INSERT`/`UPDATE`) `project` records reference this program via `cadTrustProgramId`, the request returns `409 Conflict`. Pass `?force=true` to bypass the guard and stage the delete anyway.
+**Referential integrity**: If any committed or staged (`INSERT`/`UPDATE`) `project` records reference this program via `cadTrustProgramId`, the request returns `409 Conflict` until those references are removed.
 
 Request
 ```shell
@@ -2096,16 +2169,10 @@ Response (409 — references exist)
 ```json
 {
   "success": false,
-  "message": "Cannot delete program: referenced by 3 projects",
-  "references": [{ "table": "project", "count": 3 }],
-  "hint": "Remove all references first, or use ?force=true to delete anyway"
+  "message": "Cannot delete program: it is still referenced by 3 projects. Remove those references before deleting this program.",
+  "error": "Referenced records must be removed before deletion",
+  "references": [{ "table": "project", "count": 3 }]
 }
-```
-
-Force delete (bypass guard)
-```shell
-curl --location --request DELETE 'localhost:31310/v2/program/51ca9638-22b0-4e14-ae7a-c09d23b37b58?force=true' \
---header 'Content-Type: application/json'
 ```
 
 ---
@@ -2776,17 +2843,29 @@ Response
 
 **Note**: The ID in the URL path is the `cadTrustValidationId`.
 
+**Referential integrity**: If any committed or staged (`INSERT`/`UPDATE`) `verification` records reference this validation via `cadTrustValidationId`, the request returns `409 Conflict` until those references are removed. References from any synced registry count the same.
+
 Request
 ```shell
 curl --location --request DELETE 'localhost:31310/v2/validation/a1b2c3d4-e5f6-7890-abcd-ef1234567890' \
 --header 'Content-Type: application/json'
 ```
 
-Response
+Response (success — no references)
 ```json
 {
-  "message": "Validation deletion staged successfully",
+  "message": "Validation delete staged successfully",
   "success": true
+}
+```
+
+Response (409 — references exist)
+```json
+{
+  "success": false,
+  "message": "Cannot delete validation: it is still referenced by 2 verifications. Remove those references before deleting this validation.",
+  "error": "Referenced records must be removed before deletion",
+  "references": [{ "table": "verification", "count": 2 }]
 }
 ```
 
@@ -2949,6 +3028,8 @@ Response
 
 **Note**: The ID in the URL path is the `cadTrustVerificationId`.
 
+**Cascade delete**: Deleting a verification automatically stages DELETE entries for all child issuances and their units. The `stagedChildDeletes` field in the response reports the total number of child rows staged.
+
 Request
 ```shell
 curl --location --request DELETE 'localhost:31310/v2/verification/b2c3d4e5-f6a7-8901-bcde-f23456789012' \
@@ -2958,7 +3039,8 @@ curl --location --request DELETE 'localhost:31310/v2/verification/b2c3d4e5-f6a7-
 Response
 ```json
 {
-  "message": "Verification deletion staged successfully",
+  "message": "Verification delete staged successfully",
+  "stagedChildDeletes": 5,
   "success": true
 }
 ```
@@ -3122,17 +3204,29 @@ Response
 
 **Note**: The ID in the URL path is the `cadTrustLocationId`.
 
+**Referential integrity**: If any committed or staged (`INSERT`/`UPDATE`) `issuance` records reference this location via `cadTrustLocationId`, the request returns `409 Conflict` until those references are removed. References from any synced registry count the same.
+
 Request
 ```shell
 curl --location --request DELETE 'localhost:31310/v2/location/8182100d-7794-4df7-b3b3-758391d13011' \
 --header 'Content-Type: application/json'
 ```
 
-Response
+Response (success — no references)
 ```json
 {
-  "message": "Location deletion staged successfully",
+  "message": "Location deleted successfully",
   "success": true
+}
+```
+
+Response (409 — references exist)
+```json
+{
+  "success": false,
+  "message": "Cannot delete location: it is still referenced by 3 issuance records. Remove those references before deleting this location.",
+  "error": "Referenced records must be removed before deletion",
+  "references": [{ "table": "issuance", "count": 3 }]
 }
 ```
 
@@ -3288,6 +3382,8 @@ Response
 
 **Note**: The ID in the URL path is the `cadTrustIssuanceId`.
 
+**Cascade delete**: Deleting an issuance automatically stages DELETE entries for all child units and their unit labels. The `stagedChildDeletes` field in the response reports the total number of child rows staged.
+
 Request
 ```shell
 curl --location --request DELETE 'localhost:31310/v2/issuance/d9f58b08-af25-461c-88eb-403bb02b135e' \
@@ -3297,7 +3393,8 @@ curl --location --request DELETE 'localhost:31310/v2/issuance/d9f58b08-af25-461c
 Response
 ```json
 {
-  "message": "Issuance deletion staged successfully",
+  "message": "Issuance delete staged successfully",
+  "stagedChildDeletes": 3,
   "success": true
 }
 ```
@@ -4118,9 +4215,9 @@ Response
   "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
   "ratingType": "CCQI",
   "ratingName": "Quality Assessment Rating",
-      "ratingValue": "97",
-      "ratingLink": "https://www.example.com/rating-report",
-      "createdAt": "2022-03-11T05:17:55.427Z",
+  "ratingValue": "97",
+  "ratingLink": "https://www.example.com/rating-report",
+  "createdAt": "2022-03-11T05:17:55.427Z",
   "updatedAt": "2022-03-11T05:17:55.427Z"
 }
 ```
@@ -4515,17 +4612,29 @@ Response
 
 **Note**: The ID in the URL path is the `cadTrustProjectMethodologyId`.
 
+**Referential integrity**: If any committed or staged (`INSERT`/`UPDATE`) `issuance` records reference this project-methodology link via `cadTrustProjectMethodologyId`, the request returns `409 Conflict` until those references are removed. References from any synced registry count the same.
+
 Request
 ```shell
 curl --location --request DELETE 'localhost:31310/v2/project-methodology/a1b2c3d4-e5f6-7890-abcd-ef1234567890' \
 --header 'Content-Type: application/json'
 ```
 
-Response
+Response (success — no references)
 ```json
 {
-  "message": "Project-Methodology relationship deletion staged successfully",
+  "message": "Project-Methodology relationship delete staged successfully",
   "success": true
+}
+```
+
+Response (409 — references exist)
+```json
+{
+  "success": false,
+  "message": "Cannot delete project-methodology relationship: it is still referenced by 2 issuance records. Remove those references before deleting this project-methodology relationship.",
+  "error": "Referenced records must be removed before deletion",
+  "references": [{ "table": "issuance", "count": 2 }]
 }
 ```
 
@@ -4671,7 +4780,7 @@ Response
 
 **Note**: The ID in the URL path is the `cadTrustStakeholderId`.
 
-**Referential integrity**: If any committed or staged (`INSERT`/`UPDATE`) `stakeholder_projects` records reference this stakeholder, the request returns `409 Conflict`. Pass `?force=true` to bypass the guard and stage the delete anyway.
+**Referential integrity**: If any committed or staged (`INSERT`/`UPDATE`) `stakeholder_projects` records reference this stakeholder, the request returns `409 Conflict` until those references are removed.
 
 Request
 ```shell
@@ -4691,16 +4800,10 @@ Response (409 — references exist)
 ```json
 {
   "success": false,
-  "message": "Cannot delete stakeholder: referenced by 1 stakeholder-project links",
-  "references": [{ "table": "stakeholder_projects", "count": 1 }],
-  "hint": "Remove all references first, or use ?force=true to delete anyway"
+  "message": "Cannot delete stakeholder: it is still referenced by 1 stakeholder-project links. Remove those references before deleting this stakeholder.",
+  "error": "Referenced records must be removed before deletion",
+  "references": [{ "table": "stakeholder_projects", "count": 1 }]
 }
-```
-
-Force delete (bypass guard)
-```shell
-curl --location --request DELETE 'localhost:31310/v2/stakeholder/e880047e-cdf4-45bb-a9df-e706fa427713?force=true' \
---header 'Content-Type: application/json'
 ```
 
 ---
@@ -4999,7 +5102,7 @@ Response
 
 **Note**: The ID in the URL path is the `cadTrustLabelId`.
 
-**Referential integrity**: If any committed or staged (`INSERT`/`UPDATE`) `unit_label` records reference this label, the request returns `409 Conflict`. Pass `?force=true` to bypass the guard and stage the delete anyway.
+**Referential integrity**: If any committed or staged (`INSERT`/`UPDATE`) `unit_label` records reference this label, the request returns `409 Conflict` until those references are removed.
 
 Request
 ```shell
@@ -5019,16 +5122,10 @@ Response (409 — references exist)
 ```json
 {
   "success": false,
-  "message": "Cannot delete label: referenced by 4 unit-label links",
-  "references": [{ "table": "unit_label", "count": 4 }],
-  "hint": "Remove all references first, or use ?force=true to delete anyway"
+  "message": "Cannot delete label: it is still referenced by 4 unit-label links. Remove those references before deleting this label.",
+  "error": "Referenced records must be removed before deletion",
+  "references": [{ "table": "unit_label", "count": 4 }]
 }
-```
-
-Force delete (bypass guard)
-```shell
-curl --location --request DELETE 'localhost:31310/v2/label/dcacd68e-1cfb-4f06-9798-efa0aacda42c?force=true' \
---header 'Content-Type: application/json'
 ```
 
 ---
@@ -6201,8 +6298,9 @@ Options:
 |:---------:|:-----------------:|:------------------------------------------------------------------------------------------------------:|
 |  orgUid   | (Required) String |                            Display audit records matching this orgUid                            |
 |   order   |      String       |            Sort the audit records by `ASC` or `DESC` order based on confirmation timestamp             |
-|   limit   | (Required) Number | Limit the number of audit records to be displayed (must be used with page, eg `?page=5&limit=2`) |
+|   limit   | (Required) Number | Limit the number of audit records to be displayed, between 1 and 1000 (must be used with page, eg `?page=5&limit=2`) |
 |   page    | (Required) Number |       Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)       |
+| excludeChange | Boolean | When `true`, omit the large `change` column from each record to reduce response size (default `false`) |
 
 <a id="audit-get-examples"></a>
 ### GET Examples
@@ -6601,28 +6699,5 @@ Response
 }
 ```
 
----
-
-## `health`
-
-Functionality: Health check endpoint for V2 API
-
-<a id="health-get-examples"></a>
-### GET Examples
-
-#### Health check
-
-Request
-```shell
-curl --location --request GET 'localhost:31310/v2/health' --header 'Content-Type: application/json'
-```
-
-Response
-```json
-{
-  "message": "V2 API is running",
-  "timestamp": "2022-03-11T05:17:55.427Z"
-}
-```
 
 ---

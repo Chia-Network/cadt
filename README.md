@@ -44,6 +44,15 @@ CADT and Chia system usage will depend on many factors, including how busy the b
 
 ARM and x86 systems are supported.  While Windows, MacOS, and all versions of Linux are supported, Ubuntu Linux is the recommended operating system as it is used most in testing and our internal hosting.
 
+#### Disk space guard
+
+CADT defensively rejects write requests when the filesystem holding the V1/V2 SQLite databases drops below a low-space threshold, so a full disk cannot corrupt the database mid-transaction. Operators should monitor for this and free space (or expand the volume) before it triggers.
+
+* When free space falls below **1 GiB** (2³⁰ bytes), CADT logs a warning. Writes are still served.
+* When free space falls below **512 MiB** (2²⁰ × 512 bytes), CADT rejects `POST`, `PUT`, and `PATCH` requests with HTTP `507 Insufficient Storage` and logs an error. `GET` reads and `DELETE` requests are still served so operators can free space without restarting the service. Note that a very large `DELETE` (e.g., a cascading delete that touches many rows) writes to the SQLite WAL during the transaction; if the disk is critically low even an allowed `DELETE` may run out of space before the next checkpoint, so prefer freeing files outside the database first.
+* Log lines are emitted only on **severity transitions** (`ok` → `warn`, `warn` → `block`, recovery to `ok`, etc.) — not on every observation — so monitoring scrapes against `/health` cannot drown out the alert when free space first drops below a threshold.
+* Current status is exposed under the `diskSpace` field on the `/health`, `/v1/health`, and `/v2/health` endpoints for monitoring. The field is `null` until the first probe completes, otherwise an object with `severity` (`ok` / `warn` / `block` / `unknown`), `freeBytes` (the lowest free-space figure observed across the V1/V2 data directories, or `null` when every probe failed), and the `blockBytes` / `warnBytes` thresholds. The 507 response body itself only contains `{message, error: "INSUFFICIENT_DISK_SPACE", success: false}` — exact byte counts are reserved for `/health` so anonymous callers (the disk-space gate runs before the `CADT_API_KEY` check) cannot enumerate operational state.
+
 ### Linux
 
 A binary file that can run on all Linux distributions on x86 hardware can be found for each tagged release named `cadt-linux-x64-<version>.zip`.  This zip file will extract to the `cadt-linux-64` directory by default, where the `cadt` file can be executed to run the API.
@@ -256,6 +265,7 @@ In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), CADT will add
 * **APP**: This section contains shared configuration used by both V1 and V2 APIs.
   * **CW_PORT**: CADT port where the API will be available. 31310 by default.
   * **BIND_ADDRESS**: By default, CADT listens on localhost only. To enable remote connections to CADT, change this to `0.0.0.0` to listen on all network interfaces, or to an IP address to listen on a specific network interface.
+  * **TRUST_PROXY**: Number of reverse-proxy hops between the internet and CADT. Used to correctly identify real client IP addresses for rate limiting and logging when CADT is deployed behind one or more proxies. Must be a non-negative integer: set to `0` (the default) when CADT is accessed directly with no proxy in front of it, `1` when behind a single proxy such as nginx or Cloudflare, or `2` when behind two proxies such as Cloudflare in front of nginx (a common cloud/k8s deployment). Booleans (`true`/`false`) and non-numeric strings (e.g. `loopback`) are rejected, log a warning at startup, and fall back to `0`; in particular, never set to `true`, which would trust the user-supplied IP in the `X-Forwarded-For` header and defeat rate limiting.
   * **DATALAYER_URL**: URL and port to connect to the [Chia DataLayer RPC](https://docs.chia.net/datalayer-rpc). If Chia is installed locally with default settings, https://localhost:8562 will work.
   * **WALLET_URL**: URL and port to connect to the [Chia Wallet RPC](https://docs.chia.net/wallet-rpc). If Chia is installed on the same machine as CADT with default settings, https://localhost:9256 will work.
   * **USE_SIMULATOR**: Developer setting to populate CADT from a governance file and enable some extra APIs. Should always be "false" under normal usage.
@@ -267,13 +277,17 @@ In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), CADT will add
   * **DATALAYER_FILE_SERVER_URL**: Publicly available URL and port where Chia Datalayer [files are served](#datalayer-http-file-serving), including schema (http:// or https://). If serving DataLayer files from S3, this would be the public URL of the S3 bucket. Port can be omitted if using standard ports for http or https requests.
   * **AUTO_SUBSCRIBE_FILESTORE**: Subscribing to the filestore for any organization is optional. To automatically subscribe and sync the filestore to every organization you subscribe to, set this to `true`.
   * **AUTO_MIRROR_EXTERNAL_STORES**: When set to true (the default), CADT will automatically create mirrors for each store you are subscribed to. Mirroring all subscriptions using the `DATALAYER_FILE_SERVER_URL` will make the entire CADT network more resilient and distributed. Note: `DATALAYER_FILE_SERVER_URL` must also be set to a valid URL or IP address for mirrors to be created. Both settings are required for external store mirroring to function.
+  * **ONLY_CADT_SUBSCRIPTIONS**: When `true` (the default), CADT keeps DataLayer subscriptions aligned with the governance **orgList** in both directions. Organizations removed from the orgList are first unsubscribed from DataLayer, then removed from this node after unsubscribe is confirmed and the purge grace period has elapsed — the organization record and **all** of its local data (projects, units, and every related record it created) are deleted from the database. The deletion is unconditional: it does **not** check whether another organization references that data. Organizations on the orgList that are not subscribed are subscribed (including orgs re-added after a prior removal, including orgs previously removed via the API delete flow). The home organization and governance body store are never auto-removed. Reconciliation runs only after a successful governance sync provides a non-empty **orgList**; empty or stale cached governance data does not trigger removals. Set to `false` to disable orglist-driven subscribe/remove reconciliation. While enabled, a manual unsubscribe of an org still listed on the orgList will be reverted on the next sync cycle.
+  * **ONLY_CADT_SUBSCRIPTIONS_PURGE_GRACE_CYCLES**: Number of consecutive reconcile cycles an unsubscribed off-orgList organization must remain off the governance orgList before local data is purged. The default is `3`; invalid or non-positive values fall back to `3`.
+  * **ORG_PURGE_DELETE_BATCH_SIZE**: Maximum number of rows deleted per purge batch when removing an organization's local data. The default is `5000`; invalid or non-positive values fall back to `5000`. For orglist-driven background purges, smaller values release the SQLite write lock more often but increase total purge overhead.
   * **LOG_LEVEL**: Controls verbosity of logging. Common settings are `info` and `debug`. Setting to `silly` will log all queries.
   * **TASKS**: Section for configuring sync intervals.
-    * **GOVERNANCE_SYNC_TASK_INTERVAL**: Syncs new organizations from the governance node. Default 86400 seconds.
-    * **ORGANIZATION_META_SYNC_TASK_INTERVAL**: Syncs organization data from the blockchain. Default 300 seconds.
-    * **PICKLIST_SYNC_TASK_INTERVAL**: Syncs picklist from the governance node. Default 60 seconds.
-    * **MIRROR_CHECK_TASK_INTERVAL**: Checks if our DataLayer is advertising our `DATALAYER_FILE_SERVER_URL` as a mirror for all subscriptions when `AUTO_MIRROR_EXTERNAL_STORES` is true. Default 86460 seconds.
-    * **VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL**: Validates the organization table periodically. Default 1800 seconds.
+    * **GOVERNANCE_SYNC_TASK_INTERVAL**: Syncs picklist, orgList, and glossary from the governance node. Default 120 seconds (2 minutes).
+    * **ORGANIZATION_META_SYNC_TASK_INTERVAL**: Subscribes to default organizations and refreshes metadata for already-imported organizations. Default 120 seconds (2 minutes).
+    * **PICKLIST_SYNC_TASK_INTERVAL**: Syncs picklist from the governance node. Default 120 seconds (2 minutes).
+    * **MIRROR_CHECK_TASK_INTERVAL**: Checks if our DataLayer is advertising our `DATALAYER_FILE_SERVER_URL` as a mirror for all subscriptions when `AUTO_MIRROR_EXTERNAL_STORES` is true. Default 900 seconds (15 minutes).
+    * **VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL**: Validates the organization table periodically. Default 1800 seconds (30 minutes).
+    * **COIN_MANAGEMENT_TASK_INTERVAL**: Splits wallet coins when usable coin count is low. Default 21600 seconds (6 hours).
   * **REQUEST_CONTENT_LIMITS**: Section for configuring request size limits to prevent denial-of-service attacks. These limits control the maximum array lengths in API requests.
     * **STAGING**:
       * **EDIT_DATA_LEN**: Maximum number of items in staging edit operations. Default 200.
@@ -336,6 +350,20 @@ This script does the following:
 ## Developer Guide
 
 A development environment for CADT assumes a synced Chia wallet running locally. [Node version manager (nvm)](https://github.com/nvm-sh/nvm) is used to switch node environments quickly. The repo contains a `.nvmrc` file that specifies the node version the CADT is expected to use and developers can do `nvm use` to switch to the version in the `.nvmrc`.
+
+### Diagnostics
+
+When debugging a local CADT install (wallet not reachable, DataLayer not syncing, network mismatch, low disk space), use the system-wide diagnostics endpoint. It is mounted at the server root, not under `/v1` or `/v2`:
+
+```bash
+curl -s -H 'x-api-key: YOUR_CADT_API_KEY' http://localhost:31310/diagnostics | jq .
+```
+
+Omit the `x-api-key` header only when `CADT_API_KEY` is not configured. The endpoint returns **403** on read-only observer nodes (`READ_ONLY=true`). It is designed to stay usable while other API routes are blocked by sync checks.
+
+Lighter-weight health checks are also available: `GET /health`, `GET /v1/health`, `GET /v2/health`, and `GET /v1/health/wallet` or `GET /v2/health/wallet` for wallet-specific status.
+
+See [System endpoints in the V1 RPC guide](docs/cadt_rpc_api.md#system-endpoints) and [System endpoints in the V2 RPC guide](docs/cadt_rpc_api_v2.md#system-endpoints) for request examples and response fields.
 
 ### Contributing
 

@@ -311,7 +311,7 @@ const addMirrorInner = async (storeId, url, forceAddMirror) => {
   );
 
   if (mirror) {
-    logger.info(`Mirror already available for ${storeId} at ${url}`);
+    logger.verbose(`Mirror already available for ${storeId} at ${url}`);
     logger.silly('[MIRROR_DEBUG] Mirror already exists, returning true');
     return true;
   }
@@ -329,8 +329,8 @@ const addMirrorInner = async (storeId, url, forceAddMirror) => {
   }
 
   try {
-    const coinAmount = _.get(CONFIG, 'DEFAULT_COIN_AMOUNT', 300000000);
-    const defaultFee = _.get(CONFIG, 'DEFAULT_FEE', 300000000);
+    const coinAmount = _.get(CONFIG, 'DEFAULT_COIN_AMOUNT', 300);
+    const defaultFee = _.get(CONFIG, 'DEFAULT_FEE', 3000);
 
     // Check wallet balance before creating mirror
     const balanceCheck = await checkWalletBalanceForMirror(
@@ -414,7 +414,7 @@ const removeMirror = async (storeId, coinId) => {
       .timeout(timeout)
       .send({
         id: coinId,
-        fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
+        fee: _.get(CONFIG, 'DEFAULT_FEE', 3000),
       });
 
     const data = response.body;
@@ -507,7 +507,7 @@ const unsubscribeFromDataLayerStore = async (storeId) => {
       .timeout(timeout)
       .send({
         id: storeId,
-        fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
+        fee: _.get(CONFIG, 'DEFAULT_FEE', 3000),
       });
 
     const data = response.body;
@@ -756,7 +756,7 @@ const pushChangeListToDataLayer = async (
         url,
         storeId,
         changelistLength: changelist.length,
-        fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
+        fee: _.get(CONFIG, 'DEFAULT_FEE', 3000),
       });
 
       const response = await superagent
@@ -767,7 +767,7 @@ const pushChangeListToDataLayer = async (
         .send({
           changelist,
           id: storeId,
-          fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
+          fee: _.get(CONFIG, 'DEFAULT_FEE', 3000),
         });
 
       const data = response.body;
@@ -931,7 +931,7 @@ const createDataLayerStore = async () => {
       .cert(cert)
       .timeout(timeout)
       .send({
-        fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
+        fee: _.get(CONFIG, 'DEFAULT_FEE', 3000),
         verbose: true,
       });
 
@@ -967,7 +967,7 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
   }
 
   if (subscriptions.includes(storeId)) {
-    logger.info(`Already subscribed to: ${storeId}`);
+    logger.debug(`Already subscribed to: ${storeId}`);
     return true;
   }
 
@@ -984,7 +984,7 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
       .timeout(timeout)
       .send({
         id: storeId,
-        fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
+        fee: _.get(CONFIG, 'DEFAULT_FEE', 3000),
       });
 
     const data = response.body;
@@ -1195,7 +1195,7 @@ const cancelOffer = async (tradeId) => {
       .send({
         trade_id: tradeId,
         secure: true,
-        fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
+        fee: _.get(CONFIG, 'DEFAULT_FEE', 3000),
       });
 
     const data = response.body;

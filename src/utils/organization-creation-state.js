@@ -14,6 +14,8 @@
  * - FAILED: Organization creation failed after max retries
  */
 
+import { Mutex } from 'async-mutex';
+
 import { logger, loggerV2 } from '../config/logger.js';
 
 // State constants
@@ -477,4 +479,46 @@ export const hasInProgressCreation = async (MetaModel, apiVersion) => {
     return false;
   }
   return true;
+};
+
+/**
+ * Creates a mutex-protected state writer that lets multiple concurrent
+ * store-creation promises in `_createStoresInParallel` mark each
+ * successful creation immediately and persist it to the Meta table
+ * without clobbering each other's updates.
+ *
+ * Without this helper, `state` is a closure variable that each promise
+ * would read-then-overwrite at the end of `Promise.all`, so the
+ * /v{1,2}/organizations/creation-status endpoint cannot reflect partial
+ * progress until the slowest store finishes. That made the live-api
+ * "stuck state" detector fire in cases where 1-3 of the 4 stores were
+ * actually completing on the server side.
+ *
+ * @param {Object} initialState - Starting state object
+ * @param {Object} MetaModel - The Meta model to persist into (Meta or MetaV2)
+ * @returns {{ persistStoreCreated: Function, getCurrent: Function }}
+ */
+export const createIncrementalStateWriter = (initialState, MetaModel) => {
+  const stateRef = { current: initialState };
+  const stateMutex = new Mutex();
+
+  const persistStoreCreated = async (storeType, storeId) => {
+    const release = await stateMutex.acquire();
+    try {
+      // Compute the next state, persist it first, and only update the
+      // shared reference if the write succeeds. If saveCreationState
+      // throws, stateRef.current still matches what is on disk, which
+      // keeps the in-memory and persisted views consistent for any
+      // other reader that picks up the writer mid-flight.
+      const next = markStoreCreated(stateRef.current, storeType, storeId);
+      await saveCreationState(next, MetaModel);
+      stateRef.current = next;
+    } finally {
+      release();
+    }
+  };
+
+  const getCurrent = () => stateRef.current;
+
+  return { persistStoreCreated, getCurrent };
 };

@@ -12,6 +12,7 @@ import {
 import { resolveOrgUid } from '../../utils/owner-utils.js';
 import { paginationParams, optionallyPaginatedResponse } from '../../utils/helpers.js';
 import { loggerV2 } from '../../config/logger.js';
+import { checkReferences, buildReferenceConflictBody } from '../../utils/v2-reference-guards.js';
 
 // Generic CRUD controller factory for LocationV2
 const createLocationController = (Model, ModelMirror, schema) => {
@@ -259,6 +260,11 @@ const createLocationController = (Model, ModelMirror, schema) => {
             message: 'Location not found',
             success: false,
           });
+        }
+
+        const refResult = await checkReferences('location', id);
+        if (refResult.hasReferences) {
+          return res.status(409).json(buildReferenceConflictBody('location', refResult));
         }
 
         // Generate UUID for staging

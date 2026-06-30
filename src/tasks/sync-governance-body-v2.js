@@ -7,6 +7,10 @@ import { getConfig, getConfigV2 } from '../utils/config-loader.js';
 import { loggerV2 } from '../config/logger.js';
 import { GovernanceV2 } from '../models/v2/index.js';
 import { OrganizationsV2 } from '../models/v2/index.js';
+import {
+  markGovernanceNotReady,
+  markGovernanceReady,
+} from '../utils/governance-readiness.js';
 
 const CONFIG = getConfig().APP;
 const CONFIG_V2 = getConfigV2();
@@ -23,14 +27,15 @@ const task = new Task('sync-governance-meta-v2', async () => {
       return;
     }
 
+    markGovernanceNotReady('v2');
     await assertDataLayerAvailable();
     await assertWalletIsSynced();
 
-    loggerV2.info('[v2]: Syncing V2 governance data');
+    loggerV2.debug('[v2]: Syncing V2 governance data');
     const { GOVERNANCE_BODY_ID } = CONFIG_V2.GOVERNANCE;
 
     if (GOVERNANCE_BODY_ID) {
-      loggerV2.info(
+      loggerV2.debug(
         `[v2]: Governance Config Found ${GOVERNANCE_BODY_ID}`,
       );
 
@@ -44,6 +49,7 @@ const task = new Task('sync-governance-meta-v2', async () => {
       if (!v2HomeOrg || v2HomeOrg.org_uid !== GOVERNANCE_BODY_ID) {
         await GovernanceV2.sync();
       } else {
+        markGovernanceReady('v2');
         loggerV2.debug(
           '[v2]: This node is the governance body, skipping governance sync',
         );
@@ -54,7 +60,7 @@ const task = new Task('sync-governance-meta-v2', async () => {
   } catch (error) {
     loggerV2.error(
       `[v2]: Cannot download Governance data, Retrying in ${
-        CONFIG?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 300
+        CONFIG?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 120
       } seconds. Error: ${error.message}`,
     );
   }
@@ -62,7 +68,7 @@ const task = new Task('sync-governance-meta-v2', async () => {
 
 const job = new SimpleIntervalJob(
   {
-    seconds: CONFIG?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 300,
+    seconds: CONFIG?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 120,
     runImmediately: true,
   },
   task,

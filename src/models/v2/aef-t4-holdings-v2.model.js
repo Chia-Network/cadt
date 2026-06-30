@@ -2,7 +2,7 @@
 
 import _ from 'lodash';
 import { Sequelize, Model } from 'sequelize';
-import { sequelizeV2, safeMirrorDbHandlerV2 } from '../../database/v2/index.js';
+import { sequelizeV2, mirrorWriteV2 } from '../../database/v2/index.js';
 import ModelTypes from './aef-t4-holdings-v2.modeltypes.js';
 import { AefT4HoldingsV2Mirror } from './aef-t4-holdings-v2.model.mirror.js';
 import StagingV2 from './staging-v2.model.js';
@@ -13,13 +13,13 @@ import {
 
 class AefT4HoldingsV2 extends Model {
   static async create(values, options) {
-    safeMirrorDbHandlerV2(async () => {
+    await mirrorWriteV2(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await AefT4HoldingsV2Mirror.create(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
 
     const result = await super.create(values, options);
     if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
@@ -27,13 +27,13 @@ class AefT4HoldingsV2 extends Model {
   }
 
   static async bulkCreate(values, options) {
-    safeMirrorDbHandlerV2(async () => {
+    await mirrorWriteV2(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await AefT4HoldingsV2Mirror.bulkCreate(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
 
     const result = await super.bulkCreate(values, options);
     if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
@@ -41,13 +41,13 @@ class AefT4HoldingsV2 extends Model {
   }
 
   static async update(values, options) {
-    safeMirrorDbHandlerV2(async () => {
+    await mirrorWriteV2(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await AefT4HoldingsV2Mirror.update(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
 
     const result = await super.update(values, options);
     if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
@@ -55,13 +55,13 @@ class AefT4HoldingsV2 extends Model {
   }
 
   static async upsert(values, options) {
-    safeMirrorDbHandlerV2(async () => {
+    await mirrorWriteV2(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await AefT4HoldingsV2Mirror.upsert(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
 
     const result = await super.upsert(values, options);
     if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
@@ -69,13 +69,13 @@ class AefT4HoldingsV2 extends Model {
   }
 
   static async destroy(options) {
-    safeMirrorDbHandlerV2(async () => {
+    await mirrorWriteV2(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await AefT4HoldingsV2Mirror.destroy(mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
 
     const result = await super.destroy(options);
     if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));

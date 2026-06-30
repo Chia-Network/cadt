@@ -1,45 +1,65 @@
 'use strict';
 
 import { Sequelize, Model } from 'sequelize';
-import { sequelize, safeMirrorDbHandler } from '../../database';
+import { sequelize, mirrorWrite } from '../../database';
 import { AuditMirror } from './audit.model.mirror';
 import ModelTypes from './audit.modeltypes.js';
 import findDuplicateIssuancesSql from './sql/find-duplicate-issuances.sql.js';
 import { Organization } from '../organizations/index.js';
 import { waitForSyncRegistriesTransaction } from '../../utils/model-utils.js';
+import { clearAuditCountCache } from '../../utils/audit-count-cache.js';
 
 class Audit extends Model {
   static async create(values, options) {
-    safeMirrorDbHandler(async () => {
+    await mirrorWrite(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await AuditMirror.create(values, mirrorOptions);
-    });
-    return super.create(values, options);
+    }, options?.mirrorTransaction);
+    const result = await super.create(values, options);
+    clearAuditCountCache();
+    return result;
+  }
+
+  static async bulkCreate(values, options) {
+    await mirrorWrite(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await AuditMirror.bulkCreate(values, mirrorOptions);
+    }, options?.mirrorTransaction);
+    const result = await super.bulkCreate(values, options);
+    clearAuditCountCache();
+    return result;
   }
 
   static async destroy(options) {
-    safeMirrorDbHandler(async () => {
+    await mirrorWrite(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await AuditMirror.destroy(mirrorOptions);
-    });
-    return super.destroy(options);
+    }, options?.mirrorTransaction);
+    const result = await super.destroy(options);
+    clearAuditCountCache();
+    return result;
   }
 
   static async upsert(values, options) {
-    safeMirrorDbHandler(async () => {
+    await mirrorWrite(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await AuditMirror.upsert(values, mirrorOptions);
-    });
-    return super.upsert(values, options);
+    }, options?.mirrorTransaction);
+    const result = await super.upsert(values, options);
+    clearAuditCountCache();
+    return result;
   }
 
   static async findConflicts() {

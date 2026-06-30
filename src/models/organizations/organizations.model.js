@@ -10,6 +10,10 @@ import wallet from '../../datalayer/wallet.js';
 import { logger } from '../../config/logger';
 import { Audit, FileStore, Meta, ModelKeys, Staging } from '../';
 import { getConfig } from '../../utils/config-loader';
+import {
+  destroyByPrimaryKeyBatches,
+  resolveDeleteBatchSize,
+} from '../../utils/batched-delete.js';
 const { USE_SIMULATOR, AUTO_SUBSCRIBE_FILESTORE } = getConfig().APP;
 
 import ModelTypes from './organizations.modeltypes.js';
@@ -18,7 +22,6 @@ import {
   getRoot,
   getLocalRoot,
   getSubscriptions,
-  getDataLayerStoreSyncStatus,
   pushChangeListToDataLayer,
 } from '../../datalayer/persistance.js';
 import {
@@ -51,6 +54,7 @@ import {
   loadCreationState,
   clearCreationState,
   hasInProgressCreation,
+  createIncrementalStateWriter,
 } from '../../utils/organization-creation-state.js';
 import { mirrorOrgStores } from '../../tasks/mirror-check.js';
 import { updateOrgLockStatus } from '../../utils/org-operation-lock.js';
@@ -497,18 +501,39 @@ class Organization extends Model {
     const maxRetries = 10;
     const retryDelayMs = 30000;
 
-    // Create all stores in parallel, each with independent retry logic
+    // Persist each successful store creation immediately so the
+    // /v1/organizations/creation-status endpoint reflects partial progress.
+    // Without this, all 4 stores stay marked pending until the slowest
+    // promise resolves, which makes the live-api "stuck state" detector
+    // fire while the server is still actively making progress.
+    const stateWriter = createIncrementalStateWriter(state, Meta);
+
+    // Create all stores in parallel, each with independent retry logic.
+    // The persist call is wrapped in its own try so that a transient
+    // saveCreationState failure (DB busy, sequelize hiccup) does NOT
+    // mask a successful on-chain store creation as a creation failure;
+    // any missing persist will be reconciled in a final save below.
     const createPromises = storesToCreate.map(async (storeType) => {
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-          logState(state, `Creating ${storeType} store (attempt ${attempt}/${maxRetries})`);
+          logState(stateWriter.getCurrent(), `Creating ${storeType} store (attempt ${attempt}/${maxRetries})`);
           const storeId = await datalayer.createDataLayerStoreWithRetry();
-          logState(state, `Created ${storeType} store: ${storeId}`);
+          logState(stateWriter.getCurrent(), `Created ${storeType} store: ${storeId}`);
+          try {
+            await stateWriter.persistStoreCreated(storeType, storeId);
+          } catch (persistError) {
+            logState(
+              stateWriter.getCurrent(),
+              `Created ${storeType} store ${storeId} but failed to persist incremental progress: ` +
+                `${persistError.message}. Store id retained in result; final save will reconcile.`,
+              'warn',
+            );
+          }
           return { storeType, storeId, success: true };
         } catch (error) {
           if (isTransientWalletError(error) && attempt < maxRetries) {
             logState(
-              state,
+              stateWriter.getCurrent(),
               `Transient error creating ${storeType} store ` +
                 `(attempt ${attempt}/${maxRetries}): ${error.message}. ` +
                 `Retrying in ${retryDelayMs / 1000}s...`,
@@ -517,7 +542,7 @@ class Organization extends Model {
             await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
             continue;
           }
-          logState(state, `Failed to create ${storeType} store: ${error.message}`, 'error');
+          logState(stateWriter.getCurrent(), `Failed to create ${storeType} store: ${error.message}`, 'error');
           return { storeType, storeId: null, success: false, error: error.message };
         }
       }
@@ -526,13 +551,21 @@ class Organization extends Model {
 
     const results = await Promise.all(createPromises);
 
-    // Update state with created store IDs
+    // Reconcile: pick up incremental updates that already landed, then
+    // re-apply any successful storeIds whose persist failed mid-flight.
+    // A single final saveCreationState makes sure the persisted view
+    // matches in-memory state before returning.
+    state = stateWriter.getCurrent();
+    let reconcileNeeded = false;
     for (const result of results) {
-      if (result.success) {
+      if (result.success && state.stores[result.storeType].id !== result.storeId) {
         state = markStoreCreated(state, result.storeType, result.storeId);
+        reconcileNeeded = true;
       }
     }
-    await saveCreationState(state, Meta);
+    if (reconcileNeeded) {
+      await saveCreationState(state, Meta);
+    }
 
     // Check if all stores were created
     const failed = results.filter((r) => !r.success);
@@ -960,7 +993,8 @@ class Organization extends Model {
    * @throws Error on failure. call in a try block
    */
   static async reconcileOrganization(organization, { skipOnUnsynced = false } = {}) {
-    if (USE_SIMULATOR) {
+    const { USE_SIMULATOR: useSimulator } = getConfig().APP;
+    if (useSimulator) {
       return;
     }
 
@@ -1039,7 +1073,7 @@ class Organization extends Model {
 
     let orgStatusErr;
     try {
-      const orgSyncStatus = await getDataLayerStoreSyncStatus(orgUid);
+      const orgSyncStatus = await datalayer.getDataLayerStoreSyncStatus(orgUid);
       if (!isDlStoreSynced(orgSyncStatus?.sync_status)) {
         orgStatusErr = `org store ${orgUid} not yet synced`;
       }
@@ -1051,22 +1085,55 @@ class Organization extends Model {
       return;
     }
 
-    // Check the singleton (data model version) store before the blocking fetch inside
-    // subscribeToOrganization so that an unsynced singleton doesn't stall the background task.
-    if (dataModelVersionStoreId) {
-      let singletonStatusErr;
-      try {
-        const singletonSyncStatus = await getDataLayerStoreSyncStatus(dataModelVersionStoreId);
-        if (!isDlStoreSynced(singletonSyncStatus?.sync_status)) {
-          singletonStatusErr = `singleton store ${dataModelVersionStoreId} for org ${orgUid} not yet synced`;
-        }
-      } catch (error) {
-        singletonStatusErr = `could not check sync status for singleton store ${dataModelVersionStoreId}: ${error.message}`;
+    let orgStoreData;
+    let orgDataErr;
+    try {
+      orgStoreData = await datalayer.getCurrentStoreData(orgUid);
+      if (!orgStoreData) {
+        orgDataErr = `could not get current data for org store ${orgUid}`;
       }
-      if (singletonStatusErr) {
-        skipOrThrow(singletonStatusErr);
-        return;
+    } catch (error) {
+      orgDataErr = `could not get current data for org store ${orgUid}: ${error.message}`;
+    }
+    if (orgDataErr) {
+      skipOrThrow(orgDataErr);
+      return;
+    }
+
+    // Subscribe to and check the singleton store before the blocking fetch inside
+    // subscribeToOrganization so an unsynced singleton doesn't stall the background task.
+    const singletonStoreId = orgStoreData?.registryId || dataModelVersionStoreId;
+    if (!singletonStoreId) {
+      skipOrThrow(`could not determine singleton store for org ${orgUid}`);
+      return;
+    }
+
+    let singletonSubscribeErr;
+    try {
+      const singletonSubscribed = await datalayer.subscribeToStoreOnDataLayer(singletonStoreId);
+      if (!singletonSubscribed) {
+        singletonSubscribeErr = `could not subscribe to singleton store ${singletonStoreId} for org ${orgUid}`;
       }
+    } catch (error) {
+      singletonSubscribeErr = `could not subscribe to singleton store ${singletonStoreId} for org ${orgUid}: ${error.message}`;
+    }
+    if (singletonSubscribeErr) {
+      skipOrThrow(singletonSubscribeErr);
+      return;
+    }
+
+    let singletonStatusErr;
+    try {
+      const singletonSyncStatus = await datalayer.getDataLayerStoreSyncStatus(singletonStoreId);
+      if (!isDlStoreSynced(singletonSyncStatus?.sync_status)) {
+        singletonStatusErr = `singleton store ${singletonStoreId} for org ${orgUid} not yet synced`;
+      }
+    } catch (error) {
+      singletonStatusErr = `could not check sync status for singleton store ${singletonStoreId}: ${error.message}`;
+    }
+    if (singletonStatusErr) {
+      skipOrThrow(singletonStatusErr);
+      return;
     }
 
     logger.debug(
@@ -1127,7 +1194,7 @@ class Organization extends Model {
     }
 
     // note that we only update the data model version store hash here because the other two store hashes are updated elsewhere
-    const dataModelVersionStoreSyncStatus = await getDataLayerStoreSyncStatus(
+    const dataModelVersionStoreSyncStatus = await datalayer.getDataLayerStoreSyncStatus(
       datalayerDataModelVersionStoreId,
     );
 
@@ -1558,20 +1625,11 @@ class Organization extends Model {
       throw new Error('failed to get subscriptions from datalayer');
     }
 
-    const storesToUnsubscribe = [
-      organizationStores.orgUid,
-      organizationStores.dataModelVersionStoreId,
-      organizationStores.registryId,
-    ];
+    const storesToUnsubscribe =
+      Organization.getOrganizationStoreIds(organizationStores);
     const failedUnsubscribes = [];
 
-    storesToUnsubscribe.forEach((storeId) => {
-      if (!storeId) {
-        const message = `organization stores cannot be nil. found nil store id associated with organization ${organizationStores.orgUid}`;
-        logger.error(message);
-        throw new Error(message);
-      }
-    });
+    Organization.assertOrganizationStoreIdsPresent(organizationStores);
 
     for (const storeId of storesToUnsubscribe) {
       if (subscriptionIds.includes(storeId)) {
@@ -1608,11 +1666,66 @@ class Organization extends Model {
     }
   }
 
+  static getOrganizationStoreIds(organizationStores) {
+    return [
+      organizationStores.orgUid,
+      organizationStores.dataModelVersionStoreId,
+      organizationStores.registryId,
+    ];
+  }
+
+  static assertOrganizationStoreIdsPresent(organizationStores) {
+    Organization.getOrganizationStoreIds(organizationStores).forEach((storeId) => {
+      if (!storeId) {
+        throw new Error(
+          `organization stores cannot be nil. found nil store id associated with organization ${organizationStores.orgUid}`,
+        );
+      }
+    });
+  }
+
+  static async areOrganizationStoresUnsubscribed(organizationStores) {
+    const { storeIds: subscriptionIds, success } = await getSubscriptions();
+    if (!success) {
+      throw new Error('failed to get subscriptions from datalayer');
+    }
+
+    Organization.assertOrganizationStoreIdsPresent(organizationStores);
+    const subscribedStoreIds = new Set(subscriptionIds);
+    return Organization.getOrganizationStoreIds(organizationStores)
+      .every((storeId) => !subscribedStoreIds.has(storeId));
+  }
+
   /**
    * removes all records of an organization from all models with an `orgUid` column
    * @param orgUid
+   * @param {object} [options]
+   * @param {boolean} [options.skipStagingTruncate=false] - When true, the global
+   *   staging table is left untouched. Staging holds only the home org's pending
+   *   (uncommitted) changes and has no orgUid column, so background callers that
+   *   remove a remote org (e.g. orglist subscription reconcile) must pass `true`
+   *   to avoid discarding the operator's own staged work.
+   * @param {boolean} [options.recordUserDeleted=true] - When true, the org is
+   *   recorded in the meta user-deleted list so default-org sync will not
+   *   re-import it. Background orglist reconcile passes `false`: an org removed
+   *   because it left the governance orgList is not a user deletion.
+   * @param {boolean} [options.useCommittedBatches=false] - When true, each
+   *   purge batch is committed independently so background purges release SQLite
+   *   write locks between batches. Manual API deletes keep one transaction by
+   *   default.
+   * @returns {Promise<number>} total number of local database rows deleted
    */
-  static async deleteAllOrganizationData(orgUid) {
+  static async deleteAllOrganizationData(
+    orgUid,
+    {
+      skipStagingTruncate = false,
+      recordUserDeleted = true,
+      useCommittedBatches = false,
+    } = {},
+  ) {
+    const batchSize = resolveDeleteBatchSize(
+      getConfig().APP.ORG_PURGE_DELETE_BATCH_SIZE,
+    );
     logger.verbose('[v1]: acquiring add/delete org mutex to delete organization');
     const releaseAddDeleteMutex =
       await addOrDeleteOrganizationRecordMutex.acquire();
@@ -1623,33 +1736,118 @@ class Organization extends Model {
     const releaseAuditTransactionMutex =
       await processingSyncRegistriesTransactionMutex.acquire();
 
-    const transaction = await sequelize.transaction();
-    try {
-      await Organization.destroy({ where: { orgUid }, transaction });
+    let mutexesReleased = false;
+    const releaseMutexes = () => {
+      if (!mutexesReleased) {
+        mutexesReleased = true;
+        releaseAuditTransactionMutex();
+        releaseAddDeleteMutex();
+      }
+    };
 
-      for (const modelKey of Object.keys(ModelKeys)) {
-        await ModelKeys[modelKey].destroy({ where: { orgUid }, transaction });
+    let sharedTransaction;
+
+    const runDeleteBatch = async (operation) => {
+      if (sharedTransaction) {
+        return await operation(sharedTransaction);
       }
 
-      await Staging.truncate({ transaction });
-      await FileStore.destroy({ where: { orgUid }, transaction });
-      await Audit.destroy({ where: { orgUid }, transaction });
+      let transaction;
+      try {
+        transaction = await sequelize.transaction();
+        const result = await operation(transaction);
+        await transaction.commit();
+        return result;
+      } catch (error) {
+        try {
+          if (transaction) {
+            await transaction.rollback();
+          }
+        } catch (rollbackError) {
+          logger.error(
+            `[v1]: rollback failed while deleting organization ${orgUid}: ${rollbackError.message}`,
+          );
+        }
+        throw error;
+      }
+    };
 
-      await transaction.commit();
+    let deletedRowCount = 0;
+    try {
+      if (!useCommittedBatches) {
+        sharedTransaction = await sequelize.transaction();
+      }
 
-      await Meta.addUserDeletedOrgUid(orgUid);
+      for (const modelKey of Object.keys(ModelKeys)) {
+        deletedRowCount += await destroyByPrimaryKeyBatches(ModelKeys[modelKey], {
+          where: { orgUid },
+          batchSize,
+          transactionRunner: runDeleteBatch,
+        });
+      }
+
+      if (!skipStagingTruncate) {
+        await runDeleteBatch((transaction) =>
+          Staging.truncate({ transaction }),
+        );
+      }
+      deletedRowCount += await destroyByPrimaryKeyBatches(FileStore, {
+        where: { orgUid },
+        batchSize,
+        transactionRunner: runDeleteBatch,
+      });
+      deletedRowCount += await destroyByPrimaryKeyBatches(Audit, {
+        where: { orgUid },
+        batchSize,
+        transactionRunner: runDeleteBatch,
+        findOptions: { hooks: false },
+      });
+      deletedRowCount += await destroyByPrimaryKeyBatches(Organization, {
+        where: { orgUid },
+        batchSize,
+        transactionRunner: runDeleteBatch,
+      });
+
+      if (sharedTransaction) {
+        await sharedTransaction.commit();
+        sharedTransaction = null;
+      }
     } catch (error) {
+      try {
+        if (sharedTransaction) {
+          await sharedTransaction.rollback();
+          sharedTransaction = null;
+        }
+      } catch (rollbackError) {
+        logger.error(
+          `[v1]: rollback failed while deleting organization ${orgUid}: ${rollbackError.message}`,
+        );
+      }
       logger.error(
-        `failed to delete all db records for organization ${orgUid}, rolling back changes. Error: ${error.message}`,
+        `[v1]: failed to delete all db records for organization ${orgUid}. Error: ${error.message}`,
       );
-      await transaction.rollback();
+      releaseMutexes();
       throw new Error(
-        `an error occurred while deleting records corresponding to organization ${orgUid}. no changes have been made`,
+        useCommittedBatches
+          ? `an error occurred while deleting records corresponding to organization ${orgUid}. some committed batches may be retried on the next run`
+          : `an error occurred while deleting records corresponding to organization ${orgUid}`,
       );
-    } finally {
-      releaseAddDeleteMutex();
-      releaseAuditTransactionMutex();
     }
+
+    // Record the deletion after a successful commit, while still holding the
+    // mutexes so the default-org sync cannot re-import the org between the
+    // commit and the meta write. Keep the meta write out of the transaction
+    // try so a post-commit failure never triggers a rollback of an already
+    // committed transaction.
+    try {
+      if (recordUserDeleted) {
+        await Meta.addUserDeletedOrgUid(orgUid);
+      }
+    } finally {
+      releaseMutexes();
+    }
+
+    return deletedRowCount;
   }
 
   /**
@@ -1696,7 +1894,7 @@ class Organization extends Model {
           }
 
           try {
-            const syncStatus = await getDataLayerStoreSyncStatus(organization.orgUid);
+            const syncStatus = await datalayer.getDataLayerStoreSyncStatus(organization.orgUid);
             if (!isDlStoreSynced(syncStatus?.sync_status)) {
               logger.info(
                 `[v1]: syncOrganizationMeta: org store ${organization.orgUid} not yet synced, skipping this run.`,

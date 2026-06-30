@@ -8,6 +8,7 @@ import {
   resetV2StagingTable,
   resetV2DataTables,
   createV2TestHomeOrg,
+  getV2HomeOrgId,
   waitForV2DataLayerSync,
   addUuidIfNeeded,
 } from '../utils/v2-test-helpers.js';
@@ -342,11 +343,13 @@ describe('V2 Program API - Basic CRUD Tests', function () {
 
     it('should stage program update', async function () {
       // Create a program directly in database
+      const homeOrgId = await getV2HomeOrgId();
       const program = await ProgramV2.create({
         cadTrustProgramId: '550e8400-e29b-41d4-a716-446655440003', // Provide explicit UUID
         programName: 'Original Name',
         programRegistry: 'Original Registry',
         programRegistryActivityId: 'ORIGINAL-001',
+        orgUid: homeOrgId,
       });
 
       const updateData = {
@@ -399,11 +402,13 @@ describe('V2 Program API - Basic CRUD Tests', function () {
 
     it('should stage program deletion', async function () {
       // Create a program directly in database
+      const homeOrgId = await getV2HomeOrgId();
       const program = await ProgramV2.create({
         cadTrustProgramId: '550e8400-e29b-41d4-a716-446655440004', // Provide explicit UUID
         programName: 'To Be Deleted',
         programRegistry: 'DELETE Registry',
         programRegistryActivityId: 'DELETE-001',
+        orgUid: homeOrgId,
       });
 
       const response = await supertest(app)
@@ -431,16 +436,18 @@ describe('V2 Program API - Basic CRUD Tests', function () {
 
   describe('DELETE /v2/program/:id — reference guards', function () {
     it('should return 409 when projects reference the program', async function () {
+      const homeOrgId = await getV2HomeOrgId();
       const program = await ProgramV2.create({
         cadTrustProgramId: uuidv4(),
         programName: 'Referenced Program',
         programRegistry: 'Test Registry',
         programRegistryActivityId: 'REFGUARD-PROG-001',
+        orgUid: homeOrgId,
       });
 
       await ProjectV2.create({
         cadTrustProjectId: uuidv4(),
-        orgUid: 'test-home-org-v2',
+        orgUid: homeOrgId,
         projectRegistryName: 'Test Registry',
         projectId: 'REFGUARD-PROJ-001',
         projectName: 'Project Using Program',
@@ -456,7 +463,7 @@ describe('V2 Program API - Basic CRUD Tests', function () {
       expect(response.body.references).to.be.an('array').with.lengthOf(1);
       expect(response.body.references[0].table).to.equal('project');
       expect(response.body.references[0].count).to.equal(1);
-      expect(response.body.hint).to.include('force=true');
+      expect(response.body.error).to.equal('Referenced records must be removed before deletion');
 
       const stagingRecord = await StagingV2.findOne({
         where: { table: 'program', action: 'DELETE' },
@@ -465,11 +472,13 @@ describe('V2 Program API - Basic CRUD Tests', function () {
     });
 
     it('should return 409 when staged project references exist', async function () {
+      const homeOrgId = await getV2HomeOrgId();
       const program = await ProgramV2.create({
         cadTrustProgramId: uuidv4(),
         programName: 'Staged Referenced Program',
         programRegistry: 'Test Registry',
         programRegistryActivityId: 'STAGED-REF-PROG-001',
+        orgUid: homeOrgId,
       });
 
       await StagingV2.create({
@@ -478,7 +487,7 @@ describe('V2 Program API - Basic CRUD Tests', function () {
         action: 'INSERT',
         data: JSON.stringify([{
           cad_trust_project_id: uuidv4(),
-          org_uid: 'test-home-org-v2',
+          org_uid: homeOrgId,
           project_registry_name: 'Test Registry',
           project_id: 'STAGED-REF-PROJECT-001',
           project_name: 'Staged Project',
@@ -499,17 +508,19 @@ describe('V2 Program API - Basic CRUD Tests', function () {
       expect(response.body.references[0].count).to.equal(1);
     });
 
-    it('should allow delete with ?force=true despite references', async function () {
+    it('should return 409 with ?force=true when references still exist', async function () {
+      const homeOrgId = await getV2HomeOrgId();
       const program = await ProgramV2.create({
         cadTrustProgramId: uuidv4(),
         programName: 'Force Delete Program',
         programRegistry: 'Test Registry',
         programRegistryActivityId: 'FORCE-PROG-001',
+        orgUid: homeOrgId,
       });
 
       await ProjectV2.create({
         cadTrustProjectId: uuidv4(),
-        orgUid: 'test-home-org-v2',
+        orgUid: homeOrgId,
         projectRegistryName: 'Test Registry',
         projectId: 'FORCE-PROJ-001',
         projectName: 'Project Using Program for Force',
@@ -519,15 +530,15 @@ describe('V2 Program API - Basic CRUD Tests', function () {
       const response = await supertest(app)
         .delete(`/v2/program/${program.cadTrustProgramId}`)
         .query({ force: 'true' })
-        .expect(200);
+        .expect(409);
 
-      expect(response.body.success).to.be.true;
-      expect(response.body.message).to.equal('Program delete staged successfully');
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.equal('Referenced records must be removed before deletion');
 
       const stagingRecord = await StagingV2.findOne({
         where: { table: 'program', action: 'DELETE' },
       });
-      expect(stagingRecord).to.exist;
+      expect(stagingRecord).to.be.null;
     });
   });
 });

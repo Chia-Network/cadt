@@ -77,7 +77,10 @@ const loadConfigForVersion = (dataModelVersion) => {
       // Load existing unified config
       try {
         const yml = yaml.load(fs.readFileSync(unifiedConfigFile, 'utf8'));
-        unifiedConfig = yml;
+        // A concurrent rewrite of the config file can yield an empty or partial
+        // read; fall back to defaults so a null/partial parse cannot propagate a
+        // TypeError into unrelated callers (e.g. getHomeOrg -> API handlers).
+        unifiedConfig = yml && typeof yml === 'object' ? yml : { ...defaultConfig };
       } catch (error) {
         console.error(`Error loading unified config file: ${error.message}`);
         unifiedConfig = { ...defaultConfig };
@@ -99,25 +102,25 @@ const loadConfigForVersion = (dataModelVersion) => {
     // Merge APP + V1 sections for V1, keeping APP nested
     mergedConfig = {
       APP: { ...unifiedConfig.APP },
-      MIRROR_DB: { ...unifiedConfig.V1.MIRROR_DB },
-      GOVERNANCE: { ...unifiedConfig.V1.GOVERNANCE },
+      MIRROR_DB: { ...unifiedConfig.V1?.MIRROR_DB },
+      GOVERNANCE: { ...unifiedConfig.V1?.GOVERNANCE },
       // V1-specific top-level values
-      ENABLE: unifiedConfig.V1.ENABLE,
-      READ_ONLY: unifiedConfig.V1.READ_ONLY,
-      CADT_API_KEY: unifiedConfig.V1.CADT_API_KEY,
-      IS_GOVERNANCE_BODY: unifiedConfig.V1.IS_GOVERNANCE_BODY,
+      ENABLE: unifiedConfig.V1?.ENABLE,
+      READ_ONLY: unifiedConfig.V1?.READ_ONLY,
+      CADT_API_KEY: unifiedConfig.V1?.CADT_API_KEY,
+      IS_GOVERNANCE_BODY: unifiedConfig.V1?.IS_GOVERNANCE_BODY,
     };
   } else if (dataModelVersion === 'v2') {
     // Merge APP + V2 sections for V2, keeping APP nested
     mergedConfig = {
       APP: { ...unifiedConfig.APP },
-      MIRROR_DB: { ...unifiedConfig.V2.MIRROR_DB },
-      GOVERNANCE: { ...unifiedConfig.V2.GOVERNANCE },
+      MIRROR_DB: { ...unifiedConfig.V2?.MIRROR_DB },
+      GOVERNANCE: { ...unifiedConfig.V2?.GOVERNANCE },
       // V2-specific top-level values
-      ENABLE: unifiedConfig.V2.ENABLE,
-      READ_ONLY: unifiedConfig.V2.READ_ONLY,
-      CADT_API_KEY: unifiedConfig.V2.CADT_API_KEY,
-      IS_GOVERNANCE_BODY: unifiedConfig.V2.IS_GOVERNANCE_BODY,
+      ENABLE: unifiedConfig.V2?.ENABLE,
+      READ_ONLY: unifiedConfig.V2?.READ_ONLY,
+      CADT_API_KEY: unifiedConfig.V2?.CADT_API_KEY,
+      IS_GOVERNANCE_BODY: unifiedConfig.V2?.IS_GOVERNANCE_BODY,
     };
   } else {
     // Fallback to APP section only

@@ -16,7 +16,6 @@ import {
   createXlsFromSequelizeResults,
   transformFullXslsToChangeList,
 } from '../../utils/xls.js';
-import { formatModelAssociationName } from '../../utils/model-utils.js';
 import { getV2PrimaryKeyField } from '../../utils/v2-primary-key-utils.js';
 
 import ModelTypes from './staging-v2.modeltypes.js';
@@ -52,6 +51,7 @@ class StagingV2 extends Model {
   static changes = new rxjs.Subject();
 
   static async create(values, options) {
+    await StagingV2.assertMutationOwnedByHomeOrg(values, options);
     StagingV2.changes.next(['staging']);
     const result = await super.create(values, options);
 
@@ -64,6 +64,13 @@ class StagingV2 extends Model {
   }
 
   static async bulkCreate(values, options) {
+    // Resolve the home org once for the whole batch instead of per record.
+    const needsGuard = Array.isArray(values) &&
+      values.some((v) => ['UPDATE', 'DELETE'].includes(v?.action) && !v?.is_transfer);
+    const homeOrgUid = needsGuard ? await StagingV2.resolveHomeOrgUid(options) : undefined;
+    for (const value of values) {
+      await StagingV2.assertMutationOwnedByHomeOrg(value, options, homeOrgUid);
+    }
     StagingV2.changes.next(['staging']);
     const result = await super.bulkCreate(values, options);
 
@@ -84,6 +91,7 @@ class StagingV2 extends Model {
   }
 
   static async upsert(values, options) {
+    await StagingV2.assertMutationOwnedByHomeOrg(values, options);
     StagingV2.changes.next(['staging']);
     const result = await super.upsert(values, options);
 
@@ -94,12 +102,326 @@ class StagingV2 extends Model {
   }
 
   static async update(values, options) {
+    await StagingV2.assertUpdatedMutationOwnedByHomeOrg(values, options);
     const result = await super.update(values, options);
 
     // Small delay for WAL visibility
     if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
 
     return result;
+  }
+
+  static async assertUpdatedMutationOwnedByHomeOrg(values, options) {
+    const canRetargetMutation =
+      Object.prototype.hasOwnProperty.call(values ?? {}, 'data') ||
+      Object.prototype.hasOwnProperty.call(values ?? {}, 'table') ||
+      Object.prototype.hasOwnProperty.call(values ?? {}, 'action') ||
+      Object.prototype.hasOwnProperty.call(values ?? {}, 'is_transfer');
+
+    if (!canRetargetMutation || !options?.where) return;
+
+    const stagingRecords = await StagingV2.findAll({
+      where: options.where,
+      transaction: options?.transaction,
+    });
+
+    // Resolve the home org once for all matched staging records.
+    const homeOrgUid = await StagingV2.resolveHomeOrgUid(options);
+    for (const stagingRecord of stagingRecords) {
+      await StagingV2.assertMutationOwnedByHomeOrg({
+        uuid: values.uuid ?? stagingRecord.uuid,
+        table: values.table ?? stagingRecord.table,
+        action: values.action ?? stagingRecord.action,
+        data: values.data ?? stagingRecord.data,
+        is_transfer: values.is_transfer ?? stagingRecord.is_transfer,
+      }, options, homeOrgUid);
+    }
+  }
+
+  static getMutationGuardModelMap() {
+    return {
+      program: ProgramV2,
+      methodology: MethodologyV2,
+      project: ProjectV2,
+      validation: ValidationV2,
+      verification: VerificationV2,
+      issuance: IssuanceV2,
+      unit: UnitV2,
+      location: LocationV2,
+      estimation: EstimationV2,
+      rating: RatingV2,
+      co_benefit: CoBenefitV2,
+      project_methodology: ProjectMethodologyV2,
+      stakeholder: StakeholderV2,
+      stakeholder_projects: StakeholderProjectV2,
+      label: LabelV2,
+      unit_label: UnitLabelV2,
+      aef_t1_submission: AefT1SubmissionV2,
+      aef_t5_authorized_entities: AefT5AuthorizedEntitiesV2,
+      aef_t2_authorizations: AefT2AuthorizationsV2,
+      aef_t3_actions: AefT3ActionsV2,
+      aef_t4_holdings: AefT4HoldingsV2,
+    };
+  }
+
+  static getJoinTableOwnershipFks() {
+    return {
+      project_methodology: new Set(['cadTrustProjectId']),
+      stakeholder_projects: new Set(['cadTrustProjectId']),
+      unit_label: new Set(['cadTrustUnitId']),
+    };
+  }
+
+  static getExcludedFieldsForTable(table) {
+    const ownershipFks = StagingV2.getJoinTableOwnershipFks()[table];
+    if (!ownershipFks) return new Set();
+
+    return new Set(
+      StagingV2.getOwnershipParentModels()
+        .map(([fieldName]) => fieldName)
+        .filter((f) => !ownershipFks.has(f)),
+    );
+  }
+
+  static getOwnershipParentModels() {
+    return [
+      ['cadTrustProjectId', ProjectV2],
+      ['cadTrustUnitId', UnitV2],
+      ['cadTrustProgramId', ProgramV2],
+      ['cadTrustMethodologyId', MethodologyV2],
+      ['cadTrustValidationId', ValidationV2],
+      ['cadTrustVerificationId', VerificationV2],
+      ['cadTrustIssuanceId', IssuanceV2],
+      ['cadTrustLocationId', LocationV2],
+      ['cadTrustStakeholderId', StakeholderV2],
+      ['cadTrustLabelId', LabelV2],
+      ['cadTrustProjectMethodologyId', ProjectMethodologyV2],
+      ['cadTrustAefT1SubmissionId', AefT1SubmissionV2],
+      ['cadTrustAefT5AuthorizedEntitiesId', AefT5AuthorizedEntitiesV2],
+      ['cadTrustAefT2AuthorizationsId', AefT2AuthorizationsV2],
+    ];
+  }
+
+  static camelToSnake(str) {
+    return str.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
+  }
+
+  static getRecordField(record, fieldName) {
+    const plainRecord = typeof record?.get === 'function'
+      ? record.get({ plain: true })
+      : record?.dataValues ?? record;
+
+    return plainRecord?.[fieldName] ?? plainRecord?.[StagingV2.camelToSnake(fieldName)];
+  }
+
+  // True when the model itself carries an org_uid column (e.g. program,
+  // methodology, project, unit, stakeholder, label, aef_t1_submission).
+  // Such records are expected to resolve to an owning org, so when none can
+  // be resolved (e.g. a null org_uid) the mutation is blocked rather than
+  // waved through. Tables without an org_uid column resolve ownership via
+  // their parent FK chain instead (see hasOwnershipFields).
+  static modelHasOrgUidColumn(ModelClass) {
+    const attrs = typeof ModelClass?.getAttributes === 'function'
+      ? ModelClass.getAttributes()
+      : ModelClass?.rawAttributes;
+    return Boolean(attrs && (attrs.orgUid || attrs.org_uid));
+  }
+
+  static hasOwnershipFields(record, table) {
+    const primaryKeyField = getV2PrimaryKeyField(table);
+    const primaryKeyApiField = primaryKeyField?.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+    // Mirror the FK exclusions collectOwnerOrgUids applies so that ownership
+    // detection and resolution agree; otherwise a join-table payload carrying
+    // only an excluded cross-ref FK reports an owner that resolution skips.
+    const excludedFields = StagingV2.getExcludedFieldsForTable(table);
+
+    return Boolean(
+      StagingV2.getRecordField(record, 'orgUid') ||
+      StagingV2.getOwnershipParentModels()
+        .filter(([fieldName]) => fieldName !== primaryKeyApiField && !excludedFields.has(fieldName))
+        .some(([fieldName]) => (
+          StagingV2.getRecordField(record, fieldName) != null
+        )),
+    );
+  }
+
+  static async collectOwnerOrgUids(
+    record,
+    options = {},
+    visited = new Set(),
+    depth = 0,
+    includeParentsForDirectOwner = false,
+    unresolvedFields = [],
+    excludedFields = new Set(),
+  ) {
+    if (!record || depth > 10) return [];
+
+    const orgUid = StagingV2.getRecordField(record, 'orgUid');
+    if (orgUid && !includeParentsForDirectOwner) return [orgUid];
+
+    const ownerOrgUids = orgUid ? [orgUid] : [];
+    for (const [fieldName, ModelClass] of StagingV2.getOwnershipParentModels()) {
+      if (excludedFields.has(fieldName)) continue;
+
+      const parentId = StagingV2.getRecordField(record, fieldName);
+      if (!parentId) continue;
+
+      const visitedKey = `${ModelClass.name}:${parentId}`;
+      if (visited.has(visitedKey)) continue;
+      visited.add(visitedKey);
+
+      const parentRecord = await ModelClass.findByPk(parentId, {
+        transaction: options?.transaction,
+      });
+      if (!parentRecord) {
+        unresolvedFields.push(fieldName);
+        continue;
+      }
+
+      ownerOrgUids.push(
+        ...(await StagingV2.collectOwnerOrgUids(
+          parentRecord,
+          options,
+          visited,
+          depth + 1,
+          false,
+          unresolvedFields,
+          new Set(),
+        )),
+      );
+    }
+
+    return [...new Set(ownerOrgUids)];
+  }
+
+  static async resolveHomeOrgUid(options) {
+    // Use the caller's transaction so this read shares the connection of an
+    // open write transaction (e.g. cascade delete) instead of contending for a
+    // separate pooled connection, which can deadlock under connection pressure.
+    const homeOrg = await OrganizationsV2.findOne({
+      where: { is_home: true },
+      transaction: options?.transaction,
+      raw: true,
+    });
+    return homeOrg?.org_uid ?? null;
+  }
+
+  static async assertOwnerOrgUidsAreHome(
+    ownerOrgUids,
+    table,
+    requireOwner = false,
+    unresolvedFields = [],
+    homeOrgUid = null,
+  ) {
+    if (unresolvedFields.length > 0) {
+      throw new Error(
+        `Restricted data: cannot determine the owner of this ${table} record from ${unresolvedFields.join(', ')}. Only the home organization that created this record can modify it.`,
+      );
+    }
+
+    if (ownerOrgUids.length === 0) {
+      if (!requireOwner) return;
+
+      throw new Error(
+        `Restricted data: cannot determine the owner of this ${table} record. Only the home organization that created this record can modify it.`,
+      );
+    }
+
+    const nonHomeOrgUid = ownerOrgUids.find((orgUid) => orgUid !== homeOrgUid);
+
+    if (!homeOrgUid || nonHomeOrgUid) {
+      throw new Error(
+        `Restricted data: cannot modify this ${table} record with orgUid '${nonHomeOrgUid}'. Only the home organization that created this record can modify it.`,
+      );
+    }
+  }
+
+  static async assertMutationOwnedByHomeOrg(values, options, homeOrgUid) {
+    if (!['UPDATE', 'DELETE'].includes(values?.action) || values?.is_transfer) {
+      return;
+    }
+
+    const ModelClass = StagingV2.getMutationGuardModelMap()[values.table];
+    if (!ModelClass) return;
+
+    const primaryKeyField = getV2PrimaryKeyField(values.table);
+    if (!primaryKeyField) return;
+    const primaryKeyApiField = primaryKeyField.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+
+    // Resolve the home org once per call (reused for every data row and both
+    // ownership checks below) unless a batch caller already resolved it.
+    if (homeOrgUid === undefined) {
+      homeOrgUid = await StagingV2.resolveHomeOrgUid(options);
+    }
+
+    const parsedData = Array.isArray(values.data)
+      ? values.data
+      : JSON.parse(values.data || '[]');
+    const records = Array.isArray(parsedData) ? parsedData : [parsedData];
+
+    for (const recordData of records) {
+      const primaryKeyValue =
+        recordData[primaryKeyField] ??
+        recordData[primaryKeyApiField] ??
+        values.uuid;
+
+      const existingRecord = primaryKeyValue
+        ? await ModelClass.findByPk(primaryKeyValue, {
+            transaction: options?.transaction,
+          })
+        : null;
+
+      if (existingRecord) {
+        const tableExcludedFields = StagingV2.getExcludedFieldsForTable(values.table);
+        const existingUnresolved = [];
+        const existingOwnerOrgUids = await StagingV2.collectOwnerOrgUids(
+          existingRecord, options, new Set(), 0, false, existingUnresolved, tableExcludedFields,
+        );
+        const requireOwner =
+          StagingV2.hasOwnershipFields(existingRecord, values.table) ||
+          StagingV2.modelHasOrgUidColumn(ModelClass);
+        await StagingV2.assertOwnerOrgUidsAreHome(
+          existingOwnerOrgUids,
+          values.table,
+          requireOwner,
+          existingUnresolved,
+          homeOrgUid,
+        );
+      } else if (values.action !== 'UPDATE') {
+        continue;
+      }
+
+      if (values.action === 'UPDATE') {
+        const unresolvedFields = [];
+        const payloadHasOwnershipFields = StagingV2.hasOwnershipFields(
+          recordData,
+          values.table,
+        );
+        if (!existingRecord && !payloadHasOwnershipFields) {
+          throw new Error(
+            `Restricted data: cannot determine the owner of this ${values.table} record. Only the home organization that created this record can modify it.`,
+          );
+        }
+
+        const updateExcluded = StagingV2.getExcludedFieldsForTable(values.table);
+        updateExcluded.add(primaryKeyApiField);
+        await StagingV2.assertOwnerOrgUidsAreHome(
+          await StagingV2.collectOwnerOrgUids(
+            recordData,
+            options,
+            new Set(),
+            0,
+            true,
+            unresolvedFields,
+            updateExcluded,
+          ),
+          values.table,
+          payloadHasOwnershipFields,
+          unresolvedFields,
+          homeOrgUid,
+        );
+      }
+    }
   }
 
   /**
@@ -316,7 +638,7 @@ class StagingV2 extends Model {
       // Fetch original record if model mapping exists
       const modelInfo = tableToModelMap[table];
       if (modelInfo) {
-        const [ModelClass, primaryKeyField, hasAssociations] = modelInfo;
+        const [ModelClass, primaryKeyField] = modelInfo;
         let original;
 
         try {
@@ -364,6 +686,7 @@ class StagingV2 extends Model {
   static async pushToDataLayer(tableToPush, comment, author, ids = []) {
     const commitStartTime = Date.now();
     const memoryBefore = process.memoryUsage();
+    let stagedRecords = [];
     const monitor = {
       rpcCount: 0,
       modelTimings: {},
@@ -391,7 +714,7 @@ class StagingV2 extends Model {
         ...(ids && Array.isArray(ids) && ids.length > 0 ? { uuid: { [Op.in]: ids } } : {}),
       };
 
-      const stagedRecords = await StagingV2.findAll({
+      stagedRecords = await StagingV2.findAll({
         where: whereClause,
         raw: true,
       });

@@ -6,7 +6,10 @@ import {
 } from '../utils/data-assertions';
 import { logger } from '../config/logger.js';
 import { getConfig } from '../utils/config-loader';
-const CONFIG = getConfig().APP;
+import { getDefaultOrganizationList } from '../utils/data-loaders.js';
+import { buildOrgListAllowSet } from '../utils/orglist-subscription-reconcile.js';
+
+const CONFIG = getConfig();
 
 import dotenv from 'dotenv';
 
@@ -17,7 +20,17 @@ const task = new Task('validate-organization-table', async () => {
     await assertDataLayerAvailable();
     await assertWalletIsSynced();
 
-    if (!CONFIG.USE_SIMULATOR) {
+    if (!CONFIG.APP.USE_SIMULATOR) {
+      const onlyCadtSubscriptions = CONFIG.APP.ONLY_CADT_SUBSCRIPTIONS === true;
+      let orgListAllowSet = null;
+      if (onlyCadtSubscriptions) {
+        const defaultOrgList = await getDefaultOrganizationList();
+        if (defaultOrgList.length > 0) {
+          const { GOVERNANCE_BODY_ID } = CONFIG.GOVERNANCE;
+          orgListAllowSet = buildOrgListAllowSet(defaultOrgList, GOVERNANCE_BODY_ID);
+        }
+      }
+
       const organizations = await Organization.findAll({ raw: true });
       logger.info(
         'validating organization table record store ids against datalayer store ids',
@@ -48,6 +61,13 @@ const task = new Task('validate-organization-table', async () => {
                 `failed reconcile organization records and subscriptions for organization ${organization.orgUid}. Error: ${error.message}. `,
               );
             }
+          } else if (
+            onlyCadtSubscriptions &&
+            orgListAllowSet?.has(organization.orgUid)
+          ) {
+            logger.verbose(
+              `[v1]: ONLY_CADT_SUBSCRIPTIONS: skipping validate unsubscribe for orglist org ${organization.orgUid} (sync-default-organizations owns subscription)`,
+            );
           } else {
             logger.info(
               `organization ${organization.orgUid} is marked as unsubscribed. ensuring all organization stores are unsubscribed`,
@@ -60,7 +80,7 @@ const task = new Task('validate-organization-table', async () => {
   } catch (error) {
     logger.error(
       `failed to validate default organization records and subscriptions. Error ${error.message}. ` +
-        `Retrying in ${CONFIG?.TASKS?.VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL || 900} seconds`,
+        `Retrying in ${CONFIG?.APP?.TASKS?.VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL || 1800} seconds`,
     );
   }
 });
@@ -75,7 +95,7 @@ const task = new Task('validate-organization-table', async () => {
  */
 const job = new SimpleIntervalJob(
   {
-    seconds: CONFIG?.TASKS?.VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL || 900,
+    seconds: CONFIG?.APP?.TASKS?.VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL || 1800,
     runImmediately: true,
   },
   task,

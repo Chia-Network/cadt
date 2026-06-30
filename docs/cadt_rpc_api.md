@@ -27,8 +27,87 @@ The CADT RPC API is exposed by default on port 31310. This document will give ex
 
 If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to your `curl` request.
 
+## V2 Ownership Note
+
+For the V2 API, update and delete requests can only stage mutations for records owned by the home organization. See the V2 API guide for details on `orgUid` ownership and child-record ownership resolution.
+
+## System endpoints
+
+Several routes are mounted on the server root (not under `/v1` or `/v2`). They are for monitoring and troubleshooting. Unlike most API routes, they are not blocked when the wallet or DataLayer is still syncing or migrations are in progress.
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /health` | CADT process liveness; includes disk-space summary for the Chia root partition |
+| `GET /v1/health` | V1 API liveness (same disk-space fields as `/health`) |
+| `GET /v2/health` | V2 API liveness (documented in the [V2 RPC guide](/docs/cadt_rpc_api_v2.md#system-endpoints)) |
+| `GET /v1/health/wallet` | V1 wallet sync and pending-transaction summary |
+| `GET /v2/health/wallet` | V2 wallet sync and pending-transaction summary (see V2 guide) |
+| `GET /diagnostics` | System-wide debug snapshot (CADT, Chia, DataLayer, host) |
+
+If `CADT_API_KEY` is set, these endpoints use the same global `x-api-key` check as the rest of the API.
+
+<a id="diagnostics"></a>
+### Diagnostics snapshot (`GET /diagnostics`)
+
+Returns one JSON object summarizing CADT configuration, Chia wallet/full-node/DataLayer status, DataLayer subscriptions, local Chia processes, and host CPU/memory/disk. Each major subsection may include a `status` of `ok`, `warning`, or `critical`, plus an optional `message` when attention is needed. External calls use per-section timeouts and degrade gracefully when a subsystem is down.
+
+- **Not available on read-only nodes:** returns **403** when `READ_ONLY` is `true` for V1 or V2.
+- **Response time:** usually well under a second on a healthy install; individual probes can take up to about 10 seconds each, with a worst-case total near 30 seconds when something is wedged.
+
+Request (include the header when an API key is configured):
+
+```shell
+curl -s -H 'x-api-key: <your-api-key-here>' http://localhost:31310/diagnostics
+```
+
+Response (top-level shape; nested fields vary with the environment):
+
+```json
+{
+  "timestamp": "2024-01-15T12:00:00.000Z",
+  "cadt": {
+    "version": "1.0.0",
+    "configDir": "/home/user/.chia/mainnet/cadt",
+    "v1": { "enabled": true, "readOnly": false },
+    "v2": { "enabled": true, "readOnly": false }
+  },
+  "network": { "cadt": "mainnet", "chia": "mainnet", "matches": true, "status": "ok" },
+  "chia": {
+    "version": "2.4.0",
+    "wallet": { "reachable": true, "synced": true },
+    "fullNode": { "reachable": false },
+    "datalayer": { "reachable": true, "subscriptions": [] },
+    "runningProcesses": { "matches": [] }
+  },
+  "system": {
+    "platform": "linux",
+    "cpu": { "cores": 8 },
+    "memory": { "percentUsed": 42 },
+    "disk": { "percentUsed": 55 }
+  }
+}
+```
+
+<a id="v1-health-check"></a>
+### V1 health check (`GET /v1/health`)
+
+```shell
+curl --location --request GET 'http://localhost:31310/v1/health' --header 'Content-Type: application/json'
+```
+
+```json
+{
+  "message": "V1 API is running",
+  "timestamp": "2024-01-15T12:00:00.000Z",
+  "diskSpace": {}
+}
+```
+
 ## Commands
 
+- [System endpoints](#system-endpoints)
+  - [Diagnostics snapshot](#diagnostics)
+  - [V1 health check](#v1-health-check)
 - [`organizations`](#organizations)
   - [GET Examples](#get-examples)
     - [List all subscribed organizations](#list-all-subscribed-organizations)
@@ -2122,8 +2201,9 @@ Options:
 |:---------:|:-----------------:|:------------------------------------------------------------------------------------------------------:|
 |  orgUid   | (Required) String |                            Display subscribed projects matching this orgUid                            |
 |   order   |      String       |            Sort the audit records by `ASC` or `DESC` order based on confirmation timestamp             |
-|   limit   | (Required) Number | Limit the number of subscribed projects to be displayed (must be used with page, eg `?page=5&limit=2`) |
+|   limit   | (Required) Number | Limit the number of records to be displayed, between 1 and 1000 (must be used with page, eg `?page=5&limit=2`) |
 |   page    | (Required) Number |       Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)       |
+| excludeChange | Boolean | When `true`, omit the large `change` column from each record to reduce response size (default `false`) |
 
 
 ### GET Examples

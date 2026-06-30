@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { StagingV2, ProjectV2, ProgramV2, LocationV2, EstimationV2, RatingV2, CoBenefitV2, ValidationV2, VerificationV2, MethodologyV2, ProjectMethodologyV2, StakeholderV2, StakeholderProjectV2, IssuanceV2, UnitV2, LabelV2, UnitLabelV2 } from '../../../src/models/v2/index.js';
+import { StagingV2, ProjectV2, ProgramV2, LocationV2, EstimationV2, RatingV2, CoBenefitV2, ValidationV2, VerificationV2, MethodologyV2, ProjectMethodologyV2, StakeholderV2, StakeholderProjectV2, IssuanceV2, UnitV2, LabelV2, UnitLabelV2, AefT1SubmissionV2, AefT5AuthorizedEntitiesV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 
 import {
@@ -14,6 +14,8 @@ import {
   addUuidIfNeeded,
   createV2TestProgramChain,
   verifyTestDatabaseConfiguration,
+  pauseSchedulerTasks,
+  resumeSchedulerTasks,
 } from '../utils/v2-test-helpers.js';
 
 describe('V2 Project API - Basic CRUD Tests', function () {
@@ -25,6 +27,10 @@ describe('V2 Project API - Basic CRUD Tests', function () {
   before(async function () {
     // Safety check: Verify test databases are being used
     await verifyTestDatabaseConfiguration();
+
+    // Pause background scheduler tasks to prevent mutex contention with
+    // the CRUD operations under test.
+    await pauseSchedulerTasks();
 
     console.log('Setting up V2 test environment...');
     await prepareV2Db();
@@ -41,8 +47,8 @@ describe('V2 Project API - Basic CRUD Tests', function () {
   });
 
   after(async function () {
+    await resumeSchedulerTasks();
     console.log('Cleaning up V2 test environment...');
-    // Cleanup handled by test framework
   });
 
   beforeEach(async function () {
@@ -852,6 +858,87 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       expect(stagedData[0].org_uid).to.equal(actualHomeOrgId);
     });
 
+    it('should reject update for a project owned by another organization', async function () {
+      const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+        projectRegistryName: 'Other Registry',
+        projectId: 'OTHER-UPDATE-001',
+        projectName: 'Other Org Project',
+        orgUid: 'other-org-uid-12345',
+      }));
+
+      const updateData = {
+        projectRegistryName: 'Updated Registry',
+        projectId: 'OTHER-UPDATE-001',
+        projectName: 'Should Not Update',
+        projectLink: 'https://example.com/project',
+        projectSector: ['Agriculture'],
+        projectType: ['Solar'],
+        projectStatus: 'Listed',
+        projectStatusDate: '2024-01-01',
+        projectUnitMetric: 'tCO2e',
+      };
+
+      const response = await supertest(app)
+        .put(`/v2/project/${project.cadTrustProjectId}`)
+        .send(updateData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('Restricted data');
+
+      const stagingRecord = await StagingV2.findOne({
+        where: {
+          table: 'project',
+          action: 'UPDATE',
+        },
+      });
+      expect(stagingRecord).to.not.exist;
+    });
+
+    it('should reject project update that retargets to another organization program', async function () {
+      const homeOrgId = await getV2HomeOrgId();
+      const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+        projectRegistryName: 'Home Registry',
+        projectId: 'HOME-RETARGET-001',
+        projectName: 'Home Project',
+        orgUid: homeOrgId,
+      }));
+      const otherProgram = await ProgramV2.create({
+        cadTrustProgramId: uuidv4(),
+        programName: 'Other Org Program',
+        programRegistry: 'Other Registry',
+        programRegistryActivityId: 'OTHER-PROGRAM-001',
+        orgUid: 'other-org-uid-12345',
+      });
+
+      const response = await supertest(app)
+        .put(`/v2/project/${project.cadTrustProjectId}`)
+        .send({
+          projectRegistryName: 'Home Registry',
+          projectId: 'HOME-RETARGET-001',
+          projectName: 'Should Not Retarget',
+          projectLink: 'https://example.com/project',
+          projectSector: ['Agriculture'],
+          projectType: ['Solar'],
+          projectStatus: 'Listed',
+          projectStatusDate: '2024-01-01',
+          projectUnitMetric: 'tCO2e',
+          cadTrustProgramId: otherProgram.cadTrustProgramId,
+        })
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('Restricted data');
+
+      const stagingRecord = await StagingV2.findOne({
+        where: {
+          table: 'project',
+          action: 'UPDATE',
+        },
+      });
+      expect(stagingRecord).to.not.exist;
+    });
+
     it('should reject project update with forbidden orgUid field', async function () {
       const homeOrgId = await getV2HomeOrgId();
       const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
@@ -971,6 +1058,30 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       // Verify staged deletion data
       const stagedData = JSON.parse(stagingRecord.data);
       expect(stagedData[0].cad_trust_project_id).to.equal(project.cadTrustProjectId);
+    });
+
+    it('should reject delete for a project owned by another organization', async function () {
+      const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+        projectRegistryName: 'Other Registry',
+        projectId: 'OTHER-DELETE-001',
+        projectName: 'Other Org Project',
+        orgUid: 'other-org-uid-12345',
+      }));
+
+      const response = await supertest(app)
+        .delete(`/v2/project/${project.cadTrustProjectId}`)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('Restricted data');
+
+      const stagingRecord = await StagingV2.findOne({
+        where: {
+          table: 'project',
+          action: 'DELETE',
+        },
+      });
+      expect(stagingRecord).to.not.exist;
     });
 
     it('should cascade-stage deletes for project child records', async function () {
@@ -1242,6 +1353,147 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         });
         expect(matching, `missing staged delete for ${table}:${id}`).to.exist;
       }
+    });
+
+    it('should return 409 when AEF records reference this project', async function () {
+      const chain = await createV2TestProgramChain({ testId: `PROJ-AEF-PROJ-${uuidv4().slice(0, 8)}` });
+      const t1 = await AefT1SubmissionV2.create({
+        cadTrustAefT1SubmissionId: uuidv4(),
+        aefT1SubmissionParty: 'Project reference guard party',
+        aefT1SubmissionVersion: '1.0',
+        aefT1SubmissionReportYear: 2024,
+        aefT1SubmissionSubmissionDate: '2024-01-15',
+      });
+      await AefT5AuthorizedEntitiesV2.create({
+        cadTrustAefT5AuthorizedEntitiesId: uuidv4(),
+        aefT5AuthorizedEntitiesAuthorizationDate: '2024-01-15',
+        aefT5AuthorizedEntitiesName: 'Project reference guard entity',
+        aefT5AuthorizedEntitiesId: `PROJ-REF-AE-${uuidv4().slice(0, 6)}`,
+        aefT5AuthorizedEntitiesCooperativeApproachId: `PROJ-REF-CA-${uuidv4().slice(0, 6)}`,
+        cadTrustAefT1SubmissionId: t1.cadTrustAefT1SubmissionId,
+        cadTrustProjectId: chain.project.cadTrustProjectId,
+      });
+
+      const response = await supertest(app)
+        .delete(`/v2/project/${chain.project.cadTrustProjectId}`)
+        .expect(409);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.equal('Referenced records must be removed before deletion');
+      expect(response.body.references).to.deep.include({ table: 'aef_t5_authorized_entities', count: 1 });
+
+      const stagingDeletes = await StagingV2.findAll({
+        where: { table: 'project', action: 'DELETE' },
+        raw: true,
+      });
+      const projectDelete = stagingDeletes.find((row) => {
+        const data = JSON.parse(row.data);
+        return data[0]?.cad_trust_project_id === chain.project.cadTrustProjectId;
+      });
+      expect(projectDelete).to.be.undefined;
+    });
+
+    it('should return 409 when cascade unit has AEF references', async function () {
+      const homeOrgId = await getV2HomeOrgId();
+      const chain = await createV2TestProgramChain({ testId: `PROJ-AEF-GUARD-${uuidv4().slice(0, 8)}` });
+      const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+        unitSerialId: `PROJ-AEF-UNIT-${uuidv4().slice(0, 8)}`,
+        unitStartBlock: '1',
+        unitEndBlock: '100',
+        unitCount: 50,
+        unitType: 'Avoidance - nature',
+        unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitMetric: 'tCO2e',
+        cadTrustIssuanceId: chain.issuance.cadTrustIssuanceId,
+        orgUid: homeOrgId,
+      }));
+      const t1 = await AefT1SubmissionV2.create({
+        cadTrustAefT1SubmissionId: uuidv4(),
+        aefT1SubmissionParty: 'Project cascade guard party',
+        aefT1SubmissionVersion: '1.0',
+        aefT1SubmissionReportYear: 2024,
+        aefT1SubmissionSubmissionDate: '2024-01-15',
+      });
+      await AefT5AuthorizedEntitiesV2.create({
+        cadTrustAefT5AuthorizedEntitiesId: uuidv4(),
+        aefT5AuthorizedEntitiesAuthorizationDate: '2024-01-15',
+        aefT5AuthorizedEntitiesName: 'Project cascade guard entity',
+        aefT5AuthorizedEntitiesId: `PROJ-AE-${uuidv4().slice(0, 6)}`,
+        aefT5AuthorizedEntitiesCooperativeApproachId: `PROJ-CA-${uuidv4().slice(0, 6)}`,
+        cadTrustAefT1SubmissionId: t1.cadTrustAefT1SubmissionId,
+        cadTrustUnitId: unit.cadTrustUnitId,
+        cadTrustProjectId: null,
+      });
+
+      const response = await supertest(app)
+        .delete(`/v2/project/${chain.project.cadTrustProjectId}`)
+        .expect(409);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.equal('Referenced records must be removed before deletion');
+      expect(response.body.references).to.deep.include({ table: 'aef_t5_authorized_entities', count: 1 });
+
+      const stagingDeletes = await StagingV2.findAll({
+        where: { action: 'DELETE' },
+        raw: true,
+      });
+      const projectDelete = stagingDeletes.find((row) => {
+        if (row.table !== 'project') return false;
+        const data = JSON.parse(row.data);
+        return data[0]?.cad_trust_project_id === chain.project.cadTrustProjectId;
+      });
+      const unitDelete = stagingDeletes.find((row) => {
+        if (row.table !== 'unit') return false;
+        const data = JSON.parse(row.data);
+        return data[0]?.cad_trust_unit_id === unit.cadTrustUnitId;
+      });
+      expect(projectDelete).to.be.undefined;
+      expect(unitDelete).to.be.undefined;
+    });
+
+    it('should return 409 when another project references this project', async function () {
+      const homeOrgId = await getV2HomeOrgId();
+      const program = await ProgramV2.create({
+        programName: 'Ref guard program',
+        programRegistry: 'Test Registry',
+        programRegistryActivityId: `REF-PGM-${uuidv4().slice(0, 8)}`,
+      });
+      const targetProject = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+        projectRegistryName: 'Test Registry',
+        projectId: `REF-TGT-${uuidv4().slice(0, 8)}`,
+        projectName: 'Target project for ref guard',
+        projectSector: ['Agriculture'],
+        orgUid: homeOrgId,
+        cadTrustProgramId: program.cadTrustProgramId,
+      }));
+      await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+        projectRegistryName: 'Test Registry',
+        projectId: `REF-PTR-${uuidv4().slice(0, 8)}`,
+        projectName: 'Referrer project',
+        projectSector: ['Agriculture'],
+        orgUid: homeOrgId,
+        cadTrustProgramId: program.cadTrustProgramId,
+        cadTrustReferenceProjectId: targetProject.cadTrustProjectId,
+      }));
+
+      const response = await supertest(app)
+        .delete(`/v2/project/${targetProject.cadTrustProjectId}`)
+        .expect(409);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.equal('Referenced records must be removed before deletion');
+      expect(response.body.references).to.deep.include({ table: 'project', count: 1 });
+
+      const stagingDeletes = await StagingV2.findAll({
+        where: { table: 'project', action: 'DELETE' },
+        raw: true,
+      });
+      const forTarget = stagingDeletes.find((row) => {
+        const data = JSON.parse(row.data);
+        return data[0]?.cad_trust_project_id === targetProject.cadTrustProjectId;
+      });
+      expect(forTarget).to.be.undefined;
     });
   });
 
@@ -2106,6 +2358,12 @@ Test Registry,REQ-001,${testProgram.cadTrustProgramId}`;
           projectRegistryName: 'Test Registry',
           projectId: 'UPD-REQ-001',
           projectName: 'Full Project',
+          projectLink: 'https://example.com/update-required',
+          projectSector: ['Agriculture'],
+          projectType: ['Landfill gas'],
+          projectStatus: 'Listed',
+          projectStatusDate: '2024-01-01',
+          projectUnitMetric: 'tCO2e',
           orgUid: homeOrgId,
         }));
 

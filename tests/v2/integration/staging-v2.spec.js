@@ -14,6 +14,8 @@ import {
   IssuanceV2,
   UnitV2,
   LocationV2,
+  StakeholderV2,
+  StakeholderProjectV2,
 } from '../../../src/models/v2/index.js';
 import { Staging } from '../../../src/models/index.js';
 import TaskManager from '../../../src/tasks/index.js';
@@ -921,6 +923,203 @@ describe('V2 Staging Integration Tests', function () {
       expect(updatedRecord).to.exist;
       const parsedData = JSON.parse(updatedRecord.data);
       expect(parsedData[0].program_name).to.equal('Updated Name');
+    });
+
+    it('should reject editRecord that retargets an update to another organization record', async function () {
+      const otherProject = await ProjectV2.create({
+        cadTrustProjectId: uuidv4(),
+        orgUid: 'other-org-uid-12345',
+        projectRegistryName: 'Other Registry',
+        projectId: 'OTHER-STAGING-EDIT-001',
+        projectName: 'Other Org Project',
+      });
+      const stagingUuid = uuidv4();
+      await StagingV2.create({
+        uuid: stagingUuid,
+        table: 'project',
+        action: 'UPDATE',
+        data: JSON.stringify([{
+          cad_trust_project_id: projectId,
+          project_name: 'Allowed Home Org Update',
+        }]),
+        committed: false,
+        failed_commit: false,
+        is_transfer: false,
+      });
+
+      const response = await supertest(app)
+        .put('/v2/staging')
+        .send({
+          uuid: stagingUuid,
+          data: [{
+            cad_trust_project_id: otherProject.cadTrustProjectId,
+            project_name: 'Should Not Retarget',
+          }],
+        })
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('Restricted data');
+
+      const unchangedRecord = await StagingV2.findOne({
+        where: { uuid: stagingUuid },
+      });
+      const parsedData = JSON.parse(unchangedRecord.data);
+      expect(parsedData[0].cad_trust_project_id).to.equal(projectId);
+    });
+
+    it('should reject editRecord that retargets an update to an unresolved owner', async function () {
+      const stagingUuid = uuidv4();
+      await StagingV2.create({
+        uuid: stagingUuid,
+        table: 'project',
+        action: 'UPDATE',
+        data: JSON.stringify([{
+          cad_trust_project_id: projectId,
+          project_name: 'Allowed Home Org Update',
+        }]),
+        committed: false,
+        failed_commit: false,
+        is_transfer: false,
+      });
+
+      const response = await supertest(app)
+        .put('/v2/staging')
+        .send({
+          uuid: stagingUuid,
+          data: [{
+            cad_trust_project_id: uuidv4(),
+            project_name: 'Should Not Retarget',
+          }],
+        })
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('Restricted data');
+
+      const unchangedRecord = await StagingV2.findOne({
+        where: { uuid: stagingUuid },
+      });
+      const parsedData = JSON.parse(unchangedRecord.data);
+      expect(parsedData[0].cad_trust_project_id).to.equal(projectId);
+    });
+
+    it('should allow editRecord for a join table update that changes only the non-owning reference', async function () {
+      const homeOrgId = await getV2HomeOrgId();
+      const stakeholder = await StakeholderV2.create({
+        cadTrustStakeholderId: uuidv4(),
+        stakeholderName: 'Home Stakeholder',
+        stakeholderType: 'Owner',
+        orgUid: homeOrgId,
+      });
+      // Replacement stakeholder is owned by another org on purpose: ownership for
+      // this join table is anchored to the project, so swapping the stakeholder
+      // cross-reference must be allowed even when it points at a foreign stakeholder.
+      const replacementStakeholder = await StakeholderV2.create({
+        cadTrustStakeholderId: uuidv4(),
+        stakeholderName: 'Replacement Foreign Stakeholder',
+        stakeholderType: 'Owner',
+        orgUid: 'other-org-uid-12345',
+      });
+      const joinRecord = await StakeholderProjectV2.create({
+        cadTrustStakeholderProjectId: uuidv4(),
+        cadTrustStakeholderId: stakeholder.cadTrustStakeholderId,
+        cadTrustProjectId: projectId,
+      });
+
+      const stagingUuid = uuidv4();
+      await StagingV2.create({
+        uuid: stagingUuid,
+        table: 'stakeholder_projects',
+        action: 'UPDATE',
+        data: JSON.stringify([{
+          cad_trust_stakeholder_project_id: joinRecord.cadTrustStakeholderProjectId,
+          cad_trust_project_id: projectId,
+          cad_trust_stakeholder_id: stakeholder.cadTrustStakeholderId,
+        }]),
+        committed: false,
+        failed_commit: false,
+        is_transfer: false,
+      });
+
+      // Ownership for the join table is resolved through the project (owning side),
+      // so editing only the stakeholder cross-reference must not be rejected.
+      await supertest(app)
+        .put('/v2/staging')
+        .send({
+          uuid: stagingUuid,
+          data: [{
+            cad_trust_stakeholder_project_id: joinRecord.cadTrustStakeholderProjectId,
+            cad_trust_stakeholder_id: replacementStakeholder.cadTrustStakeholderId,
+          }],
+        })
+        .expect(200);
+
+      const updatedRecord = await StagingV2.findOne({
+        where: { uuid: stagingUuid },
+      });
+      const parsedData = JSON.parse(updatedRecord.data);
+      expect(parsedData[0].cad_trust_stakeholder_id).to.equal(replacementStakeholder.cadTrustStakeholderId);
+    });
+
+    it('should reject editRecord that retargets a join table to another organization owning record', async function () {
+      const homeOrgId = await getV2HomeOrgId();
+      const stakeholder = await StakeholderV2.create({
+        cadTrustStakeholderId: uuidv4(),
+        stakeholderName: 'Home Stakeholder For Retarget',
+        stakeholderType: 'Owner',
+        orgUid: homeOrgId,
+      });
+      const foreignProject = await ProjectV2.create({
+        cadTrustProjectId: uuidv4(),
+        orgUid: 'other-org-uid-12345',
+        projectRegistryName: 'Other Registry',
+        projectId: 'OTHER-JOIN-RETARGET-001',
+        projectName: 'Other Org Project',
+      });
+      const joinRecord = await StakeholderProjectV2.create({
+        cadTrustStakeholderProjectId: uuidv4(),
+        cadTrustStakeholderId: stakeholder.cadTrustStakeholderId,
+        cadTrustProjectId: projectId,
+      });
+
+      const stagingUuid = uuidv4();
+      await StagingV2.create({
+        uuid: stagingUuid,
+        table: 'stakeholder_projects',
+        action: 'UPDATE',
+        data: JSON.stringify([{
+          cad_trust_stakeholder_project_id: joinRecord.cadTrustStakeholderProjectId,
+          cad_trust_project_id: projectId,
+          cad_trust_stakeholder_id: stakeholder.cadTrustStakeholderId,
+        }]),
+        committed: false,
+        failed_commit: false,
+        is_transfer: false,
+      });
+
+      // Retargeting the owning project FK to another org's project must be rejected,
+      // since ownership for this join table is anchored to the project.
+      const response = await supertest(app)
+        .put('/v2/staging')
+        .send({
+          uuid: stagingUuid,
+          data: [{
+            cad_trust_stakeholder_project_id: joinRecord.cadTrustStakeholderProjectId,
+            cad_trust_project_id: foreignProject.cadTrustProjectId,
+            cad_trust_stakeholder_id: stakeholder.cadTrustStakeholderId,
+          }],
+        })
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('Restricted data');
+
+      const unchangedRecord = await StagingV2.findOne({
+        where: { uuid: stagingUuid },
+      });
+      const parsedData = JSON.parse(unchangedRecord.data);
+      expect(parsedData[0].cad_trust_project_id).to.equal(projectId);
     });
 
     it('should reject editRecord when data is not an array (DoS prevention)', async function () {

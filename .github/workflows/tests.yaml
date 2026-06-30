@@ -220,6 +220,9 @@ jobs:
           # Configure CADT to most verbose logs
           echo "Configuring CADT config.yaml..."
           yq -yi '.APP.LOG_LEVEL = "debug"' ~/.chia/mainnet/cadt/config.yaml
+          # Pin fee and coin amount for deterministic live API test runs
+          yq -yi '.APP.DEFAULT_COIN_AMOUNT = 10' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.DEFAULT_FEE = 13' ~/.chia/mainnet/cadt/config.yaml
           # Set network to testnet to match the Chia network configuration
           # Value must be lowercase - the check uses case-sensitive .includes()
           yq -yi '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
@@ -754,6 +757,9 @@ jobs:
           # Configure CADT to most verbose logs
           echo "Configuring CADT config.yaml..."
           yq -yi '.APP.LOG_LEVEL = "debug"' ~/.chia/mainnet/cadt/config.yaml
+          # Pin fee and coin amount for deterministic live API test runs
+          yq -yi '.APP.DEFAULT_COIN_AMOUNT = 10' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.DEFAULT_FEE = 13' ~/.chia/mainnet/cadt/config.yaml
           # Set network to testnet to match the Chia network configuration
           # Value must be lowercase - the check uses case-sensitive .includes()
           yq -yi '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
@@ -1281,6 +1287,9 @@ jobs:
           # Configure CADT to most verbose logs
           echo "Configuring CADT config.yaml..."
           yq -yi '.APP.LOG_LEVEL = "debug"' ~/.chia/mainnet/cadt/config.yaml
+          # Pin fee and coin amount for deterministic live API test runs
+          yq -yi '.APP.DEFAULT_COIN_AMOUNT = 10' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.DEFAULT_FEE = 13' ~/.chia/mainnet/cadt/config.yaml
           # Set network to testnet to match the Chia network configuration
           yq -yi '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
           # Use 127.0.0.1 instead of localhost for more reliable binding in containers
@@ -1746,6 +1755,9 @@ jobs:
           # Configure CADT to most verbose logs
           echo "Configuring CADT config.yaml..."
           yq -yi '.APP.LOG_LEVEL = "debug"' ~/.chia/mainnet/cadt/config.yaml
+          # Pin fee and coin amount for deterministic live API test runs
+          yq -yi '.APP.DEFAULT_COIN_AMOUNT = 10' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.DEFAULT_FEE = 13' ~/.chia/mainnet/cadt/config.yaml
           # Set network to testnet to match the Chia network configuration
           # Value must be lowercase - the check uses case-sensitive .includes()
           yq -yi '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
@@ -2273,6 +2285,9 @@ jobs:
           # Configure CADT to most verbose logs
           echo "Configuring CADT config.yaml..."
           yq -yi '.APP.LOG_LEVEL = "debug"' ~/.chia/mainnet/cadt/config.yaml
+          # Pin fee and coin amount for deterministic live API test runs
+          yq -yi '.APP.DEFAULT_COIN_AMOUNT = 10' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.DEFAULT_FEE = 13' ~/.chia/mainnet/cadt/config.yaml
           # Set network to testnet to match the Chia network configuration
           yq -yi '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
           # Use 127.0.0.1 instead of localhost for more reliable binding in containers
@@ -2703,6 +2718,9 @@ jobs:
           # Configure CADT for READ_ONLY smoke mode
           echo "Configuring CADT config.yaml..."
           yq -yi '.APP.LOG_LEVEL = "debug"' ~/.chia/mainnet/cadt/config.yaml
+          # Pin fee and coin amount for deterministic live API test runs
+          yq -yi '.APP.DEFAULT_COIN_AMOUNT = 10' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.DEFAULT_FEE = 13' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.BIND_ADDRESS = "127.0.0.1"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml
@@ -2960,6 +2978,9 @@ jobs:
           # Configure CADT to most verbose logs
           echo "Configuring CADT config.yaml..."
           yq -yi '.APP.LOG_LEVEL = "debug"' ~/.chia/mainnet/cadt/config.yaml
+          # Pin fee and coin amount for deterministic live API test runs
+          yq -yi '.APP.DEFAULT_COIN_AMOUNT = 10' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.DEFAULT_FEE = 13' ~/.chia/mainnet/cadt/config.yaml
           # Set network to testnet to match the Chia network configuration
           yq -yi '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
           # Use 127.0.0.1 instead of localhost for more reliable binding in containers
@@ -3315,6 +3336,9 @@ jobs:
 
           echo "Configuring CADT config.yaml for sync-only testing..."
           yq -yi '.APP.LOG_LEVEL = "debug"' ~/.chia/mainnet/cadt/config.yaml
+          # Pin fee and coin amount for deterministic live API test runs
+          yq -yi '.APP.DEFAULT_COIN_AMOUNT = 10' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.DEFAULT_FEE = 13' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.BIND_ADDRESS = "127.0.0.1"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml
@@ -4524,6 +4548,9 @@ jobs:
 
           echo "Configuring CADT config.yaml for V1 sync-only testing..."
           yq -yi '.APP.LOG_LEVEL = "debug"' ~/.chia/mainnet/cadt/config.yaml
+          # Pin fee and coin amount for deterministic live API test runs
+          yq -yi '.APP.DEFAULT_COIN_AMOUNT = 10' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.DEFAULT_FEE = 13' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.BIND_ADDRESS = "127.0.0.1"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml
@@ -5408,6 +5435,9 @@ jobs:
 
           echo "Configuring CADT config.yaml for V1 governance body..."
           yq -yi '.APP.LOG_LEVEL = "debug"' ~/.chia/mainnet/cadt/config.yaml
+          # Pin fee and coin amount for deterministic live API test runs
+          yq -yi '.APP.DEFAULT_COIN_AMOUNT = 10' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.DEFAULT_FEE = 13' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.BIND_ADDRESS = "127.0.0.1"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml
@@ -5728,6 +5758,9 @@ jobs:
 
           echo "Configuring CADT config.yaml for V2 governance body..."
           yq -yi '.APP.LOG_LEVEL = "debug"' ~/.chia/mainnet/cadt/config.yaml
+          # Pin fee and coin amount for deterministic live API test runs
+          yq -yi '.APP.DEFAULT_COIN_AMOUNT = 10' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.DEFAULT_FEE = 13' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.BIND_ADDRESS = "127.0.0.1"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml
@@ -6048,6 +6081,9 @@ jobs:
 
           echo "Configuring CADT config.yaml for V1+V2 governance body..."
           yq -yi '.APP.LOG_LEVEL = "debug"' ~/.chia/mainnet/cadt/config.yaml
+          # Pin fee and coin amount for deterministic live API test runs
+          yq -yi '.APP.DEFAULT_COIN_AMOUNT = 10' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.DEFAULT_FEE = 13' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.BIND_ADDRESS = "127.0.0.1"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml

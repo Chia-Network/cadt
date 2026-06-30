@@ -71,6 +71,132 @@ describe('Wallet Health - Live', function () {
     });
   });
 
+  describe('CADT /diagnostics endpoint', function () {
+    // Smoke-test the system-wide diagnostics endpoint against a real CADT +
+    // Chia install. We deliberately assert TYPES and RANGES rather than
+    // specific values: CI machines vary in CPU/RAM/disk size, network may be
+    // mainnet/testnet, the local wallet may or may not be synced, etc. The
+    // intent is to catch the response failing to serialize or the shape
+    // regressing, not to pin the operator's environment.
+    it('returns a well-shaped response with sensible types and ranges', async function () {
+      const res = await request.get('/diagnostics');
+      expect(res.status).to.equal(200);
+
+      const body = res.body;
+      // Log the full response so it's easy to inspect what /diagnostics
+      // actually reports against this CI environment. This runs as a
+      // preflight in 5 different live-api workflows, so the body is the
+      // best single artifact for eyeballing the endpoint's real output.
+      console.log('  ----- /diagnostics response -----');
+      console.log(JSON.stringify(body, null, 2)
+        .split('\n').map((l) => '  ' + l).join('\n'));
+      console.log('  ----- end /diagnostics response -----');
+
+      // Top-level shape -----------------------------------------------------
+      expect(body.timestamp, 'timestamp must be ISO-8601').to.match(
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+      );
+      expect(body.cadt).to.be.an('object');
+      expect(body.network).to.be.an('object');
+      expect(body.chia).to.be.an('object');
+      expect(body.system).to.be.an('object');
+
+      // CADT section --------------------------------------------------------
+      expect(body.cadt.version, 'CADT version must look like semver').to.match(
+        /^\d+\.\d+\.\d+/,
+      );
+      expect(body.cadt.configDir).to.be.a('string').and.not.empty;
+      expect(body.cadt.configFile).to.be.a('string').that.includes('config.yaml');
+      expect(body.cadt.v1, 'cadt.v1 section').to.be.an('object');
+      expect(body.cadt.v2, 'cadt.v2 section').to.be.an('object');
+      expect(body.cadt.v1.enabled).to.be.a('boolean');
+      expect(body.cadt.v2.enabled).to.be.a('boolean');
+
+      // System section ------------------------------------------------------
+      expect(body.system.platform).to.be.a('string').and.not.empty;
+      expect(body.system.arch).to.be.a('string').and.not.empty;
+      expect(body.system.cpu).to.be.an('object');
+      expect(body.system.cpu.cores, 'CPU cores must be a positive integer')
+        .to.be.a('number').and.to.be.at.least(1);
+      if (body.system.cpu.model !== null) {
+        expect(body.system.cpu.model).to.be.a('string').and.not.empty;
+      }
+      expect(body.system.memory.totalBytes).to.be.a('number').and.to.be.greaterThan(0);
+      expect(body.system.memory.freeBytes).to.be.a('number').and.to.be.at.least(0);
+      expect(body.system.memory.percentUsed).to.be.a('number').and.to.be.at.least(0).and.at.most(100);
+      expect(
+        body.system.memory.freeBytes,
+        'freeBytes cannot exceed totalBytes',
+      ).to.be.at.most(body.system.memory.totalBytes);
+      expect(body.system.disk).to.be.an('object');
+      expect(body.system.disk.chiaRootPath).to.be.a('string').and.not.empty;
+      if (body.system.disk.totalBytes !== null) {
+        expect(body.system.disk.totalBytes).to.be.a('number').and.to.be.greaterThan(0);
+        expect(body.system.disk.freeBytes).to.be.at.most(body.system.disk.totalBytes);
+        expect(body.system.disk.percentUsed).to.be.a('number').and.to.be.at.least(0).and.at.most(100);
+      }
+
+      // Chia: version -------------------------------------------------------
+      expect(body.chia).to.have.property('version');
+      if (body.chia.version !== null) {
+        expect(body.chia.version).to.be.a('string');
+      }
+
+      // Status fields -------------------------------------------------------
+      expect(body.system.disk).to.have.property('status').that.is.oneOf(['ok', 'warning', 'critical']);
+      expect(body.system.memory).to.have.property('status').that.is.oneOf(['ok', 'warning', 'critical']);
+      expect(body.system.cpu).to.have.property('status').that.is.oneOf(['ok', 'warning', 'critical']);
+      expect(body.chia.wallet).to.have.property('status').that.is.oneOf(['ok', 'warning', 'critical']);
+      expect(body.chia.fullNode).to.have.property('status').that.is.oneOf(['ok', 'warning', 'critical']);
+      expect(body.chia.datalayer).to.have.property('status').that.is.oneOf(['ok', 'warning', 'critical']);
+      expect(body.chia.chiaTools).to.have.property('status').that.is.oneOf(['ok', 'warning', 'critical']);
+      expect(body.network).to.have.property('status').that.is.oneOf(['ok', 'warning', 'critical']);
+
+      // Network section (top-level) -----------------------------------------
+      expect(body.network).to.be.an('object');
+      if (body.network.cadt !== null) {
+        expect(body.network.cadt).to.be.a('string').and.not.empty;
+      }
+
+      // Chia: wallet (reachable ↔ connectionError consistency) -------------
+      expect(body.chia.wallet).to.be.an('object');
+      expect(body.chia.wallet.reachable).to.be.a('boolean');
+      expect(body.chia.wallet.synced).to.be.a('boolean');
+      if (body.chia.wallet.reachable) {
+        expect(
+          body.chia.wallet.connectionError,
+          'reachable wallet must not carry a connection error',
+        ).to.equal(null);
+      } else {
+        expect(
+          body.chia.wallet.connectionError,
+          'unreachable wallet must carry a connection error message',
+        ).to.be.a('string').and.not.empty;
+      }
+      // Chia: full node + datalayer (just shape, not state) ----------------
+      expect(body.chia.fullNode).to.be.an('object');
+      expect(body.chia.fullNode).to.have.property('runningLocally').that.is.a('boolean');
+      expect(body.chia.fullNode.reachable).to.be.a('boolean');
+      expect(body.chia.datalayer).to.be.an('object');
+      expect(body.chia.datalayer.reachable).to.be.a('boolean');
+
+      // Chia: process scan + chia-tools probe ------------------------------
+      expect(body.chia.runningProcesses).to.be.an('object');
+      expect(body.chia.runningProcesses.matches).to.be.an('array');
+      expect(body.chia.chiaTools).to.be.an('object');
+      expect(body.chia.chiaTools).to.have.property('chiaIsLocal').that.is.a('boolean');
+      // installed is a boolean when Chia runs locally, or the string 'unknown'
+      // when the wallet/DataLayer are remote (chia-tools can't be probed there).
+      if (body.chia.chiaTools.chiaIsLocal) {
+        expect(body.chia.chiaTools.installed).to.be.a('boolean');
+      } else {
+        expect(body.chia.chiaTools.installed).to.equal('unknown');
+      }
+      expect(body.chia.chiaTools.note).to.be.a('string').and.not.empty;
+    });
+
+  });
+
   describe('Chia wallet RPC get_wallets', function () {
     it('should contain a DATA_LAYER wallet matching CADT constant', async function () {
       const rpcUrl = getWalletRpcUrl();

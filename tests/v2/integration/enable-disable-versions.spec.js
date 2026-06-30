@@ -64,7 +64,7 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
 
   // Helper function to write unified config
   const writeUnifiedConfig = (v1Enable, v2Enable) => {
-    const testConfig = { ...defaultConfig };
+    const testConfig = JSON.parse(JSON.stringify(defaultConfig));
     testConfig.V1.ENABLE = v1Enable;
     testConfig.V2.ENABLE = v2Enable;
     // Ensure directory exists
@@ -158,7 +158,7 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
     });
 
     it('should respect ENABLE: false in V1 config', function () {
-      const testConfig = { ...defaultConfig };
+      const testConfig = JSON.parse(JSON.stringify(defaultConfig));
       testConfig.V1.ENABLE = false;
       const configDir = path.dirname(unifiedConfigPath);
       if (!fs.existsSync(configDir)) {
@@ -173,7 +173,7 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
     });
 
     it('should respect ENABLE: false in V2 config', function () {
-      const testConfig = { ...defaultConfig };
+      const testConfig = JSON.parse(JSON.stringify(defaultConfig));
       testConfig.V2.ENABLE = false;
       const configDir = path.dirname(unifiedConfigPath);
       if (!fs.existsSync(configDir)) {

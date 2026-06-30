@@ -3,7 +3,7 @@
 import _ from 'lodash';
 import { Sequelize, Model } from 'sequelize';
 import * as rxjs from 'rxjs';
-import { sequelizeV2, safeMirrorDbHandlerV2 } from '../../database/v2/index.js';
+import { sequelizeV2, mirrorWriteV2 } from '../../database/v2/index.js';
 import { ProjectV2Mirror } from './project-v2.model.mirror.js';
 import StagingV2 from './staging-v2.model.js';
 import {
@@ -105,13 +105,13 @@ class ProjectV2 extends Model {
   ];
 
   static async create(values, options) {
-    safeMirrorDbHandlerV2(async () => {
+    await mirrorWriteV2(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await ProjectV2Mirror.create(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
 
     const createResult = await super.create(values, options);
     const { org_uid } = values;
@@ -121,13 +121,13 @@ class ProjectV2 extends Model {
   }
 
   static async upsert(values, options) {
-    safeMirrorDbHandlerV2(async () => {
+    await mirrorWriteV2(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await ProjectV2Mirror.upsert(values, mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
 
     const upsertResult = await super.upsert(values, options);
     const { org_uid } = values;
@@ -137,13 +137,13 @@ class ProjectV2 extends Model {
   }
 
   static async destroy(options) {
-    safeMirrorDbHandlerV2(async () => {
+    await mirrorWriteV2(async () => {
       const mirrorOptions = {
         ...options,
         transaction: options?.mirrorTransaction,
       };
       await ProjectV2Mirror.destroy(mirrorOptions);
-    });
+    }, options?.mirrorTransaction);
 
     ProjectV2.changes.next(['projects']);
     const result = await super.destroy(options);

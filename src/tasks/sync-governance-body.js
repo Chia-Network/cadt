@@ -8,6 +8,10 @@ import {
 import { getConfig } from '../utils/config-loader';
 import { logger } from '../config/logger.js';
 import { Organization } from '../models';
+import {
+  markGovernanceNotReady,
+  markGovernanceReady,
+} from '../utils/governance-readiness.js';
 
 const CONFIG = getConfig();
 
@@ -23,12 +27,13 @@ const task = new Task('sync-governance-meta', async () => {
       return;
     }
 
+    markGovernanceNotReady('v1');
     await assertDataLayerAvailable();
     await assertWalletIsSynced();
 
-    logger.info('[v1]: Syncing governance data');
+    logger.debug('[v1]: Syncing governance data');
     if (CONFIG.GOVERNANCE.GOVERNANCE_BODY_ID) {
-      logger.info(
+      logger.debug(
         `Governance Config Found ${CONFIG.GOVERNANCE.GOVERNANCE_BODY_ID}`,
       );
 
@@ -38,25 +43,15 @@ const task = new Task('sync-governance-meta', async () => {
         _.get(myOrganization, 'orgUid', '') !==
         CONFIG.GOVERNANCE.GOVERNANCE_BODY_ID
       ) {
-        // Await V1 governance sync to ensure it completes before continuing
         await Governance.sync();
-
-        // Also sync V2 governance if V2 organizations exist
-        const { OrganizationsV2 } = await import('../models/v2/index.js');
-        const v2HomeOrg = await OrganizationsV2.findOne({
-          where: { is_home: true },
-          raw: true,
-        });
-        if (v2HomeOrg) {
-          const { GovernanceV2 } = await import('../models/v2/index.js');
-          await GovernanceV2.sync();
-        }
+      } else {
+        markGovernanceReady('v1');
       }
     }
   } catch (error) {
     logger.error(
       `Cant download Goverance data, Retrying in ${
-        CONFIG?.APP?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 300
+        CONFIG?.APP?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 120
       } seconds`,
       error,
     );
@@ -65,7 +60,7 @@ const task = new Task('sync-governance-meta', async () => {
 
 const job = new SimpleIntervalJob(
   {
-    seconds: CONFIG?.APP?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 300,
+    seconds: CONFIG?.APP?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 120,
     runImmediately: true,
   },
   task,

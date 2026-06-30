@@ -12,6 +12,8 @@ import { migrations } from './migrations';
 import { seeders } from './seeders';
 
 import dotenv from 'dotenv';
+import { installSqlitePragmas } from './sqlite-pragmas.js';
+import { matchingUpdatedAtAttr, isMirrorInSync } from './mirror-sync-gate.js';
 dotenv.config({ quiet: true });
 
 // possible values: local, test
@@ -21,13 +23,20 @@ const dbConfigKey = nodeEnv;
 // Safety check: In test mode, ensure we're using test database configuration
 if (nodeEnv === 'test') {
   const testConfig = config[dbConfigKey];
-  if (!testConfig || !testConfig.storage || !testConfig.storage.includes('test')) {
+  if (
+    !testConfig ||
+    !testConfig.storage ||
+    !testConfig.storage.includes('test')
+  ) {
     const errorMsg = `SAFETY CHECK FAILED: Test mode detected but database config '${dbConfigKey}' does not appear to be a test database. Storage: ${testConfig?.storage || 'undefined'}. This prevents accidental production database access.`;
     console.error(errorMsg);
     throw new Error(errorMsg);
   }
   // Additional check: test database should be under tests/test-dbs/, not in home directory
-  if (testConfig.storage.includes('~') || testConfig.storage.includes(os.homedir())) {
+  if (
+    testConfig.storage.includes('~') ||
+    testConfig.storage.includes(os.homedir())
+  ) {
     const errorMsg = `SAFETY CHECK FAILED: Test database path appears to be in home directory: ${testConfig.storage}. Test databases must be under tests/test-dbs/.`;
     console.error(errorMsg);
     throw new Error(errorMsg);
@@ -40,10 +49,12 @@ if (nodeEnv === 'test') {
 }
 
 export const sequelize = new Sequelize(config[dbConfigKey]);
+installSqlitePragmas(sequelize, logger);
 
 const mirrorConfig =
   (process.env.NODE_ENV || 'local') === 'local' ? 'mirror' : 'mirrorTest';
 export const sequelizeMirror = new Sequelize(config[mirrorConfig]);
+installSqlitePragmas(sequelizeMirror, logger);
 
 // Snapshot of whether V1 MIRROR_DB was fully configured at module-load time.
 // Captured alongside sequelizeMirror construction so mirrorDBEnabled() stays
@@ -100,6 +111,21 @@ let mirrorSetupPromise = null;
 // after the reconnect are serialized behind it so the mirror is caught up
 // before new operations are applied.
 let reconnectBackfillPromise = null;
+
+// Single in-flight backfillMirror call. Distinct from
+// reconnectBackfillPromise above: that one guards the reconnect-detection
+// path inside safeMirrorDbHandler; this one guards backfillMirror itself
+// against concurrent callers. Both startup (prepareDb) and reconnect
+// (startReconnectBackfill) can fire backfillMirror, and in practice they
+// race at cold start because src/middleware.js eagerly imports the V1
+// models barrel - which runs the per-model associate() methods - which
+// historically called safeMirrorDbHandler at module-load time, triggering
+// a setupNeverRan reconnect in parallel with prepareDb's own backfill.
+// The associate() trigger was removed in this change but the in-flight
+// guard remains as a belt-and-suspenders defence against any other
+// concurrent invocation. Cleared on resolve/reject so reconnects after
+// the first run still re-execute.
+let backfillInFlightPromise = null;
 
 export const mirrorDBEnabled = () => {
   if (mirrorEnabledTestOverride !== null) {
@@ -206,9 +232,7 @@ export const prepareMysqlMirror = async () => {
       mirrorSetupSucceeded = true;
       return true;
     } catch (error) {
-      logger.error(
-        `Error setting up MySQL mirror database: ${error.message}`,
-      );
+      logger.error(`Error setting up MySQL mirror database: ${error.message}`);
       return false;
     }
   })().finally(() => {
@@ -318,10 +342,7 @@ export const safeMirrorDbHandler = (callback) => {
           // below. Skip quietly - the next authenticate success will
           // re-enter startReconnectBackfill and retry setup. Symmetric
           // with safeMirrorDbHandlerV2.
-          if (
-            isMysqlMirrorConfiguredForReconnect() &&
-            !mirrorSetupSucceeded
-          ) {
+          if (isMysqlMirrorConfiguredForReconnect() && !mirrorSetupSucceeded) {
             return;
           }
 
@@ -344,6 +365,25 @@ export const safeMirrorDbHandler = (callback) => {
       resolve();
     }
   });
+};
+
+// When a mirrorTransaction is provided the caller already authenticated and
+// started the transaction (see createAndProcessTransaction in
+// sync-registries), so we can run the callback directly and synchronously.
+// This avoids the fire-and-forget race in safeMirrorDbHandler where the
+// transaction is committed before detached writes complete.  When no
+// mirrorTransaction is present we fall back to the existing best-effort
+// fire-and-forget path so non-transactional API writes are unaffected.
+export const mirrorWrite = async (callback, mirrorTransaction) => {
+  if (mirrorTransaction) {
+    try {
+      await callback();
+    } catch (e) {
+      logger.error(`mirror_error:${e.message}`);
+    }
+  } else {
+    safeMirrorDbHandler(callback);
+  }
 };
 
 // Initialize a V1 mirror Sequelize Model synchronously at module-load time.
@@ -389,6 +429,13 @@ export const initMirrorModel = (initFn) => {
  */
 const BACKFILL_BATCH_SIZE = 1000;
 
+// NOTE: when this early-returns for composite PKs, the in-sync gate
+// that runs after it in backfillMirror operates on raw (un-swept)
+// state. mirror-model-init.spec.js currently enforces single-column
+// PKs on every mirror, so this path is unreachable today. If a
+// composite-PK mirror is introduced later, the gate's PK-swap
+// protection no longer applies and the gate would need to be
+// disabled for that table or replaced with a stronger check.
 const sweepMirrorOrphans = async (source, mirror, name) => {
   const pkAttrs = mirror.primaryKeyAttributes;
   if (!pkAttrs || pkAttrs.length !== 1) {
@@ -478,6 +525,31 @@ export const backfillMirror = async () => {
     return;
   }
 
+  // Coalesce concurrent calls. Without this guard, prepareDb's startup
+  // backfill and any other code path that invokes backfillMirror() would
+  // each pull and upsert the entire dataset. The race is observable in
+  // production logs: identical "synced N records" / "MySQL mirror backfill
+  // completed - N records upserted" lines appearing twice with matching
+  // counts on the same boot. The orphan sweep and bulk upsert are
+  // idempotent so the duplicate work is benign correctness-wise, but it
+  // doubles the cold-start time and MySQL write traffic.
+  //
+  // Cleared on settle so subsequent reconnects after the first run still
+  // perform a fresh catch-up.
+  if (backfillInFlightPromise) {
+    return backfillInFlightPromise;
+  }
+
+  backfillInFlightPromise = (async () => {
+    await runBackfillMirror();
+  })().finally(() => {
+    backfillInFlightPromise = null;
+  });
+
+  return backfillInFlightPromise;
+};
+
+const runBackfillMirror = async () => {
   logger.info('Starting MySQL mirror backfill from SQLite...');
 
   try {
@@ -523,31 +595,102 @@ export const backfillMirror = async () => {
     const mirrorPairs = [
       { source: models.Project, mirror: ProjectMirror, name: 'project' },
       { source: models.CoBenefit, mirror: CoBenefitMirror, name: 'co_benefit' },
-      { source: models.ProjectLocation, mirror: ProjectLocationMirror, name: 'location' },
+      {
+        source: models.ProjectLocation,
+        mirror: ProjectLocationMirror,
+        name: 'location',
+      },
       { source: models.Label, mirror: LabelMirror, name: 'label' },
       { source: models.Rating, mirror: RatingMirror, name: 'rating' },
-      { source: models.RelatedProject, mirror: RelatedProjectMirror, name: 'related_project' },
+      {
+        source: models.RelatedProject,
+        mirror: RelatedProjectMirror,
+        name: 'related_project',
+      },
       { source: models.Unit, mirror: UnitMirror, name: 'unit' },
       { source: models.Issuance, mirror: IssuanceMirror, name: 'issuance' },
-      { source: models.Estimation, mirror: EstimationMirror, name: 'estimation' },
+      {
+        source: models.Estimation,
+        mirror: EstimationMirror,
+        name: 'estimation',
+      },
       { source: models.LabelUnit, mirror: LabelUnitMirror, name: 'label_unit' },
       { source: models.Audit, mirror: AuditMirror, name: 'audit' },
     ];
 
     let totalSynced = 0;
     let totalOrphansRemoved = 0;
+    let totalGateSkipped = 0;
 
     for (const { source, mirror, name } of mirrorPairs) {
       try {
-        if (!mirror.rawAttributes || Object.keys(mirror.rawAttributes).length === 0) {
-          logger.warn(`Mirror backfill: ${name} - mirror model not initialized, skipping`);
+        if (
+          !mirror.rawAttributes ||
+          Object.keys(mirror.rawAttributes).length === 0
+        ) {
+          logger.warn(
+            `Mirror backfill: ${name} - mirror model not initialized, skipping`,
+          );
           continue;
         }
 
         // Orphan sweep first (mirror snapshot before source snapshot) so
-        // concurrent inserts aren't wrongly classified as orphans.
+        // concurrent inserts aren't wrongly classified as orphans. The
+        // sweep runs UNCONDITIONALLY - before the in-sync gate below -
+        // because the gate's COUNT(*) + MAX(updatedAt) check cannot
+        // distinguish a healthy mirror from one where rows were
+        // delete+inserted with a different PK during an outage (count
+        // and MAX preserved, but the row identities differ). Running
+        // the sweep first makes such drift visible to the gate via the
+        // post-sweep count mismatch, which then falls through to the
+        // full upsert. See PR review for the reproducer.
         const orphansRemoved = await sweepMirrorOrphans(source, mirror, name);
         totalOrphansRemoved += orphansRemoved;
+
+        // Fast in-sync gate (post-sweep). Skip the bulk upsert entirely
+        // when COUNT(*) matches on both sides AND mirror's MAX(updatedAt)
+        // is at least as new as source's. Both queries are index-backed
+        // (PK + updatedAt), so the gate is cheap - vastly cheaper than
+        // the full keyset walk + bulk upsert it bypasses. (The orphan
+        // sweep above still runs on every restart; we only avoid the
+        // expensive per-row data read + MySQL upsert pass when truly
+        // in sync.)
+        //
+        // Correctness invariant: the gate ONLY short-circuits the upsert;
+        // it never substitutes a partial sync for a full one. On any
+        // mismatch (count differs, mirror is missing rows entirely, or
+        // mirror's MAX(updatedAt) is older than source's) we fall through
+        // to the existing full sync, which catches arbitrary gaps
+        // including outage windows where the mirror missed rows.
+        //
+        // Skip the gate (fall through to full sync) when source and mirror
+        // disagree about which timestamp attribute name to use, or when
+        // either lacks an updatedAt timestamp entirely. Both conditions
+        // mean we can't ask a single MAX() question that both sides answer
+        // consistently.
+        //
+        // Known limitation: an in-place UPDATE to a non-max-row whose
+        // newly-bumped updatedAt happens to remain below the table's
+        // existing MAX(updatedAt) would not be detected by the gate.
+        // Sequelize-driven UPDATEs always bump updatedAt to NOW(), which
+        // is necessarily greater than any prior MAX, so this requires
+        // raw-SQL manipulation that bypasses the ORM. No such code path
+        // exists in CADT today; if one is added, switch the gate to a
+        // SUM(UNIX_TIMESTAMP(updatedAt)) checksum.
+        const updatedAtAttr = matchingUpdatedAtAttr(source, mirror);
+        if (updatedAtAttr) {
+          const inSync = await isMirrorInSync(
+            source,
+            mirror,
+            name,
+            updatedAtAttr,
+            logger,
+          );
+          if (inSync) {
+            totalGateSkipped += 1;
+            continue;
+          }
+        }
 
         const updateFields = Object.keys(mirror.rawAttributes).filter(
           (attr) => !mirror.primaryKeyAttributes.includes(attr),
@@ -581,7 +724,9 @@ export const backfillMirror = async () => {
           // eslint-disable-next-line no-constant-condition
           while (true) {
             const where =
-              lastPk === null ? undefined : { [pk]: { [Sequelize.Op.gt]: lastPk } };
+              lastPk === null
+                ? undefined
+                : { [pk]: { [Sequelize.Op.gt]: lastPk } };
             // NOTE: Do NOT pass `raw: true` to findAll. With raw:true
             // Sequelize returns SQLite values as-stored (strings),
             // including DATE columns as "YYYY-MM-DD HH:mm:ss.SSS +00:00".
@@ -649,7 +794,7 @@ export const backfillMirror = async () => {
     }
 
     logger.info(
-      `MySQL mirror backfill completed - ${totalSynced} records upserted, ${totalOrphansRemoved} orphan rows removed`,
+      `MySQL mirror backfill completed - ${totalSynced} records upserted, ${totalOrphansRemoved} orphan rows removed, ${totalGateSkipped} tables skipped (already in sync)`,
     );
   } catch (error) {
     logger.error(
@@ -745,6 +890,31 @@ export const prepareDb = async () => {
   }
 
   await checkForMigrations(sequelize);
+
+  // FTS5 deferral crash-recovery (SQLite only). If the previous run
+  // crashed mid-catch-up while the project/unit FTS triggers were
+  // dropped, the deferral flag in `meta` is still set and the FTS tables
+  // are stale. Restore the triggers + rebuild FTS content from
+  // projects/units before any reads can observe stale data.
+  //
+  // Failure here is logged and swallowed: stale FTS reads are vastly
+  // preferable to a dead app on boot, and the next sync tick re-tries the
+  // restore via the same helper once all subscribed orgs are caught up.
+  //
+  // Lazy import so this file doesn't pull in src/models/index.js (which
+  // imports from this file) at module load.
+  if (sequelize.getDialect() === 'sqlite') {
+    try {
+      const { restoreV1FtsTriggersAndRebuildIfDeferred } =
+        // eslint-disable-next-line no-restricted-syntax -- circular dep guard
+        await import('../utils/fts5-deferral.js');
+      await restoreV1FtsTriggersAndRebuildIfDeferred();
+    } catch (error) {
+      logger.error(
+        `[v1]: FTS5 deferral recovery on boot failed; FTS reads may be stale until the next caught-up sync tick re-runs the restore: ${error?.message || error}`,
+      );
+    }
+  }
 
   // Run the mirror backfill after main migrations so all source and
   // mirror tables exist. This catches up rows that were inserted/

@@ -32,7 +32,7 @@ const task = new Task('mirror-check-v2', async () => {
     }
   } catch (error) {
     loggerV2.error(
-      `[v2]: Mirror check failed. Retrying in ${APP_CONFIG?.TASKS?.MIRROR_CHECK_TASK_INTERVAL || 300} seconds`,
+      `[v2]: Mirror check failed. Retrying in ${APP_CONFIG?.TASKS?.MIRROR_CHECK_TASK_INTERVAL || 900} seconds`,
       error,
     );
   }
@@ -40,7 +40,7 @@ const task = new Task('mirror-check-v2', async () => {
 
 const job = new SimpleIntervalJob(
   {
-    seconds: APP_CONFIG?.TASKS?.MIRROR_CHECK_TASK_INTERVAL || 300,
+    seconds: APP_CONFIG?.TASKS?.MIRROR_CHECK_TASK_INTERVAL || 900,
     runImmediately: true,
   },
   task,
