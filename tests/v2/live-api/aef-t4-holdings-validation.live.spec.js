@@ -87,7 +87,7 @@ describe('AefT4Holdings Live API Validation Tests', function () {
       addCreatedId('aef-t4-holdings', id);
       // Check record is in staging table
       const inStaging = await checkRecordInStaging(request, '/v2/aef-t4-holdings', id, {
-        aefT4HoldingsCoopoerativeApproachId: data.aefT4HoldingsCoopoerativeApproachId,
+        aefT4HoldingsCooperativeApproachId: data.aefT4HoldingsCooperativeApproachId,
       });
       expect(inStaging).to.be.true;
       // Commit if in extended mode
@@ -98,7 +98,7 @@ describe('AefT4Holdings Live API Validation Tests', function () {
         await waitForDataToAppear(request, 'aef-t4-holdings', id);
       } else {
         trackBatchVerification('POST', 'aef-t4-holdings', id, {
-          aefT4HoldingsCoopoerativeApproachId: data.aefT4HoldingsCoopoerativeApproachId,
+          aefT4HoldingsCooperativeApproachId: data.aefT4HoldingsCooperativeApproachId,
         });
       }
 
@@ -115,7 +115,7 @@ describe('AefT4Holdings Live API Validation Tests', function () {
         await waitForDataToAppear(request, 'aef-t4-holdings', minId);
       } else {
         trackBatchVerification('POST', 'aef-t4-holdings', minId, {
-          aefT4HoldingsCoopoerativeApproachId: minimalData.aefT4HoldingsCoopoerativeApproachId,
+          aefT4HoldingsCooperativeApproachId: minimalData.aefT4HoldingsCooperativeApproachId,
         });
       }
 
@@ -133,7 +133,7 @@ describe('AefT4Holdings Live API Validation Tests', function () {
         await waitForDataToAppear(request, 'aef-t4-holdings', maxId);
       } else {
         trackBatchVerification('POST', 'aef-t4-holdings', maxId, {
-          aefT4HoldingsCoopoerativeApproachId: maximalData.aefT4HoldingsCoopoerativeApproachId,
+          aefT4HoldingsCooperativeApproachId: maximalData.aefT4HoldingsCooperativeApproachId,
         });
       }
     });
@@ -190,7 +190,7 @@ describe('AefT4Holdings Live API Validation Tests', function () {
         await waitForStagingEmpty(request);
         await waitForDataToAppear(request, 'aef-t4-holdings', id);
         await validateDataInDatabase(request, 'aef-t4-holdings', id, {
-          aefT4HoldingsCoopoerativeApproachId: updateData.aefT4HoldingsCoopoerativeApproachId,
+          aefT4HoldingsCooperativeApproachId: updateData.aefT4HoldingsCooperativeApproachId,
         });
       } else {
         trackBatchVerification('PUT', 'aef-t4-holdings', id, updateData);

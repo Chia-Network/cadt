@@ -31,10 +31,10 @@ initMirrorModelV2(() => {
       allowNull: true,
       field: 'aef_t3_actions_subtype',
     },
-    aefT3ActionsCoopoerativeApproachId: {
+    aefT3ActionsCooperativeApproachId: {
       type: Sequelize.STRING,
       allowNull: false,
-      field: 'aef_t3_actions_coopoerative_approach_id',
+      field: 'aef_t3_actions_cooperative_approach_id',
     },
     aefT3ActionsAuthorizationId: {
       type: Sequelize.STRING,

@@ -18,7 +18,7 @@ export default {
     type: Sequelize.STRING,
     allowNull: true,
   },
-  aefT3ActionsCoopoerativeApproachId: {
+  aefT3ActionsCooperativeApproachId: {
     type: Sequelize.STRING,
     allowNull: false,
   },

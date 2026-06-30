@@ -341,7 +341,7 @@ cad_trust_aef_t3_actions_id varchar [primary key, unique, note: 'generated UUID'
 aef_t3_actions_date date [not null]
 aef_t3_actions_type picklist [note: 'picklist from type']
 aef_t3_actions_subtype varchar
-aef_t3_actions_coopoerative_approach_id varchar [not null]
+aef_t3_actions_cooperative_approach_id varchar [not null]
 aef_t3_actions_authorization_id varchar [not null, note:'inferred']
 aef_t3_actions_first_transferring_party_id varchar [not null]
 aef_t3_actions_party_itmo_registry_id varchar [not null]
@@ -375,7 +375,7 @@ cad_trust_aef_t2_authorizations_id varchar
 
 Table aef_t4_holdings {
 cad_trust_aef_t4_holdings_id varchar [primary key, unique, note:'generated UUID']
-aef_t4_holdings_coopoerative_approach_id varchar [not null]
+aef_t4_holdings_cooperative_approach_id varchar [not null]
 aef_t4_holdings_authorization_id varchar [not null, note:'inferred']
 aef_t4_holdings_first_transferring_party_id varchar [not null]
 aef_t4_holdings_party_itmo_registry_id varchar [not null]

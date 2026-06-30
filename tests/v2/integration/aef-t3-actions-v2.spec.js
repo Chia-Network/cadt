@@ -148,7 +148,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
         aefT3ActionsDate: '2024-03-01',
         aefT3ActionsType: 'Energy efficiency',
         aefT3ActionsSubtype: 'Test Subtype',
-        aefT3ActionsCoopoerativeApproachId: 'TEST-CA-001',
+        aefT3ActionsCooperativeApproachId: 'TEST-CA-001',
         aefT3ActionsAuthorizationId: 'TEST-AUTH-001',
         aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-001',
         aefT3ActionsPartyItmoRegistryId: 'TEST-REGISTRY-001',
@@ -185,7 +185,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
       expect(aefT3Actions.aefT3ActionsDate).to.equal('2024-03-01');
       expect(aefT3Actions.aefT3ActionsType).to.equal('Energy efficiency');
       expect(aefT3Actions.aefT3ActionsSubtype).to.equal('Test Subtype');
-      expect(aefT3Actions.aefT3ActionsCoopoerativeApproachId).to.equal('TEST-CA-001');
+      expect(aefT3Actions.aefT3ActionsCooperativeApproachId).to.equal('TEST-CA-001');
       expect(aefT3Actions.aefT3ActionsAuthorizationId).to.equal('TEST-AUTH-001');
       expect(aefT3Actions.aefT3ActionsFirstTransferringPartyId).to.equal('TEST-PARTY-001');
       expect(aefT3Actions.aefT3ActionsPartyItmoRegistryId).to.equal('TEST-REGISTRY-001');
@@ -220,7 +220,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
     it('should read an AEF-T3-Actions by ID', async function () {
       const aefT3ActionsData = {
         aefT3ActionsDate: '2024-04-01',
-        aefT3ActionsCoopoerativeApproachId: 'TEST-CA-002',
+        aefT3ActionsCooperativeApproachId: 'TEST-CA-002',
         aefT3ActionsAuthorizationId: 'TEST-AUTH-002',
         aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-002',
         aefT3ActionsPartyItmoRegistryId: 'TEST-REGISTRY-002',
@@ -241,7 +241,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
       expect(foundAefT3Actions).to.exist;
       expect(foundAefT3Actions.cadTrustAefT3ActionsId).to.equal(createdAefT3Actions.cadTrustAefT3ActionsId);
       expect(foundAefT3Actions.aefT3ActionsDate).to.equal('2024-04-01');
-      expect(foundAefT3Actions.aefT3ActionsCoopoerativeApproachId).to.equal('TEST-CA-002');
+      expect(foundAefT3Actions.aefT3ActionsCooperativeApproachId).to.equal('TEST-CA-002');
       expect(foundAefT3Actions.aefT3ActionsAuthorizationId).to.equal('TEST-AUTH-002');
       expect(foundAefT3Actions.aefT3ActionsFirstTransferringPartyId).to.equal('TEST-PARTY-002');
       expect(foundAefT3Actions.aefT3ActionsPartyItmoRegistryId).to.equal('TEST-REGISTRY-002');
@@ -266,7 +266,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
       aefT3Actions.forEach(action => {
         expect(action.cadTrustAefT3ActionsId).to.exist;
         expect(action.aefT3ActionsDate).to.exist;
-        expect(action.aefT3ActionsCoopoerativeApproachId).to.exist;
+        expect(action.aefT3ActionsCooperativeApproachId).to.exist;
         expect(action.aefT3ActionsAuthorizationId).to.exist;
         expect(action.aefT3ActionsFirstTransferringPartyId).to.exist;
         expect(action.aefT3ActionsPartyItmoRegistryId).to.exist;
@@ -287,7 +287,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
     it('should update an AEF-T3-Actions', async function () {
       const aefT3ActionsData = {
         aefT3ActionsDate: '2024-05-01',
-        aefT3ActionsCoopoerativeApproachId: 'TEST-CA-003',
+        aefT3ActionsCooperativeApproachId: 'TEST-CA-003',
         aefT3ActionsAuthorizationId: 'TEST-AUTH-003',
         aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-003',
         aefT3ActionsPartyItmoRegistryId: 'TEST-REGISTRY-003',
@@ -306,7 +306,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
 
       const updateData = {
         aefT3ActionsDate: '2024-05-01',
-        aefT3ActionsCoopoerativeApproachId: 'TEST-CA-003',
+        aefT3ActionsCooperativeApproachId: 'TEST-CA-003',
         aefT3ActionsAuthorizationId: 'TEST-AUTH-003',
         aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-003',
         aefT3ActionsPartyItmoRegistryId: 'TEST-REGISTRY-003',
@@ -356,7 +356,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
     it('should delete an AEF-T3-Actions', async function () {
       const aefT3ActionsData = {
         aefT3ActionsDate: '2024-06-01',
-        aefT3ActionsCoopoerativeApproachId: 'TEST-CA-004',
+        aefT3ActionsCooperativeApproachId: 'TEST-CA-004',
         aefT3ActionsAuthorizationId: 'TEST-AUTH-004',
         aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-004',
         aefT3ActionsPartyItmoRegistryId: 'TEST-REGISTRY-004',
@@ -398,7 +398,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
       try {
         await AefT3ActionsV2.create({
           aefT3ActionsDate: 'invalid-date',
-          aefT3ActionsCoopoerativeApproachId: 'TEST-CA-005',
+          aefT3ActionsCooperativeApproachId: 'TEST-CA-005',
           aefT3ActionsAuthorizationId: 'TEST-AUTH-005',
           aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-005',
           aefT3ActionsPartyItmoRegistryId: 'TEST-REGISTRY-005',
@@ -423,7 +423,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
     it('should accept AEF-T3-Actions with optional fields null', async function () {
       const aefT3ActionsData = {
         aefT3ActionsDate: '2024-07-01',
-        aefT3ActionsCoopoerativeApproachId: 'TEST-CA-006',
+        aefT3ActionsCooperativeApproachId: 'TEST-CA-006',
         aefT3ActionsAuthorizationId: 'TEST-AUTH-006',
         aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-006',
         aefT3ActionsPartyItmoRegistryId: 'TEST-REGISTRY-006',
@@ -459,7 +459,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
 
       expect(aefT3Actions).to.exist;
       expect(aefT3Actions.aefT3ActionsDate).to.equal('2024-07-01');
-      expect(aefT3Actions.aefT3ActionsCoopoerativeApproachId).to.equal('TEST-CA-006');
+      expect(aefT3Actions.aefT3ActionsCooperativeApproachId).to.equal('TEST-CA-006');
       expect(aefT3Actions.aefT3ActionsAuthorizationId).to.equal('TEST-AUTH-006');
       expect(aefT3Actions.aefT3ActionsFirstTransferringPartyId).to.equal('TEST-PARTY-006');
       expect(aefT3Actions.aefT3ActionsPartyItmoRegistryId).to.equal('TEST-REGISTRY-006');
@@ -499,7 +499,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
       try {
         await AefT3ActionsV2.create({
           aefT3ActionsDate: '2024-08-01',
-          aefT3ActionsCoopoerativeApproachId: 'TEST-CA-007',
+          aefT3ActionsCooperativeApproachId: 'TEST-CA-007',
           aefT3ActionsAuthorizationId: 'TEST-AUTH-007',
           aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-007',
           aefT3ActionsPartyItmoRegistryId: 'TEST-REGISTRY-007',
@@ -528,7 +528,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
       try {
         await AefT3ActionsV2.create({
           aefT3ActionsDate: '2024-09-01',
-          aefT3ActionsCoopoerativeApproachId: 'TEST-CA-008',
+          aefT3ActionsCooperativeApproachId: 'TEST-CA-008',
           aefT3ActionsAuthorizationId: 'TEST-AUTH-008',
           aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-008',
           aefT3ActionsPartyItmoRegistryId: 'TEST-REGISTRY-008',
@@ -557,7 +557,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
       try {
         await AefT3ActionsV2.create({
           aefT3ActionsDate: '2024-10-01',
-          aefT3ActionsCoopoerativeApproachId: 'TEST-CA-009',
+          aefT3ActionsCooperativeApproachId: 'TEST-CA-009',
           aefT3ActionsAuthorizationId: 'TEST-AUTH-009',
           aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-009',
           aefT3ActionsPartyItmoRegistryId: 'TEST-REGISTRY-009',
@@ -586,7 +586,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
       try {
         await AefT3ActionsV2.create({
           aefT3ActionsDate: '2024-11-01',
-          aefT3ActionsCoopoerativeApproachId: 'TEST-CA-010',
+          aefT3ActionsCooperativeApproachId: 'TEST-CA-010',
           aefT3ActionsAuthorizationId: 'TEST-AUTH-010',
           aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-010',
           aefT3ActionsPartyItmoRegistryId: 'TEST-REGISTRY-010',
@@ -612,7 +612,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
     it('should accept AEF-T3-Actions with valid foreign keys', async function () {
       const aefT3ActionsData = {
         aefT3ActionsDate: '2024-12-01',
-        aefT3ActionsCoopoerativeApproachId: 'TEST-CA-011',
+        aefT3ActionsCooperativeApproachId: 'TEST-CA-011',
         aefT3ActionsAuthorizationId: 'TEST-AUTH-011',
         aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-011',
         aefT3ActionsPartyItmoRegistryId: 'TEST-REGISTRY-011',
@@ -645,7 +645,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
     it('should load AEF-T3-Actions with associations', async function () {
       const aefT3ActionsData = {
         aefT3ActionsDate: '2024-12-15',
-        aefT3ActionsCoopoerativeApproachId: 'TEST-CA-012',
+        aefT3ActionsCooperativeApproachId: 'TEST-CA-012',
         aefT3ActionsAuthorizationId: 'TEST-AUTH-012',
         aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-012',
         aefT3ActionsPartyItmoRegistryId: 'TEST-REGISTRY-012',
@@ -718,7 +718,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
       for (const dateString of validDates) {
         const aefT3ActionsData = {
           aefT3ActionsDate: dateString,
-          aefT3ActionsCoopoerativeApproachId: `TEST-CA-${dateString.replace(/-/g, '')}`,
+          aefT3ActionsCooperativeApproachId: `TEST-CA-${dateString.replace(/-/g, '')}`,
           aefT3ActionsAuthorizationId: `TEST-AUTH-${dateString.replace(/-/g, '')}`,
           aefT3ActionsFirstTransferringPartyId: `TEST-PARTY-${dateString.replace(/-/g, '')}`,
           aefT3ActionsPartyItmoRegistryId: `TEST-REGISTRY-${dateString.replace(/-/g, '')}`,
@@ -745,7 +745,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
       for (let i = 0; i < types.length; i++) {
         const aefT3ActionsData = {
           aefT3ActionsDate: '2024-12-01',
-          aefT3ActionsCoopoerativeApproachId: `TEST-CA-PICKLIST-${i}`,
+          aefT3ActionsCooperativeApproachId: `TEST-CA-PICKLIST-${i}`,
           aefT3ActionsAuthorizationId: `TEST-AUTH-PICKLIST-${i}`,
           aefT3ActionsFirstTransferringPartyId: `TEST-PARTY-PICKLIST-${i}`,
           aefT3ActionsPartyItmoRegistryId: `TEST-REGISTRY-PICKLIST-${i}`,
@@ -776,7 +776,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
       for (const year of years) {
         const aefT3ActionsData = {
           aefT3ActionsDate: '2024-12-01',
-          aefT3ActionsCoopoerativeApproachId: `TEST-CA-YEAR-${year}`,
+          aefT3ActionsCooperativeApproachId: `TEST-CA-YEAR-${year}`,
           aefT3ActionsAuthorizationId: `TEST-AUTH-YEAR-${year}`,
           aefT3ActionsFirstTransferringPartyId: `TEST-PARTY-YEAR-${year}`,
           aefT3ActionsPartyItmoRegistryId: `TEST-REGISTRY-YEAR-${year}`,
@@ -803,7 +803,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
     it('should create a new AEF-T3-Actions record via API', async function () {
       const aefT3ActionsData = {
         aefT3ActionsDate: '2024-01-15',
-        aefT3ActionsCoopoerativeApproachId: 'TEST-CA-API',
+        aefT3ActionsCooperativeApproachId: 'TEST-CA-API',
         aefT3ActionsAuthorizationId: 'TEST-AUTH-API',
         aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-API',
         aefT3ActionsPartyItmoRegistryId: 'TEST-REGISTRY-API',
@@ -859,7 +859,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
     it('should reject AEF-T3-Actions with invalid foreign key (non-existent)', async function () {
       const aefT3ActionsData = {
         aefT3ActionsDate: '2024-01-15',
-        aefT3ActionsCoopoerativeApproachId: 'TEST-CA-FK',
+        aefT3ActionsCooperativeApproachId: 'TEST-CA-FK',
         aefT3ActionsAuthorizationId: 'TEST-AUTH-FK',
         aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-FK',
         aefT3ActionsPartyItmoRegistryId: 'TEST-REGISTRY-FK',
@@ -912,7 +912,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
     before(async function () {
       const aefT3ActionsData = {
         aefT3ActionsDate: '2024-01-15',
-        aefT3ActionsCoopoerativeApproachId: 'TEST-CA-UPDATE',
+        aefT3ActionsCooperativeApproachId: 'TEST-CA-UPDATE',
         aefT3ActionsAuthorizationId: 'TEST-AUTH-UPDATE',
         aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-UPDATE',
         aefT3ActionsPartyItmoRegistryId: 'TEST-REGISTRY-UPDATE',
@@ -948,7 +948,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
         await AefT3ActionsV2.create({
           cadTrustAefT3ActionsId: createdAefT3ActionsId,
           aefT3ActionsDate: '2024-01-15',
-          aefT3ActionsCoopoerativeApproachId: 'TEST-CA-UPDATE',
+          aefT3ActionsCooperativeApproachId: 'TEST-CA-UPDATE',
           aefT3ActionsAuthorizationId: 'TEST-AUTH-UPDATE',
           aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-UPDATE',
           aefT3ActionsPartyItmoRegistryId: 'TEST-REGISTRY-UPDATE',
@@ -972,7 +972,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
     });    it('should update an AEF-T3-Actions via API', async function () {
       const updateData = {
         aefT3ActionsDate: '2024-12-31',
-        aefT3ActionsCoopoerativeApproachId: 'TEST-CA-UPDATE',
+        aefT3ActionsCooperativeApproachId: 'TEST-CA-UPDATE',
         aefT3ActionsAuthorizationId: 'TEST-AUTH-UPDATE',
         aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-UPDATE',
         aefT3ActionsPartyItmoRegistryId: 'TEST-REGISTRY-UPDATE',
@@ -1008,7 +1008,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
     before(async function () {
       const aefT3ActionsData = {
         aefT3ActionsDate: '2024-01-15',
-        aefT3ActionsCoopoerativeApproachId: 'TEST-CA-DELETE',
+        aefT3ActionsCooperativeApproachId: 'TEST-CA-DELETE',
         aefT3ActionsAuthorizationId: 'TEST-AUTH-DELETE',
         aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-DELETE',
         aefT3ActionsPartyItmoRegistryId: 'TEST-REGISTRY-DELETE',
@@ -1044,7 +1044,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
         await AefT3ActionsV2.create({
           cadTrustAefT3ActionsId: createdAefT3ActionsId,
           aefT3ActionsDate: '2024-01-15',
-          aefT3ActionsCoopoerativeApproachId: 'TEST-CA-DELETE',
+          aefT3ActionsCooperativeApproachId: 'TEST-CA-DELETE',
           aefT3ActionsAuthorizationId: 'TEST-AUTH-DELETE',
           aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-DELETE',
           aefT3ActionsPartyItmoRegistryId: 'TEST-REGISTRY-DELETE',

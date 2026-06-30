@@ -4370,7 +4370,7 @@ jobs:
           verify_field "$T4" '.aefT4HoldingsMetric' 'GHC' 'T4 metric'
           verify_field "$T4" '.aefT4HoldingsMitigationType' 'Emission reductions' 'T4 mitigationType'
           verify_field "$T4" '.aefT4HoldingsVintageYear' '2025' 'T4 vintageYear'
-          verify_field "$T4" '.aefT4HoldingsCoopoerativeApproachId' 'V2-GTD-CA-001' 'T4 cooperativeApproachId'
+          verify_field "$T4" '.aefT4HoldingsCooperativeApproachId' 'V2-GTD-CA-001' 'T4 cooperativeApproachId'
           verify_field "$T4" '.aefT4HoldingsAuthorizationId' 'V2-GTD-T2-001' 'T4 authorizationId'
           dump_entity_on_failure "AEF-T4" "$T4"
           echo ""
