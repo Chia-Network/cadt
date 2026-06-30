@@ -45,10 +45,11 @@ export default {
         console.log('Note: Index on cad_trust_project_methodology_id may already exist');
       }
     } else if (!hasOldColumn && !hasNewColumn) {
-      // Neither column exists - add the new column (shouldn't happen normally)
+      // If no legacy column exists, existing rows cannot be backfilled safely.
+      // Keep the repair nullable so SQLite can apply it in-place.
       await queryInterface.addColumn('issuance', 'cad_trust_project_methodology_id', {
-        type: Sequelize.STRING,
-        allowNull: false,
+        type: Sequelize.STRING(36),
+        allowNull: true,
         comment: 'Foreign key to project_methodology table',
       });
 
