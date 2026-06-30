@@ -111,7 +111,7 @@
     "eslint": "^10.1.0",
     "eslint-plugin-mocha": "^11.3.0",
     "extensionless": "^2.0.6",
-    "globals": "^17.3.0",
+    "globals": "^17.7.0",
     "husky": "^9.1.7",
     "mocha": "^11.7.5",
     "prettier": "^3.8.1",
