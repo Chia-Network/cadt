@@ -100,7 +100,7 @@
     "@babel/plugin-syntax-import-attributes": "^7.28.6",
     "@babel/preset-env": "^7.29.7",
     "@babel/register": "^7.28.6",
-    "@commitlint/cli": "^20.4.1",
+    "@commitlint/cli": "^21.1.0",
     "@commitlint/config-conventional": "^21.0.2",
     "@eslint/js": "^10.0.1",
     "@yao-pkg/pkg": "^6.14.1",
