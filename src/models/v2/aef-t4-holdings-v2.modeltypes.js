@@ -6,7 +6,7 @@ export default {
     allowNull: false,
     defaultValue: Sequelize.UUIDV4,
   },
-  aefT4HoldingsCoopoerativeApproachId: {
+  aefT4HoldingsCooperativeApproachId: {
     type: Sequelize.STRING,
     allowNull: false,
   },

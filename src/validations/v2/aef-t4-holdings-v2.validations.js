@@ -8,9 +8,9 @@ export const aefT4HoldingsV2Schema = Joi.object({
   }),
 
   // Required fields
-  aefT4HoldingsCoopoerativeApproachId: Joi.string().max(255).required().messages({
-    'any.required': 'aefT4HoldingsCoopoerativeApproachId is required',
-    'string.max': 'aefT4HoldingsCoopoerativeApproachId must not exceed 255 characters',
+  aefT4HoldingsCooperativeApproachId: Joi.string().max(255).required().messages({
+    'any.required': 'aefT4HoldingsCooperativeApproachId is required',
+    'string.max': 'aefT4HoldingsCooperativeApproachId must not exceed 255 characters',
   }),
 
   aefT4HoldingsAuthorizationId: Joi.string().max(255).required().messages({

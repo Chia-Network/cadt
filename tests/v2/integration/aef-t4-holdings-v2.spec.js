@@ -145,7 +145,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
   describe('AEF-T4-Holdings CRUD Operations', function () {
     it('should create a new AEF-T4-Holdings', async function () {
       const aefT4HoldingsData = {
-        aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-001',
+        aefT4HoldingsCooperativeApproachId: 'TEST-CA-001',
         aefT4HoldingsAuthorizationId: 'TEST-AUTH-001',
         aefT4HoldingsFirstTransferringPartyId: 'TEST-PARTY-001',
         aefT4HoldingsPartyItmoRegistryId: 'TEST-REGISTRY-001',
@@ -171,7 +171,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
 
       expect(aefT4Holdings).to.exist;
       expect(aefT4Holdings.cadTrustAefT4HoldingsId).to.exist;
-      expect(aefT4Holdings.aefT4HoldingsCoopoerativeApproachId).to.equal('TEST-CA-001');
+      expect(aefT4Holdings.aefT4HoldingsCooperativeApproachId).to.equal('TEST-CA-001');
       expect(aefT4Holdings.aefT4HoldingsAuthorizationId).to.equal('TEST-AUTH-001');
       expect(aefT4Holdings.aefT4HoldingsFirstTransferringPartyId).to.equal('TEST-PARTY-001');
       expect(aefT4Holdings.aefT4HoldingsPartyItmoRegistryId).to.equal('TEST-REGISTRY-001');
@@ -197,7 +197,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
 
     it('should read an AEF-T4-Holdings by ID', async function () {
       const aefT4HoldingsData = {
-        aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-002',
+        aefT4HoldingsCooperativeApproachId: 'TEST-CA-002',
         aefT4HoldingsAuthorizationId: 'TEST-AUTH-002',
         aefT4HoldingsFirstTransferringPartyId: 'TEST-PARTY-002',
         aefT4HoldingsPartyItmoRegistryId: 'TEST-REGISTRY-002',
@@ -215,7 +215,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
 
       expect(foundAefT4Holdings).to.exist;
       expect(foundAefT4Holdings.cadTrustAefT4HoldingsId).to.equal(createdAefT4Holdings.cadTrustAefT4HoldingsId);
-      expect(foundAefT4Holdings.aefT4HoldingsCoopoerativeApproachId).to.equal('TEST-CA-002');
+      expect(foundAefT4Holdings.aefT4HoldingsCooperativeApproachId).to.equal('TEST-CA-002');
       expect(foundAefT4Holdings.aefT4HoldingsAuthorizationId).to.equal('TEST-AUTH-002');
       expect(foundAefT4Holdings.aefT4HoldingsFirstTransferringPartyId).to.equal('TEST-PARTY-002');
       expect(foundAefT4Holdings.aefT4HoldingsPartyItmoRegistryId).to.equal('TEST-REGISTRY-002');
@@ -237,7 +237,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
       // Verify each holding has required fields
       aefT4Holdings.forEach(holding => {
         expect(holding.cadTrustAefT4HoldingsId).to.exist;
-        expect(holding.aefT4HoldingsCoopoerativeApproachId).to.exist;
+        expect(holding.aefT4HoldingsCooperativeApproachId).to.exist;
         expect(holding.aefT4HoldingsAuthorizationId).to.exist;
         expect(holding.aefT4HoldingsFirstTransferringPartyId).to.exist;
         expect(holding.aefT4HoldingsPartyItmoRegistryId).to.exist;
@@ -255,7 +255,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
 
     it('should update an AEF-T4-Holdings', async function () {
       const aefT4HoldingsData = {
-        aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-003',
+        aefT4HoldingsCooperativeApproachId: 'TEST-CA-003',
         aefT4HoldingsAuthorizationId: 'TEST-AUTH-003',
         aefT4HoldingsFirstTransferringPartyId: 'TEST-PARTY-003',
         aefT4HoldingsPartyItmoRegistryId: 'TEST-REGISTRY-003',
@@ -271,7 +271,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
       const createdAefT4Holdings = await AefT4HoldingsV2.create(aefT4HoldingsData);
 
       const updateData = {
-        aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-003',
+        aefT4HoldingsCooperativeApproachId: 'TEST-CA-003',
         aefT4HoldingsAuthorizationId: 'TEST-AUTH-003',
         aefT4HoldingsFirstTransferringPartyId: 'TEST-PARTY-003',
         aefT4HoldingsPartyItmoRegistryId: 'TEST-REGISTRY-003',
@@ -302,7 +302,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
 
     it('should delete an AEF-T4-Holdings', async function () {
       const aefT4HoldingsData = {
-        aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-004',
+        aefT4HoldingsCooperativeApproachId: 'TEST-CA-004',
         aefT4HoldingsAuthorizationId: 'TEST-AUTH-004',
         aefT4HoldingsFirstTransferringPartyId: 'TEST-PARTY-004',
         aefT4HoldingsPartyItmoRegistryId: 'TEST-REGISTRY-004',
@@ -329,7 +329,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
       try {
         await AefT4HoldingsV2.create({
           // Missing required fields
-          aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-005',
+          aefT4HoldingsCooperativeApproachId: 'TEST-CA-005',
         });
         expect.fail('Should have thrown validation error');
       } catch (error) {
@@ -340,7 +340,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
 
     it('should accept AEF-T4-Holdings with optional fields null', async function () {
       const aefT4HoldingsData = {
-        aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-006',
+        aefT4HoldingsCooperativeApproachId: 'TEST-CA-006',
         aefT4HoldingsAuthorizationId: 'TEST-AUTH-006',
         aefT4HoldingsFirstTransferringPartyId: 'TEST-PARTY-006',
         aefT4HoldingsPartyItmoRegistryId: 'TEST-REGISTRY-006',
@@ -365,7 +365,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
       const aefT4Holdings = await AefT4HoldingsV2.create(aefT4HoldingsData);
 
       expect(aefT4Holdings).to.exist;
-      expect(aefT4Holdings.aefT4HoldingsCoopoerativeApproachId).to.equal('TEST-CA-006');
+      expect(aefT4Holdings.aefT4HoldingsCooperativeApproachId).to.equal('TEST-CA-006');
       expect(aefT4Holdings.aefT4HoldingsAuthorizationId).to.equal('TEST-AUTH-006');
       expect(aefT4Holdings.aefT4HoldingsFirstTransferringPartyId).to.equal('TEST-PARTY-006');
       expect(aefT4Holdings.aefT4HoldingsPartyItmoRegistryId).to.equal('TEST-REGISTRY-006');
@@ -394,7 +394,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
 
       try {
         await AefT4HoldingsV2.create({
-          aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-007',
+          aefT4HoldingsCooperativeApproachId: 'TEST-CA-007',
           aefT4HoldingsAuthorizationId: 'TEST-AUTH-007',
           aefT4HoldingsFirstTransferringPartyId: 'TEST-PARTY-007',
           aefT4HoldingsPartyItmoRegistryId: 'TEST-REGISTRY-007',
@@ -420,7 +420,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
 
       try {
         await AefT4HoldingsV2.create({
-          aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-008',
+          aefT4HoldingsCooperativeApproachId: 'TEST-CA-008',
           aefT4HoldingsAuthorizationId: 'TEST-AUTH-008',
           aefT4HoldingsFirstTransferringPartyId: 'TEST-PARTY-008',
           aefT4HoldingsPartyItmoRegistryId: 'TEST-REGISTRY-008',
@@ -446,7 +446,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
 
       try {
         await AefT4HoldingsV2.create({
-          aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-009',
+          aefT4HoldingsCooperativeApproachId: 'TEST-CA-009',
           aefT4HoldingsAuthorizationId: 'TEST-AUTH-009',
           aefT4HoldingsFirstTransferringPartyId: 'TEST-PARTY-009',
           aefT4HoldingsPartyItmoRegistryId: 'TEST-REGISTRY-009',
@@ -472,7 +472,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
 
       try {
         await AefT4HoldingsV2.create({
-          aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-010',
+          aefT4HoldingsCooperativeApproachId: 'TEST-CA-010',
           aefT4HoldingsAuthorizationId: 'TEST-AUTH-010',
           aefT4HoldingsFirstTransferringPartyId: 'TEST-PARTY-010',
           aefT4HoldingsPartyItmoRegistryId: 'TEST-REGISTRY-010',
@@ -495,7 +495,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
 
     it('should accept AEF-T4-Holdings with valid foreign keys', async function () {
       const aefT4HoldingsData = {
-        aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-011',
+        aefT4HoldingsCooperativeApproachId: 'TEST-CA-011',
         aefT4HoldingsAuthorizationId: 'TEST-AUTH-011',
         aefT4HoldingsFirstTransferringPartyId: 'TEST-PARTY-011',
         aefT4HoldingsPartyItmoRegistryId: 'TEST-REGISTRY-011',
@@ -525,7 +525,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
   describe('AEF-T4-Holdings Association Tests', function () {
     it('should load AEF-T4-Holdings with associations', async function () {
       const aefT4HoldingsData = {
-        aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-012',
+        aefT4HoldingsCooperativeApproachId: 'TEST-CA-012',
         aefT4HoldingsAuthorizationId: 'TEST-AUTH-012',
         aefT4HoldingsFirstTransferringPartyId: 'TEST-PARTY-012',
         aefT4HoldingsPartyItmoRegistryId: 'TEST-REGISTRY-012',
@@ -592,7 +592,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
 
       for (let i = 0; i < metrics.length; i++) {
         const aefT4HoldingsData = {
-          aefT4HoldingsCoopoerativeApproachId: `TEST-CA-PICKLIST-${i}`,
+          aefT4HoldingsCooperativeApproachId: `TEST-CA-PICKLIST-${i}`,
           aefT4HoldingsAuthorizationId: `TEST-AUTH-PICKLIST-${i}`,
           aefT4HoldingsFirstTransferringPartyId: `TEST-PARTY-PICKLIST-${i}`,
           aefT4HoldingsPartyItmoRegistryId: `TEST-REGISTRY-PICKLIST-${i}`,
@@ -618,7 +618,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
 
       for (const year of years) {
         const aefT4HoldingsData = {
-          aefT4HoldingsCoopoerativeApproachId: `TEST-CA-YEAR-${year}`,
+          aefT4HoldingsCooperativeApproachId: `TEST-CA-YEAR-${year}`,
           aefT4HoldingsAuthorizationId: `TEST-AUTH-YEAR-${year}`,
           aefT4HoldingsFirstTransferringPartyId: `TEST-PARTY-YEAR-${year}`,
           aefT4HoldingsPartyItmoRegistryId: `TEST-REGISTRY-YEAR-${year}`,
@@ -641,7 +641,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
 
       for (const quantity of quantities) {
         const aefT4HoldingsData = {
-          aefT4HoldingsCoopoerativeApproachId: `TEST-CA-QTY-${quantity}`,
+          aefT4HoldingsCooperativeApproachId: `TEST-CA-QTY-${quantity}`,
           aefT4HoldingsAuthorizationId: `TEST-AUTH-QTY-${quantity}`,
           aefT4HoldingsFirstTransferringPartyId: `TEST-PARTY-QTY-${quantity}`,
           aefT4HoldingsPartyItmoRegistryId: `TEST-REGISTRY-QTY-${quantity}`,
@@ -663,7 +663,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
   describe('POST /v2/aef-t4-holdings (Create)', function () {
     it('should create a new AEF-T4-Holdings record via API', async function () {
       const aefT4HoldingsData = {
-        aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-API',
+        aefT4HoldingsCooperativeApproachId: 'TEST-CA-API',
         aefT4HoldingsAuthorizationId: 'TEST-AUTH-API',
         aefT4HoldingsFirstTransferringPartyId: 'TEST-PARTY-API',
         aefT4HoldingsPartyItmoRegistryId: 'TEST-REGISTRY-API',
@@ -716,7 +716,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
 
     it('should reject AEF-T4-Holdings with invalid foreign key (non-existent)', async function () {
       const aefT4HoldingsData = {
-        aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-FK',
+        aefT4HoldingsCooperativeApproachId: 'TEST-CA-FK',
         aefT4HoldingsAuthorizationId: 'TEST-AUTH-FK',
         aefT4HoldingsFirstTransferringPartyId: 'TEST-PARTY-FK',
         aefT4HoldingsPartyItmoRegistryId: 'TEST-REGISTRY-FK',
@@ -766,7 +766,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
 
     before(async function () {
       const aefT4HoldingsData = {
-        aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-UPDATE',
+        aefT4HoldingsCooperativeApproachId: 'TEST-CA-UPDATE',
         aefT4HoldingsAuthorizationId: 'TEST-AUTH-UPDATE',
         aefT4HoldingsFirstTransferringPartyId: 'TEST-PARTY-UPDATE',
         aefT4HoldingsPartyItmoRegistryId: 'TEST-REGISTRY-UPDATE',
@@ -799,7 +799,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
         await stagingRecord.update({ committed: true });
         await AefT4HoldingsV2.create({
           cadTrustAefT4HoldingsId: createdAefT4HoldingsId,
-          aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-UPDATE',
+          aefT4HoldingsCooperativeApproachId: 'TEST-CA-UPDATE',
           aefT4HoldingsAuthorizationId: 'TEST-AUTH-UPDATE',
           aefT4HoldingsFirstTransferringPartyId: 'TEST-PARTY-UPDATE',
           aefT4HoldingsPartyItmoRegistryId: 'TEST-REGISTRY-UPDATE',
@@ -820,7 +820,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
        }
     });    it('should update an AEF-T4-Holdings via API', async function () {
       const updateData = {
-        aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-UPDATED',
+        aefT4HoldingsCooperativeApproachId: 'TEST-CA-UPDATED',
         aefT4HoldingsAuthorizationId: 'TEST-AUTH-UPDATE',
         aefT4HoldingsFirstTransferringPartyId: 'TEST-PARTY-UPDATE',
         aefT4HoldingsPartyItmoRegistryId: 'TEST-REGISTRY-UPDATE',
@@ -853,7 +853,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
 
     before(async function () {
       const aefT4HoldingsData = {
-        aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-DELETE',
+        aefT4HoldingsCooperativeApproachId: 'TEST-CA-DELETE',
         aefT4HoldingsAuthorizationId: 'TEST-AUTH-DELETE',
         aefT4HoldingsFirstTransferringPartyId: 'TEST-PARTY-DELETE',
         aefT4HoldingsPartyItmoRegistryId: 'TEST-REGISTRY-DELETE',
@@ -886,7 +886,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
         await stagingRecord.update({ committed: true });
         await AefT4HoldingsV2.create({
           cadTrustAefT4HoldingsId: createdAefT4HoldingsId,
-          aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-DELETE',
+          aefT4HoldingsCooperativeApproachId: 'TEST-CA-DELETE',
           aefT4HoldingsAuthorizationId: 'TEST-AUTH-DELETE',
           aefT4HoldingsFirstTransferringPartyId: 'TEST-PARTY-DELETE',
           aefT4HoldingsPartyItmoRegistryId: 'TEST-REGISTRY-DELETE',

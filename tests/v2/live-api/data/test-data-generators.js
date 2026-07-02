@@ -1160,7 +1160,7 @@ export const generateAefT3Actions = (cadTrustAefT2AuthorizationsId = null, cadTr
   const uniqueId = getUniqueId();
   const data = {
     aefT3ActionsDate: '2022-03-01',
-    aefT3ActionsCoopoerativeApproachId: `TEST-CA-${uniqueId}`,
+    aefT3ActionsCooperativeApproachId: `TEST-CA-${uniqueId}`,
     aefT3ActionsAuthorizationId: `TEST-AUTH-${uniqueId}`,
     aefT3ActionsFirstTransferringPartyId: `TEST-FIRST-${uniqueId}`,
     aefT3ActionsPartyItmoRegistryId: `TEST-ITMO-REG-${uniqueId}`,
@@ -1197,7 +1197,7 @@ export const generateAefT3ActionsMinimal = () => {
   const uniqueId = getUniqueId();
   return {
     aefT3ActionsDate: '2022-03-01',
-    aefT3ActionsCoopoerativeApproachId: `MIN-CA-${uniqueId}`,
+    aefT3ActionsCooperativeApproachId: `MIN-CA-${uniqueId}`,
     aefT3ActionsAuthorizationId: `MIN-AUTH-${uniqueId}`,
     aefT3ActionsFirstTransferringPartyId: `MIN-FIRST-${uniqueId}`,
     aefT3ActionsPartyItmoRegistryId: `MIN-ITMO-REG-${uniqueId}`,
@@ -1217,7 +1217,7 @@ export const generateAefT3ActionsMaximal = (cadTrustAefT2AuthorizationsId = null
   const uniqueId = getUniqueId();
   const data = {
     aefT3ActionsDate: '2099-12-31',
-    aefT3ActionsCoopoerativeApproachId: getLongString(255),
+    aefT3ActionsCooperativeApproachId: getLongString(255),
     aefT3ActionsAuthorizationId: getLongString(255),
     aefT3ActionsFirstTransferringPartyId: getLongString(255),
     aefT3ActionsPartyItmoRegistryId: getLongString(255),
@@ -1272,7 +1272,7 @@ export const generateAefT3ActionsForbiddenFields = () => ({
 export const generateAefT4Holdings = (cadTrustAefT2AuthorizationsId = null, cadTrustUnitId = null) => {
   const uniqueId = getUniqueId();
   const data = {
-    aefT4HoldingsCoopoerativeApproachId: `TEST-CA-${uniqueId}`,
+    aefT4HoldingsCooperativeApproachId: `TEST-CA-${uniqueId}`,
     aefT4HoldingsAuthorizationId: `TEST-AUTH-${uniqueId}`,
     aefT4HoldingsFirstTransferringPartyId: `TEST-FIRST-${uniqueId}`,
     aefT4HoldingsPartyItmoRegistryId: `TEST-ITMO-REG-${uniqueId}`,
@@ -1298,7 +1298,7 @@ export const generateAefT4Holdings = (cadTrustAefT2AuthorizationsId = null, cadT
 export const generateAefT4HoldingsMinimal = () => {
   const uniqueId = getUniqueId();
   return {
-    aefT4HoldingsCoopoerativeApproachId: `MIN-CA-${uniqueId}`,
+    aefT4HoldingsCooperativeApproachId: `MIN-CA-${uniqueId}`,
     aefT4HoldingsAuthorizationId: `MIN-AUTH-${uniqueId}`,
     aefT4HoldingsFirstTransferringPartyId: `MIN-FIRST-${uniqueId}`,
     aefT4HoldingsPartyItmoRegistryId: `MIN-ITMO-REG-${uniqueId}`,
@@ -1315,7 +1315,7 @@ export const generateAefT4HoldingsMinimal = () => {
 export const generateAefT4HoldingsMaximal = (cadTrustAefT2AuthorizationsId = null, cadTrustUnitId = null) => {
   const uniqueId = getUniqueId();
   const data = {
-    aefT4HoldingsCoopoerativeApproachId: getLongString(255),
+    aefT4HoldingsCooperativeApproachId: getLongString(255),
     aefT4HoldingsAuthorizationId: getLongString(255),
     aefT4HoldingsFirstTransferringPartyId: getLongString(255),
     aefT4HoldingsPartyItmoRegistryId: getLongString(255),

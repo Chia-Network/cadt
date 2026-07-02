@@ -3,6 +3,7 @@ import _ from 'lodash';
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
 import { OrganizationsV2, AuditV2, StagingV2 } from '../models/v2/index.js';
 import { ModelKeysV2, getV2PrimaryKeyField } from '../utils/v2-model-utils.js';
+import { normalizeLegacyV2FieldNames } from '../utils/v2-legacy-field-names.js';
 import datalayer from '../datalayer';
 import {
   decodeHex,
@@ -620,10 +621,15 @@ const syncOrganizationAuditV2 = async (organization) => {
               const record = JSON.parse(decodeHex(diff.value));
               // Convert snake_case field names from datalayer to camelCase for Sequelize
               // V2 models use underscored: true, which means Sequelize expects camelCase in JS
-              const camelCaseRecord = _.mapKeys(record, (_value, key) => {
-                // Convert snake_case to camelCase
-                return _.camelCase(key);
-              });
+              // normalizeLegacyV2FieldNames maps legacy misspelled AEF keys from
+              // pre-rename on-chain data onto the corrected attributes.
+              const camelCaseRecord = normalizeLegacyV2FieldNames(
+                modelKey,
+                _.mapKeys(record, (_value, key) => {
+                  // Convert snake_case to camelCase
+                  return _.camelCase(key);
+                }),
+              );
               const primaryKeyValue =
                 camelCaseRecord[primaryKeyFieldCamelCase] ||
                 record[primaryKeyField];

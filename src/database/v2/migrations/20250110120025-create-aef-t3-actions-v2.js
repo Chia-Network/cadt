@@ -25,7 +25,7 @@ export default {
         type: Sequelize.STRING,
         allowNull: true,
       },
-      aef_t3_actions_coopoerative_approach_id: {
+      aef_t3_actions_cooperative_approach_id: {
         type: Sequelize.STRING,
         allowNull: false,
       },
@@ -163,7 +163,7 @@ export default {
     // Add indexes for better performance
     await queryInterface.addIndex('aef_t3_actions', ['aef_t3_actions_date']);
     await queryInterface.addIndex('aef_t3_actions', ['aef_t3_actions_type']);
-    await queryInterface.addIndex('aef_t3_actions', ['aef_t3_actions_coopoerative_approach_id']);
+    await queryInterface.addIndex('aef_t3_actions', ['aef_t3_actions_cooperative_approach_id']);
     await queryInterface.addIndex('aef_t3_actions', ['aef_t3_actions_authorization_id']);
     await queryInterface.addIndex('aef_t3_actions', ['aef_t3_actions_vintage_year']);
     await queryInterface.addIndex('aef_t3_actions', ['cad_trust_aef_t1_submission_id']);

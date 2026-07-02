@@ -87,7 +87,7 @@ describe('AefT3Actions Live API Validation Tests', function () {
       addCreatedId('aef-t3-actions', id);
       // Check record is in staging table
       const inStaging = await checkRecordInStaging(request, '/v2/aef-t3-actions', id, {
-        aefT3ActionsCoopoerativeApproachId: data.aefT3ActionsCoopoerativeApproachId,
+        aefT3ActionsCooperativeApproachId: data.aefT3ActionsCooperativeApproachId,
       });
       expect(inStaging).to.be.true;
       // Commit if in extended mode
@@ -98,7 +98,7 @@ describe('AefT3Actions Live API Validation Tests', function () {
         await waitForDataToAppear(request, 'aef-t3-actions', id);
       } else {
         trackBatchVerification('POST', 'aef-t3-actions', id, {
-          aefT3ActionsCoopoerativeApproachId: data.aefT3ActionsCoopoerativeApproachId,
+          aefT3ActionsCooperativeApproachId: data.aefT3ActionsCooperativeApproachId,
         });
       }
 
@@ -116,7 +116,7 @@ describe('AefT3Actions Live API Validation Tests', function () {
         await waitForDataToAppear(request, 'aef-t3-actions', minId);
       } else {
         trackBatchVerification('POST', 'aef-t3-actions', minId, {
-          aefT3ActionsCoopoerativeApproachId: minimalData.aefT3ActionsCoopoerativeApproachId,
+          aefT3ActionsCooperativeApproachId: minimalData.aefT3ActionsCooperativeApproachId,
         });
       }
 
@@ -134,7 +134,7 @@ describe('AefT3Actions Live API Validation Tests', function () {
         await waitForDataToAppear(request, 'aef-t3-actions', maxId);
       } else {
         trackBatchVerification('POST', 'aef-t3-actions', maxId, {
-          aefT3ActionsCoopoerativeApproachId: maximalData.aefT3ActionsCoopoerativeApproachId,
+          aefT3ActionsCooperativeApproachId: maximalData.aefT3ActionsCooperativeApproachId,
         });
       }
     });

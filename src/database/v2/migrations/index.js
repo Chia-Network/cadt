@@ -52,6 +52,12 @@ import AddAuditSyncIndexesV2 from './20260301120000-add-audit-sync-indexes-v2.js
 // V2 Audit list endpoint: composite index covering per-org time-ordered pagination
 import AddAuditListIndexV2 from './20260615120000-add-audit-list-index-v2.js';
 
+// V2 corrective migration: repair stale issuance schemas missing project methodology
+import RepairIssuanceProjectMethodologyColumnV2 from './20260629133000-repair-issuance-project-methodology-column-v2.js';
+
+// V2 AEF Field Name Corrections
+import RenameAefCooperativeApproachColumnsV2 from './20260629210000-rename-aef-cooperative-approach-columns-v2.js';
+
 export const migrations = [
   {
     migration: CreateStagingV2,
@@ -196,5 +202,13 @@ export const migrations = [
   {
     migration: AddAuditListIndexV2,
     name: '20260615120000-add-audit-list-index-v2',
+  },
+  {
+    migration: RepairIssuanceProjectMethodologyColumnV2,
+    name: '20260629133000-repair-issuance-project-methodology-column-v2',
+  },
+  {
+    migration: RenameAefCooperativeApproachColumnsV2,
+    name: '20260629210000-rename-aef-cooperative-approach-columns-v2',
   },
 ];

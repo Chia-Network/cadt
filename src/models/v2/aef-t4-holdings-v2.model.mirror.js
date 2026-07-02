@@ -16,10 +16,10 @@ initMirrorModelV2(() => {
       field: 'cad_trust_aef_t4_holdings_id',
       defaultValue: Sequelize.UUIDV4,
     },
-    aefT4HoldingsCoopoerativeApproachId: {
+    aefT4HoldingsCooperativeApproachId: {
       type: Sequelize.STRING,
       allowNull: false,
-      field: 'aef_t4_holdings_coopoerative_approach_id',
+      field: 'aef_t4_holdings_cooperative_approach_id',
     },
     aefT4HoldingsAuthorizationId: {
       type: Sequelize.STRING,

@@ -40,4 +40,20 @@ describe('Database Schema Check', function () {
     // This test always passes - it's just for debugging
     expect(true).to.be.true;
   });
+
+  it('should include project methodology identifiers in the SQLite schema', async function () {
+    const [projectMethodologyColumns] = await sequelizeV2.query(
+      `PRAGMA table_info(project_methodology)`,
+    );
+    const [issuanceColumns] = await sequelizeV2.query(
+      `PRAGMA table_info(issuance)`,
+    );
+
+    expect(projectMethodologyColumns.map((col) => col.name)).to.include(
+      'cad_trust_project_methodology_id',
+    );
+    expect(issuanceColumns.map((col) => col.name)).to.include(
+      'cad_trust_project_methodology_id',
+    );
+  });
 });
