@@ -605,7 +605,7 @@ describe('orglist-subscription-reconcile (V2)', function () {
       await AefT3ActionsV2.create({
         cadTrustAefT3ActionsId: uuidv4(),
         aefT3ActionsDate: '2024-01-01',
-        aefT3ActionsCoopoerativeApproachId: `coop3-${suffix}`,
+        aefT3ActionsCooperativeApproachId: `coop3-${suffix}`,
         aefT3ActionsAuthorizationId: `auth3-${suffix}`,
         aefT3ActionsFirstTransferringPartyId: `first3-${suffix}`,
         aefT3ActionsPartyItmoRegistryId: `registry3-${suffix}`,
@@ -622,7 +622,7 @@ describe('orglist-subscription-reconcile (V2)', function () {
       });
       await AefT4HoldingsV2.create({
         cadTrustAefT4HoldingsId: uuidv4(),
-        aefT4HoldingsCoopoerativeApproachId: `coop4-${suffix}`,
+        aefT4HoldingsCooperativeApproachId: `coop4-${suffix}`,
         aefT4HoldingsAuthorizationId: `auth4-${suffix}`,
         aefT4HoldingsFirstTransferringPartyId: `first4-${suffix}`,
         aefT4HoldingsPartyItmoRegistryId: `registry4-${suffix}`,
@@ -765,7 +765,7 @@ describe('orglist-subscription-reconcile (V2)', function () {
       await AefT3ActionsV2.create({
         cadTrustAefT3ActionsId: aefT3Id,
         aefT3ActionsDate: '2024-01-01',
-        aefT3ActionsCoopoerativeApproachId: 'coop3-c',
+        aefT3ActionsCooperativeApproachId: 'coop3-c',
         aefT3ActionsAuthorizationId: 'auth3-c',
         aefT3ActionsFirstTransferringPartyId: 'first3-c',
         aefT3ActionsPartyItmoRegistryId: 'registry3-c',
@@ -783,7 +783,7 @@ describe('orglist-subscription-reconcile (V2)', function () {
       const aefT4Id = uuidv4();
       await AefT4HoldingsV2.create({
         cadTrustAefT4HoldingsId: aefT4Id,
-        aefT4HoldingsCoopoerativeApproachId: 'coop4-c',
+        aefT4HoldingsCooperativeApproachId: 'coop4-c',
         aefT4HoldingsAuthorizationId: 'auth4-c',
         aefT4HoldingsFirstTransferringPartyId: 'first4-c',
         aefT4HoldingsPartyItmoRegistryId: 'registry4-c',
