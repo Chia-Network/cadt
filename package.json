@@ -108,7 +108,7 @@
     "chai": "^6.2.0",
     "chai-http": "^5.1.2",
     "cross-env": "^10.1.0",
-    "eslint": "^10.1.0",
+    "eslint": "^10.6.0",
     "eslint-plugin-mocha": "^11.3.0",
     "extensionless": "^2.0.6",
     "globals": "^17.3.0",
