@@ -44,6 +44,7 @@ import {
   processingSyncRegistriesTransactionMutexV2,
 } from '../../utils/v2-mutex-utils.js';
 import {
+  DEFAULT_ORG_PURGE_DELETE_BATCH_SIZE,
   destroyByPrimaryKeyBatches,
   resolveDeleteBatchSize,
 } from '../../utils/batched-delete.js';
@@ -2228,18 +2229,24 @@ class OrganizationsV2 extends Model {
    *   write locks between batches. Manual API deletes keep one transaction by
    *   default.
    * @param {number} [options.retryCount=0] - Internal: SQLITE_BUSY retry depth.
+   * @param {number} [options.batchSize=DEFAULT_ORG_PURGE_DELETE_BATCH_SIZE] -
+   *   Rows deleted per batch. Defaults to the hardcoded purge batch size; only
+   *   overridden by tests that need to exercise multi-batch behavior.
    * @returns {Promise<number>} total number of local database rows purged
    */
   static async deleteAllOrganizationData(
     orgUid,
-    { recordUserDeleted = true, useCommittedBatches = false, retryCount = 0 } = {},
+    {
+      recordUserDeleted = true,
+      useCommittedBatches = false,
+      retryCount = 0,
+      batchSize: batchSizeOption = DEFAULT_ORG_PURGE_DELETE_BATCH_SIZE,
+    } = {},
   ) {
     const maxRetries = 10;
     const baseDelay = 200; // 200ms base delay
     const maxDelay = 5000; // 5 seconds max delay
-    const batchSize = resolveDeleteBatchSize(
-      getConfig().APP.ORG_PURGE_DELETE_BATCH_SIZE,
-    );
+    const batchSize = resolveDeleteBatchSize(batchSizeOption);
 
     loggerV2.verbose('[v2]: acquiring add/delete org mutex to delete organization');
     const releaseAddDeleteMutex =

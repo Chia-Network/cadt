@@ -11,6 +11,7 @@ import { logger } from '../../config/logger';
 import { Audit, FileStore, Meta, ModelKeys, Staging } from '../';
 import { getConfig } from '../../utils/config-loader';
 import {
+  DEFAULT_ORG_PURGE_DELETE_BATCH_SIZE,
   destroyByPrimaryKeyBatches,
   resolveDeleteBatchSize,
 } from '../../utils/batched-delete.js';
@@ -1713,6 +1714,9 @@ class Organization extends Model {
    *   purge batch is committed independently so background purges release SQLite
    *   write locks between batches. Manual API deletes keep one transaction by
    *   default.
+   * @param {number} [options.batchSize=DEFAULT_ORG_PURGE_DELETE_BATCH_SIZE] -
+   *   Rows deleted per batch. Defaults to the hardcoded purge batch size; only
+   *   overridden by tests that need to exercise multi-batch behavior.
    * @returns {Promise<number>} total number of local database rows deleted
    */
   static async deleteAllOrganizationData(
@@ -1721,11 +1725,10 @@ class Organization extends Model {
       skipStagingTruncate = false,
       recordUserDeleted = true,
       useCommittedBatches = false,
+      batchSize: batchSizeOption = DEFAULT_ORG_PURGE_DELETE_BATCH_SIZE,
     } = {},
   ) {
-    const batchSize = resolveDeleteBatchSize(
-      getConfig().APP.ORG_PURGE_DELETE_BATCH_SIZE,
-    );
+    const batchSize = resolveDeleteBatchSize(batchSizeOption);
     logger.verbose('[v1]: acquiring add/delete org mutex to delete organization');
     const releaseAddDeleteMutex =
       await addOrDeleteOrganizationRecordMutex.acquire();

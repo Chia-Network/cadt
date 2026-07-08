@@ -37,8 +37,6 @@ export const defaultConfig = {
      * non-empty orgList from a successful governance sync before any removal.
      */
     ONLY_CADT_SUBSCRIPTIONS: true,
-    ONLY_CADT_SUBSCRIPTIONS_PURGE_GRACE_CYCLES: 3,
-    ORG_PURGE_DELETE_BATCH_SIZE: 5000,
     LOG_LEVEL: 'info',
     TASKS: {
       GOVERNANCE_SYNC_TASK_INTERVAL: 120,

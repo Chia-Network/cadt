@@ -9,7 +9,6 @@ import {
   resolvePurgeGraceCycles,
 } from '../../src/utils/orglist-subscription-reconcile.js';
 import { defaultConfig } from '../../src/utils/defaultConfig.js';
-import { getConfig } from '../../src/utils/config-loader.js';
 import {
   destroyByPrimaryKeyBatches,
   resolveDeleteBatchSize,
@@ -458,40 +457,34 @@ describe('orglist-subscription-reconcile (V1)', function () {
   });
 
   it('should delete V1 org data across multiple batches', async function () {
-    const config = getConfig();
-    const originalBatchSize = config.APP.ORG_PURGE_DELETE_BATCH_SIZE;
-    config.APP.ORG_PURGE_DELETE_BATCH_SIZE = 1;
-    try {
-      await Organization.create({
+    await Organization.create({
+      orgUid: ORG_C,
+      name: 'Org C',
+      isHome: false,
+      subscribed: false,
+      synced: false,
+      sync_remaining: 0,
+      metadata: '{}',
+    });
+    for (let i = 0; i < 3; i += 1) {
+      await Project.create({
         orgUid: ORG_C,
-        name: 'Org C',
-        isHome: false,
-        subscribed: false,
-        synced: false,
-        sync_remaining: 0,
-        metadata: '{}',
+        warehouseProjectId: `wh-proj-c-${i}`,
+        projectId: `proj-c-${i}`,
+        projectName: `Removed Org Project ${i}`,
       });
-      for (let i = 0; i < 3; i += 1) {
-        await Project.create({
-          orgUid: ORG_C,
-          warehouseProjectId: `wh-proj-c-${i}`,
-          projectId: `proj-c-${i}`,
-          projectName: `Removed Org Project ${i}`,
-        });
-      }
-
-      const deletedCount = await Organization.deleteAllOrganizationData(ORG_C, {
-        skipStagingTruncate: true,
-        recordUserDeleted: false,
-        useCommittedBatches: true,
-      });
-
-      expect(deletedCount).to.be.greaterThan(3);
-      expect(await Project.count({ where: { orgUid: ORG_C } })).to.equal(0);
-      expect(await Organization.count({ where: { orgUid: ORG_C } })).to.equal(0);
-    } finally {
-      config.APP.ORG_PURGE_DELETE_BATCH_SIZE = originalBatchSize;
     }
+
+    const deletedCount = await Organization.deleteAllOrganizationData(ORG_C, {
+      skipStagingTruncate: true,
+      recordUserDeleted: false,
+      useCommittedBatches: true,
+      batchSize: 1,
+    });
+
+    expect(deletedCount).to.be.greaterThan(3);
+    expect(await Project.count({ where: { orgUid: ORG_C } })).to.equal(0);
+    expect(await Organization.count({ where: { orgUid: ORG_C } })).to.equal(0);
   });
 
   it('should delete selected primary keys in bounded batches', async function () {
@@ -604,11 +597,9 @@ describe('orglist-subscription-reconcile (V1)', function () {
 
   it('should default ONLY_CADT_SUBSCRIPTIONS to true in shared APP config', function () {
     expect(defaultConfig.APP.ONLY_CADT_SUBSCRIPTIONS).to.equal(true);
-    expect(defaultConfig.APP.ONLY_CADT_SUBSCRIPTIONS_PURGE_GRACE_CYCLES).to.equal(3);
-    expect(defaultConfig.APP.ORG_PURGE_DELETE_BATCH_SIZE).to.equal(5000);
-    expect(resolveDeleteBatchSize('invalid')).to.equal(5000);
-    expect(resolveDeleteBatchSize('7rows')).to.equal(5000);
-    expect(resolveDeleteBatchSize('2.5')).to.equal(5000);
+    expect(resolveDeleteBatchSize('invalid')).to.equal(1000);
+    expect(resolveDeleteBatchSize('7rows')).to.equal(1000);
+    expect(resolveDeleteBatchSize('2.5')).to.equal(1000);
     expect(resolveDeleteBatchSize(2)).to.equal(2);
     expect(resolvePurgeGraceCycles('invalid')).to.equal(3);
     expect(resolvePurgeGraceCycles('2cycles')).to.equal(3);
