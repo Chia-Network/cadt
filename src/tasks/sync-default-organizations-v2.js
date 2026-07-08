@@ -150,7 +150,6 @@ const task = new Task('sync-default-organizations-v2', async () => {
             }),
           logger: loggerV2,
           apiVersionLabel: 'v2',
-          graceCycles: CONFIG.ONLY_CADT_SUBSCRIPTIONS_PURGE_GRACE_CYCLES,
         });
       } else if (
         onlyCadtSubscriptions &&
