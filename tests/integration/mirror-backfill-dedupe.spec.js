@@ -196,6 +196,52 @@ describe('Mirror Backfill Dedupe + In-Sync Gate (V1)', function () {
       expect(mirrorRow, 'gate must not delete or modify rows').to.not.be.null;
     });
 
+    it('skips the bulk upsert when the mirror row is the whole-second truncation of a sub-second source row', async function () {
+      // Regression for the sub-second precision false-negative. In
+      // production SQLite stores updatedAt with milliseconds while the
+      // MySQL mirror's DATETIME column truncates to whole seconds, so a
+      // freshly-synced mirror reads back fractionally behind the source.
+      // We reproduce that here by giving the source a sub-second timestamp
+      // and the mirror its whole-second truncation (identical UTC second,
+      // .899 vs .000). The gate must treat the two as in sync and skip the
+      // full re-upsert; before the whole-second comparison this tripped a
+      // needless full-table re-sync on every restart.
+      //
+      // Both timestamps carry the explicit '+00:00' offset so new Date()
+      // parses them as UTC. A bare "YYYY-MM-DD HH:mm:ss" string would be
+      // read as local time, shifting the two sides by the host's offset and
+      // masking the sub-second scenario this test exists to cover.
+      const id = uuidv4();
+      const orgUid = uuidv4();
+
+      await insertProjectInto(sequelize, {
+        id,
+        name: 'Synced',
+        orgUid,
+        when: '2026-01-01 12:00:00.899 +00:00',
+      });
+      await insertProjectInto(sequelizeMirror, {
+        id,
+        name: 'Synced',
+        orgUid,
+        when: '2026-01-01 12:00:00.000 +00:00',
+      });
+
+      const bulkCreateSpy = sinon.spy(ProjectMirror, 'bulkCreate');
+
+      await backfillMirror();
+
+      expect(
+        bulkCreateSpy.called,
+        'a sub-second-only difference (mirror truncated to whole seconds) must not trigger a full re-upsert',
+      ).to.equal(false);
+
+      const mirrorRow = await ProjectMirror.findOne({
+        where: { warehouseProjectId: id },
+      });
+      expect(mirrorRow, 'gate must not delete or modify the row').to.not.be.null;
+    });
+
     it('falls through to the full sync when counts mismatch', async function () {
       // Source has one row, mirror has none. Counts differ -> gate fails
       // -> full sync runs -> mirror gets the row.

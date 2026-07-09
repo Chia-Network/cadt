@@ -153,6 +153,46 @@ describe('Mirror Backfill Dedupe + In-Sync Gate (V2)', function () {
       expect(mirrorRow, 'gate must not delete or modify rows').to.not.be.null;
     });
 
+    it('skips the bulk upsert when the mirror row is the whole-second truncation of a sub-second source row', async function () {
+      // Regression for the sub-second precision false-negative. SQLite
+      // keeps milliseconds on updated_at while the MySQL mirror's DATETIME
+      // column truncates to whole seconds, so a freshly-synced mirror reads
+      // back fractionally behind the source. We reproduce that by storing
+      // the sub-second timestamp in source and its whole-second truncation
+      // in the mirror (identical UTC second, .899 vs .000). The gate must
+      // treat the two as in sync and skip the full re-upsert.
+      //
+      // Both timestamps carry the explicit '+00:00' offset so new Date()
+      // parses them as UTC; a bare "YYYY-MM-DD HH:mm:ss" string would be
+      // read as local time and shift the two sides apart.
+      const id = uuidv4();
+
+      await insertProgramInto(sequelizeV2, {
+        id,
+        name: 'Synced',
+        when: '2026-01-01 12:00:00.899 +00:00',
+      });
+      await insertProgramInto(sequelizeV2Mirror, {
+        id,
+        name: 'Synced',
+        when: '2026-01-01 12:00:00.000 +00:00',
+      });
+
+      const bulkCreateSpy = sinon.spy(ProgramV2Mirror, 'bulkCreate');
+
+      await backfillMirrorV2();
+
+      expect(
+        bulkCreateSpy.called,
+        'a sub-second-only difference (mirror truncated to whole seconds) must not trigger a full re-upsert',
+      ).to.equal(false);
+
+      const mirrorRow = await ProgramV2Mirror.findOne({
+        where: { cadTrustProgramId: id },
+      });
+      expect(mirrorRow, 'gate must not delete or modify the row').to.not.be.null;
+    });
+
     it('falls through to the full sync when counts mismatch', async function () {
       // Source has one row, mirror is empty. Gate fails on count; full
       // sync runs; mirror gets the row.

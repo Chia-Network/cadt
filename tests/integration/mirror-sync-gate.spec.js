@@ -92,6 +92,81 @@ describe('Mirror in-sync gate (isMirrorInSync) — unit', function () {
     expect(result).to.equal(false);
   });
 
+  // Resolution guard: SQLite keeps milliseconds on updatedAt, the MySQL
+  // mirror's DATETIME column truncates to whole seconds. A just-synced
+  // mirror is therefore fractionally behind the source (source .899 vs
+  // mirror .000). The gate compares at whole-second resolution, so this
+  // must count as in sync - NOT as drift that forces a full re-upsert.
+  it('skips when mirror max is the whole-second truncation of a sub-second source max', async function () {
+    const source = makeModel({ count: 3, max: '2026-01-01T12:00:00.899Z' });
+    const mirror = makeModel({ count: 3, max: '2026-01-01T12:00:00.000Z' });
+
+    const result = await isMirrorInSync(
+      source,
+      mirror,
+      'projects',
+      ATTR,
+      silentLogger,
+    );
+
+    expect(result).to.equal(true);
+  });
+
+  // Counterpart to the above: a genuine update advances updatedAt past the
+  // next whole-second boundary, so the gate must still detect real drift
+  // and fall through to the full sync. This pins the comparison at exactly
+  // one-second resolution - not "ignore updatedAt entirely".
+  it('falls through when source is newer by a full second (real drift, not truncation)', async function () {
+    const source = makeModel({ count: 3, max: '2026-01-01T12:00:01.000Z' });
+    const mirror = makeModel({ count: 3, max: '2026-01-01T12:00:00.000Z' });
+
+    const result = await isMirrorInSync(
+      source,
+      mirror,
+      'projects',
+      ATTR,
+      silentLogger,
+    );
+
+    expect(result).to.equal(false);
+  });
+
+  // Upper edge of the same-second window: a source .999 ms ahead of a
+  // mirror truncated to .000 is still the same whole second, so in sync.
+  it('skips at the top of the same whole second (source .999 vs mirror .000)', async function () {
+    const source = makeModel({ count: 3, max: '2026-01-01T12:00:00.999Z' });
+    const mirror = makeModel({ count: 3, max: '2026-01-01T12:00:00.000Z' });
+
+    const result = await isMirrorInSync(
+      source,
+      mirror,
+      'projects',
+      ATTR,
+      silentLogger,
+    );
+
+    expect(result).to.equal(true);
+  });
+
+  // Just across a whole-second boundary: the wall-clock gap is only 200 ms
+  // but it straddles two whole seconds, so it counts as real drift and
+  // must fall through. Pins that detection is "different whole second",
+  // not "difference >= 1000 ms".
+  it('falls through when source crosses into the next whole second (200ms real drift)', async function () {
+    const source = makeModel({ count: 3, max: '2026-01-01T12:00:01.100Z' });
+    const mirror = makeModel({ count: 3, max: '2026-01-01T12:00:00.900Z' });
+
+    const result = await isMirrorInSync(
+      source,
+      mirror,
+      'projects',
+      ATTR,
+      silentLogger,
+    );
+
+    expect(result).to.equal(false);
+  });
+
   // The documented gap: non-zero count but a null MAX(updatedAt). The gate
   // must NOT misclassify this as "empty / in sync" - it can't compare
   // freshness, so it must fall through to the full sync.

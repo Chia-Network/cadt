@@ -682,8 +682,8 @@ const runBackfillMirrorV2 = async () => {
         // the bulk upsert when COUNT(*) matches and the mirror's
         // MAX(updatedAt) is at least as new as source's. Falls through
         // to the full sync on any mismatch so outage-recovery semantics
-        // are preserved. See V1's backfillMirror for the same
-        // correctness invariant and the known non-max-row-UPDATE
+        // are preserved. See isMirrorInSync in ../mirror-sync-gate.js for
+        // the same correctness invariant and the whole-second resolution
         // limitation.
         const updatedAtAttr = matchingUpdatedAtAttr(source, mirror);
         if (updatedAtAttr) {
