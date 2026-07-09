@@ -76,7 +76,7 @@ System recommendation:
    Please use a domain name if possible instead of the IP address. Replace the `curl` part in `()` with your domain name if you can. Otherwise this will automatically use the IP address. Note this IP address *MUST* be a static IP.
 
    ```bash
-   yq -y -i ".APP.DATALAYER_FILE_SERVER_URL = \"http://$(curl -s https://ip.chia.net/)/data/\"" ~/.chia/mainnet/cadt/v2/config.yaml
+   yq -y -i ".APP.DATALAYER_FILE_SERVER_URL = \"http://$(curl -s https://ip.chia.net/)/data/\"" ~/.chia/mainnet/cadt/config.yaml
    ```
 
 1. Set your API key.
