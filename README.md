@@ -55,6 +55,14 @@ System recommendation:
    chia init
    ```
 
+1. Use testnet for development work (skip if this is your production setup).
+
+   ```bash
+   chia-tools network switch testneta
+   yq -y -i '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
+   sudo systemctl restart cadt@ubuntu chia-full-node@ubuntu chia-wallet@ubuntu chia-data-layer@ubuntu
+   ```
+
 1. Configure the Datalayer public directory.
 
    ```bash
@@ -73,7 +81,7 @@ System recommendation:
 
 1. Configure CADT with the Datalayer address.
 
-   Please use a domain name if possible instead of the IP address. Replace the `curl` part in `()` with your domain name if you can. Otherwise this will automatically use the IP address. Note this IP address *MUST* be a static IP.
+   Please use a domain name if possible instead of the IP address. Replace the `curl` part in `()` with your domain name if you can. Otherwise this will automatically use the IP address. **Note this IP address *MUST* be a static IP**.
 
    ```bash
    DATALAYER_FILE_SERVER_URL="http://$(curl -fsS https://ip.chia.net | tr -d '[:space:]')/data/"
@@ -131,14 +139,6 @@ System recommendation:
    journalctl -u cadt@ubuntu -f
    ```
 
-1. Use testnet for development work (skip if this is your production setup).
-
-   ```bash
-   chia-tools network switch testneta
-   yq -y -i '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
-   sudo systemctl restart cadt@ubuntu chia-full-node@ubuntu chia-wallet@ubuntu chia-data-layer@ubuntu
-   ```
-
 1. Install a pre-release version (optional).
 
    Pre-release versions are not recommended for production. Only install if you are confident in your decision.
@@ -159,6 +159,88 @@ Basic Chia installation instructions are provided above, but further installatio
 After the initial installation, it will take anywhere from a few days (most likely for a cloud-hosted server) to a few weeks (possible on lower-powered systems or servers with slow connections) to sync the Chia full node.  During this time, CADT can start syncing, but any writes to CADT are likely to fail.  For best results, we recommend waiting for the Chia full node to finish syncing before using CADT.  Check the status of the full node sync with `chia show -s`.
 
 *Those familiar with bittorrent and have a fast connection can speed up the full node syncing by [downloading the database](https://www.chia.net/downloads/#database-checkpoint) and copying it into place manually*
+
+### Configuration
+
+In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), CADT will add a directory called `cadt` when the application is first run. The main CADT configuration file is called `config.yaml` and can be found at `~/.chia/mainnet/cadt/config.yaml`. This unified config file has three sections: `APP` (shared configuration), `V1` (V1-specific settings), and `V2` (V2-specific settings). Database files are stored in `cadt/v1` and `cadt/v2` subdirectories. The options in the config file are as follows (the full list of available options can be seen in the [config template](src/utils/defaultConfig.js)):
+
+* **APP**: This section contains shared configuration used by both V1 and V2 APIs.
+  * **CW_PORT**: CADT port where the API will be available. 31310 by default.
+  * **BIND_ADDRESS**: By default, CADT listens on localhost only. To enable remote connections to CADT, change this to `0.0.0.0` to listen on all network interfaces, or to an IP address to listen on a specific network interface.
+  * **TRUST_PROXY**: Number of reverse-proxy hops between the internet and CADT. Used to correctly identify real client IP addresses for rate limiting and logging when CADT is deployed behind one or more proxies. Must be a non-negative integer: set to `0` (the default) when CADT is accessed directly with no proxy in front of it, `1` when behind a single proxy such as nginx or Cloudflare, or `2` when behind two proxies such as Cloudflare in front of nginx (a common cloud/k8s deployment). Booleans (`true`/`false`) and non-numeric strings (e.g. `loopback`) are rejected, log a warning at startup, and fall back to `0`; in particular, never set to `true`, which would trust the user-supplied IP in the `X-Forwarded-For` header and defeat rate limiting.
+  * **DATALAYER_URL**: URL and port to connect to the [Chia DataLayer RPC](https://docs.chia.net/datalayer-rpc). If Chia is installed locally with default settings, https://localhost:8562 will work.
+  * **WALLET_URL**: URL and port to connect to the [Chia Wallet RPC](https://docs.chia.net/wallet-rpc). If Chia is installed on the same machine as CADT with default settings, https://localhost:9256 will work.
+  * **USE_SIMULATOR**: Developer setting to populate CADT from a governance file and enable some extra APIs. Should always be "false" under normal usage.
+  * **CHIA_NETWORK**: CADT can run on Chia mainnet or any testnet. Set to "mainnet" for production instances or "testnet" if using the main Chia testnet.
+  * **USE_DEVELOPMENT_MODE**: Should be false in most use cases. If a developer is writing code for the app, this can be changed to "true," which will bypass the need for a governance node.
+  * **DEFAULT_FEE**: [Fee](https://docs.chia.net/mempool/) for each transaction on the Chia blockchain in mojos. The default is 3000 mojos and can be set higher or lower depending on how [busy](https://dashboard.chia.net/d/46EAA05E/mempool-transactions-and-fees?orgId=1) the Chia network is. If a fee is set very low, it may cause a delay in transaction processing.
+  * **DEFAULT_COIN_AMOUNT**: Units are mojo. Each DataLayer transaction needs a coin amount, and the default is 300 mojo.
+  * **CERTIFICATE_FOLDER_PATH**: If using a custom path for the Chia Blockchain certificates folder, enter the path here to allow CADT to find the certificates and authenticate to the Chia RPC. CADT assumes the folder structure within the directory specified matches the default Chia SSL directory of `$CHIA_ROOT/config/ssl/`.
+  * **DATALAYER_FILE_SERVER_URL**: Publicly available URL and port where Chia Datalayer [files are served](#datalayer-http-file-serving), including schema (http:// or https://). If serving DataLayer files from S3, this would be the public URL of the S3 bucket. Port can be omitted if using standard ports for http or https requests.
+  * **AUTO_SUBSCRIBE_FILESTORE**: Subscribing to the filestore for any organization is optional. To automatically subscribe and sync the filestore to every organization you subscribe to, set this to `true`.
+  * **AUTO_MIRROR_EXTERNAL_STORES**: When set to true (the default), CADT will automatically create mirrors for each store you are subscribed to. Mirroring all subscriptions using the `DATALAYER_FILE_SERVER_URL` will make the entire CADT network more resilient and distributed. Note: `DATALAYER_FILE_SERVER_URL` must also be set to a valid URL or IP address for mirrors to be created. Both settings are required for external store mirroring to function.
+  * **ONLY_CADT_SUBSCRIPTIONS**: When `true` (the default), CADT keeps DataLayer subscriptions aligned with the governance **orgList** in both directions. Organizations removed from the orgList are first unsubscribed from DataLayer, then removed from this node after unsubscribe is confirmed and the purge grace period has elapsed — the organization record and **all** of its local data (projects, units, and every related record it created) are deleted from the database. The deletion is unconditional: it does **not** check whether another organization references that data. Organizations on the orgList that are not subscribed are subscribed (including orgs re-added after a prior removal, including orgs previously removed via the API delete flow). The home organization and governance body store are never auto-removed. Reconciliation runs only after a successful governance sync provides a non-empty **orgList**; empty or stale cached governance data does not trigger removals. Set to `false` to disable orglist-driven subscribe/remove reconciliation. While enabled, a manual unsubscribe of an org still listed on the orgList will be reverted on the next sync cycle.
+  * **ONLY_CADT_SUBSCRIPTIONS_PURGE_GRACE_CYCLES**: Number of consecutive reconcile cycles an unsubscribed off-orgList organization must remain off the governance orgList before local data is purged. The default is `3`; invalid or non-positive values fall back to `3`.
+  * **ORG_PURGE_DELETE_BATCH_SIZE**: Maximum number of rows deleted per purge batch when removing an organization's local data. The default is `5000`; invalid or non-positive values fall back to `5000`. For orglist-driven background purges, smaller values release the SQLite write lock more often but increase total purge overhead.
+  * **LOG_LEVEL**: Controls verbosity of logging. Common settings are `info` and `debug`. Setting to `silly` will log all queries.
+  * **TASKS**: Section for configuring sync intervals.
+    * **GOVERNANCE_SYNC_TASK_INTERVAL**: Syncs picklist, orgList, and glossary from the governance node. Default 120 seconds (2 minutes).
+    * **ORGANIZATION_META_SYNC_TASK_INTERVAL**: Subscribes to default organizations and refreshes metadata for already-imported organizations. Default 120 seconds (2 minutes).
+    * **PICKLIST_SYNC_TASK_INTERVAL**: Syncs picklist from the governance node. Default 120 seconds (2 minutes).
+    * **MIRROR_CHECK_TASK_INTERVAL**: Checks if our DataLayer is advertising our `DATALAYER_FILE_SERVER_URL` as a mirror for all subscriptions when `AUTO_MIRROR_EXTERNAL_STORES` is true. Default 900 seconds (15 minutes).
+    * **VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL**: Validates the organization table periodically. Default 1800 seconds (30 minutes).
+    * **COIN_MANAGEMENT_TASK_INTERVAL**: Splits wallet coins when usable coin count is low. Default 21600 seconds (6 hours).
+  * **REQUEST_CONTENT_LIMITS**: Section for configuring request size limits to prevent denial-of-service attacks. These limits control the maximum array lengths in API requests.
+    * **STAGING**:
+      * **EDIT_DATA_LEN**: Maximum number of items in staging edit operations. Default 200.
+    * **UNITS**:
+      * **INCLUDE_COLUMNS_LEN**: Maximum number of columns to include in unit queries. Default 200.
+      * **MARKETPLACE_IDENTIFIERS_LEN**: Maximum number of marketplace identifiers in unit queries. Default 200.
+    * **PROJECTS**:
+      * **INCLUDE_COLUMNS_LEN**: Maximum number of columns to include in project queries. Default 200.
+      * **PROJECT_IDS_LEN**: Maximum number of project IDs in project queries. Default 200.
+* **V1**: This section contains settings specific to the V1 API.
+  * **ENABLE**: Set to `true` to enable the V1 API, or `false` to disable it. Default is `true`.
+  * **READ_ONLY**: When hosting an Observer node, set to `true` to prevent any data from being written using the CADT V1 APIs. This makes the application safe to run with public endpoints as it is just displaying publicly available data. When running a governance node, or a participant node, set to `false` to allow data to be written to the CADT APIs. When `false`, additional authentication or access restrictions must be applied to prevent unauthorized alteration of the data.
+  * **CADT_API_KEY**: This key is used by the [CADT UI](https://github.com/Chia-Network/cadt-ui) to authenticate with the CADT V1 API endpoints. This allows the API to power the UI only without allowing requests missing the API key in the header to access the API. This can be left blank to allow open access to the API or if access is restricted by other means. The CADT_API_KEY can be set to any value, but we recommend at least a 32-character random string. The CADT_API_KEY can be passed in a request using the `x-api-key` header. See the [RPC documentation](docs/cadt_rpc_api.md) for examples.
+  * **IS_GOVERNANCE_BODY**: Set to `true` or `false` to enable/disable governance body mode for the V1 API.
+  * **GOVERNANCE**: Section for governance body settings.
+    * **GOVERNANCE_BODY_ID**: This determines the governance body your CADT V1 network will be connected to. While there could be multiple governance body IDs, the default of `23f6498e015ebcd7190c97df30c032de8deb5c8934fc1caa928bc310e2b8a57e` is the right ID for most people on mainnet.
+  * **MIRROR_DB**: This section is for configuring a MySQL-compatible database that can be used for easy querying for report generation. This is optional and only provides a read-only mirror of the V1 data CADT uses.
+    * **DB_USERNAME**: MySQL username.
+    * **DB_PASSWORD**: MySQL password.
+    * **DB_NAME**: MySQL database name.
+    * **DB_HOST**: Hostname of the MySQL database.
+* **V2**: This section contains settings specific to the V2 API.
+  * **ENABLE**: Set to `true` to enable the V2 API, or `false` to disable it. Default is `true`.
+  * **READ_ONLY**: When hosting an Observer node, set to `true` to prevent any data from being written using the CADT V2 APIs. This makes the application safe to run with public endpoints as it is just displaying publicly available data. When running a governance node, or a participant node, set to `false` to allow data to be written to the CADT APIs. When `false`, additional authentication or access restrictions must be applied to prevent unauthorized alteration of the data.
+  * **CADT_API_KEY**: This key is used by the [CADT UI](https://github.com/Chia-Network/cadt-ui) to authenticate with the CADT V2 API endpoints. This allows the API to power the UI only without allowing requests missing the API key in the header to access the API. This can be left blank to allow open access to the API or if access is restricted by other means. The CADT_API_KEY can be set to any value, but we recommend at least a 32-character random string. The CADT_API_KEY can be passed in a request using the `x-api-key` header. See the [RPC documentation](docs/cadt_rpc_api_v2.md) for examples.
+  * **IS_GOVERNANCE_BODY**: Set to `true` or `false` to enable/disable governance body mode for the V2 API.
+  * **GOVERNANCE**: Section for governance body settings.
+    * **GOVERNANCE_BODY_ID**: This determines the governance body your CADT V2 network will be connected to. The V2 governance body may be different from the V1 governance body.
+  * **MIRROR_DB**: This section is for configuring a MySQL-compatible database that can be used for easy querying for report generation. This is optional and only provides a read-only mirror of the V2 data CADT uses.
+    * **DB_USERNAME**: MySQL username.
+    * **DB_PASSWORD**: MySQL password.
+    * **DB_NAME**: MySQL database name.
+    * **DB_HOST**: Hostname of the MySQL database.
+
+Note that the CADT application will need to be restarted after any changes to the config.yaml file.
+
+### Diagnostics
+
+When debugging a local CADT install (wallet not reachable, DataLayer not syncing, network mismatch, low disk space), use the system-wide diagnostics endpoint. It is mounted at the server root, not under `/v1` or `/v2`:
+
+```bash
+curl -s -H 'x-api-key: YOUR_CADT_API_KEY' http://localhost:31310/diagnostics | jq .
+```
+
+The endpoint returns **403** on read-only observer nodes (`READ_ONLY=true`). It is designed to stay usable while other API routes are blocked by sync checks. If you cannot use the API endpoint, the diagnostics output is written to the CADT log upon startup.
+
+The diagnostics endpoint contains a `status` field in each section, which reports `ok` if everything matches expected healthy values. Look for sections where the `status` value does not say `ok` for potential problem areas.
+
+Lighter-weight health checks are also available: `GET /health`, `GET /v1/health`, `GET /v2/health`, and `GET /v1/health/wallet` or `GET /v2/health/wallet` for wallet-specific status.
+
+See [System endpoints in the V1 RPC guide](docs/cadt_rpc_api.md#system-endpoints) and [System endpoints in the V2 RPC guide](docs/cadt_rpc_api_v2.md#system-endpoints) for request examples and response fields.
 
 ### How to use the API
 
@@ -258,88 +340,6 @@ By default, the CADT API will listen on localhost only on port 31310. If running
 ### Adding Encryption to the CADT API
 
 The CADT API uses HTTP and is unencrypted. To add encryption, use a reverse proxy like [Nginx](https://docs.nginx.com/nginx/admin-guide/web-server/reverse-proxy/) with an SSL certificate. In this scenario, the CADT application can be set to listen only on localhost, and Nginx (on the same server) will proxy incoming requests to port 31310.
-
-### Configuration
-
-In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), CADT will add a directory called `cadt` when the application is first run. The main CADT configuration file is called `config.yaml` and can be found at `~/.chia/mainnet/cadt/config.yaml`. This unified config file has three sections: `APP` (shared configuration), `V1` (V1-specific settings), and `V2` (V2-specific settings). Database files are stored in `cadt/v1` and `cadt/v2` subdirectories. The options in the config file are as follows (the full list of available options can be seen in the [config template](src/utils/defaultConfig.js)):
-
-* **APP**: This section contains shared configuration used by both V1 and V2 APIs.
-  * **CW_PORT**: CADT port where the API will be available. 31310 by default.
-  * **BIND_ADDRESS**: By default, CADT listens on localhost only. To enable remote connections to CADT, change this to `0.0.0.0` to listen on all network interfaces, or to an IP address to listen on a specific network interface.
-  * **TRUST_PROXY**: Number of reverse-proxy hops between the internet and CADT. Used to correctly identify real client IP addresses for rate limiting and logging when CADT is deployed behind one or more proxies. Must be a non-negative integer: set to `0` (the default) when CADT is accessed directly with no proxy in front of it, `1` when behind a single proxy such as nginx or Cloudflare, or `2` when behind two proxies such as Cloudflare in front of nginx (a common cloud/k8s deployment). Booleans (`true`/`false`) and non-numeric strings (e.g. `loopback`) are rejected, log a warning at startup, and fall back to `0`; in particular, never set to `true`, which would trust the user-supplied IP in the `X-Forwarded-For` header and defeat rate limiting.
-  * **DATALAYER_URL**: URL and port to connect to the [Chia DataLayer RPC](https://docs.chia.net/datalayer-rpc). If Chia is installed locally with default settings, https://localhost:8562 will work.
-  * **WALLET_URL**: URL and port to connect to the [Chia Wallet RPC](https://docs.chia.net/wallet-rpc). If Chia is installed on the same machine as CADT with default settings, https://localhost:9256 will work.
-  * **USE_SIMULATOR**: Developer setting to populate CADT from a governance file and enable some extra APIs. Should always be "false" under normal usage.
-  * **CHIA_NETWORK**: CADT can run on Chia mainnet or any testnet. Set to "mainnet" for production instances or "testnet" if using the main Chia testnet.
-  * **USE_DEVELOPMENT_MODE**: Should be false in most use cases. If a developer is writing code for the app, this can be changed to "true," which will bypass the need for a governance node.
-  * **DEFAULT_FEE**: [Fee](https://docs.chia.net/mempool/) for each transaction on the Chia blockchain in mojos. The default is 3000 mojos and can be set higher or lower depending on how [busy](https://dashboard.chia.net/d/46EAA05E/mempool-transactions-and-fees?orgId=1) the Chia network is. If a fee is set very low, it may cause a delay in transaction processing.
-  * **DEFAULT_COIN_AMOUNT**: Units are mojo. Each DataLayer transaction needs a coin amount, and the default is 300 mojo.
-  * **CERTIFICATE_FOLDER_PATH**: If using a custom path for the Chia Blockchain certificates folder, enter the path here to allow CADT to find the certificates and authenticate to the Chia RPC. CADT assumes the folder structure within the directory specified matches the default Chia SSL directory of `$CHIA_ROOT/config/ssl/`.
-  * **DATALAYER_FILE_SERVER_URL**: Publicly available URL and port where Chia Datalayer [files are served](#datalayer-http-file-serving), including schema (http:// or https://). If serving DataLayer files from S3, this would be the public URL of the S3 bucket. Port can be omitted if using standard ports for http or https requests.
-  * **AUTO_SUBSCRIBE_FILESTORE**: Subscribing to the filestore for any organization is optional. To automatically subscribe and sync the filestore to every organization you subscribe to, set this to `true`.
-  * **AUTO_MIRROR_EXTERNAL_STORES**: When set to true (the default), CADT will automatically create mirrors for each store you are subscribed to. Mirroring all subscriptions using the `DATALAYER_FILE_SERVER_URL` will make the entire CADT network more resilient and distributed. Note: `DATALAYER_FILE_SERVER_URL` must also be set to a valid URL or IP address for mirrors to be created. Both settings are required for external store mirroring to function.
-  * **ONLY_CADT_SUBSCRIPTIONS**: When `true` (the default), CADT keeps DataLayer subscriptions aligned with the governance **orgList** in both directions. Organizations removed from the orgList are first unsubscribed from DataLayer, then removed from this node after unsubscribe is confirmed and the purge grace period has elapsed — the organization record and **all** of its local data (projects, units, and every related record it created) are deleted from the database. The deletion is unconditional: it does **not** check whether another organization references that data. Organizations on the orgList that are not subscribed are subscribed (including orgs re-added after a prior removal, including orgs previously removed via the API delete flow). The home organization and governance body store are never auto-removed. Reconciliation runs only after a successful governance sync provides a non-empty **orgList**; empty or stale cached governance data does not trigger removals. Set to `false` to disable orglist-driven subscribe/remove reconciliation. While enabled, a manual unsubscribe of an org still listed on the orgList will be reverted on the next sync cycle.
-  * **ONLY_CADT_SUBSCRIPTIONS_PURGE_GRACE_CYCLES**: Number of consecutive reconcile cycles an unsubscribed off-orgList organization must remain off the governance orgList before local data is purged. The default is `3`; invalid or non-positive values fall back to `3`.
-  * **ORG_PURGE_DELETE_BATCH_SIZE**: Maximum number of rows deleted per purge batch when removing an organization's local data. The default is `5000`; invalid or non-positive values fall back to `5000`. For orglist-driven background purges, smaller values release the SQLite write lock more often but increase total purge overhead.
-  * **LOG_LEVEL**: Controls verbosity of logging. Common settings are `info` and `debug`. Setting to `silly` will log all queries.
-  * **TASKS**: Section for configuring sync intervals.
-    * **GOVERNANCE_SYNC_TASK_INTERVAL**: Syncs picklist, orgList, and glossary from the governance node. Default 120 seconds (2 minutes).
-    * **ORGANIZATION_META_SYNC_TASK_INTERVAL**: Subscribes to default organizations and refreshes metadata for already-imported organizations. Default 120 seconds (2 minutes).
-    * **PICKLIST_SYNC_TASK_INTERVAL**: Syncs picklist from the governance node. Default 120 seconds (2 minutes).
-    * **MIRROR_CHECK_TASK_INTERVAL**: Checks if our DataLayer is advertising our `DATALAYER_FILE_SERVER_URL` as a mirror for all subscriptions when `AUTO_MIRROR_EXTERNAL_STORES` is true. Default 900 seconds (15 minutes).
-    * **VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL**: Validates the organization table periodically. Default 1800 seconds (30 minutes).
-    * **COIN_MANAGEMENT_TASK_INTERVAL**: Splits wallet coins when usable coin count is low. Default 21600 seconds (6 hours).
-  * **REQUEST_CONTENT_LIMITS**: Section for configuring request size limits to prevent denial-of-service attacks. These limits control the maximum array lengths in API requests.
-    * **STAGING**:
-      * **EDIT_DATA_LEN**: Maximum number of items in staging edit operations. Default 200.
-    * **UNITS**:
-      * **INCLUDE_COLUMNS_LEN**: Maximum number of columns to include in unit queries. Default 200.
-      * **MARKETPLACE_IDENTIFIERS_LEN**: Maximum number of marketplace identifiers in unit queries. Default 200.
-    * **PROJECTS**:
-      * **INCLUDE_COLUMNS_LEN**: Maximum number of columns to include in project queries. Default 200.
-      * **PROJECT_IDS_LEN**: Maximum number of project IDs in project queries. Default 200.
-* **V1**: This section contains settings specific to the V1 API.
-  * **ENABLE**: Set to `true` to enable the V1 API, or `false` to disable it. Default is `true`.
-  * **READ_ONLY**: When hosting an Observer node, set to `true` to prevent any data from being written using the CADT V1 APIs. This makes the application safe to run with public endpoints as it is just displaying publicly available data. When running a governance node, or a participant node, set to `false` to allow data to be written to the CADT APIs. When `false`, additional authentication or access restrictions must be applied to prevent unauthorized alteration of the data.
-  * **CADT_API_KEY**: This key is used by the [CADT UI](https://github.com/Chia-Network/cadt-ui) to authenticate with the CADT V1 API endpoints. This allows the API to power the UI only without allowing requests missing the API key in the header to access the API. This can be left blank to allow open access to the API or if access is restricted by other means. The CADT_API_KEY can be set to any value, but we recommend at least a 32-character random string. The CADT_API_KEY can be passed in a request using the `x-api-key` header. See the [RPC documentation](docs/cadt_rpc_api.md) for examples.
-  * **IS_GOVERNANCE_BODY**: Set to `true` or `false` to enable/disable governance body mode for the V1 API.
-  * **GOVERNANCE**: Section for governance body settings.
-    * **GOVERNANCE_BODY_ID**: This determines the governance body your CADT V1 network will be connected to. While there could be multiple governance body IDs, the default of `23f6498e015ebcd7190c97df30c032de8deb5c8934fc1caa928bc310e2b8a57e` is the right ID for most people on mainnet.
-  * **MIRROR_DB**: This section is for configuring a MySQL-compatible database that can be used for easy querying for report generation. This is optional and only provides a read-only mirror of the V1 data CADT uses.
-    * **DB_USERNAME**: MySQL username.
-    * **DB_PASSWORD**: MySQL password.
-    * **DB_NAME**: MySQL database name.
-    * **DB_HOST**: Hostname of the MySQL database.
-* **V2**: This section contains settings specific to the V2 API.
-  * **ENABLE**: Set to `true` to enable the V2 API, or `false` to disable it. Default is `true`.
-  * **READ_ONLY**: When hosting an Observer node, set to `true` to prevent any data from being written using the CADT V2 APIs. This makes the application safe to run with public endpoints as it is just displaying publicly available data. When running a governance node, or a participant node, set to `false` to allow data to be written to the CADT APIs. When `false`, additional authentication or access restrictions must be applied to prevent unauthorized alteration of the data.
-  * **CADT_API_KEY**: This key is used by the [CADT UI](https://github.com/Chia-Network/cadt-ui) to authenticate with the CADT V2 API endpoints. This allows the API to power the UI only without allowing requests missing the API key in the header to access the API. This can be left blank to allow open access to the API or if access is restricted by other means. The CADT_API_KEY can be set to any value, but we recommend at least a 32-character random string. The CADT_API_KEY can be passed in a request using the `x-api-key` header. See the [RPC documentation](docs/cadt_rpc_api_v2.md) for examples.
-  * **IS_GOVERNANCE_BODY**: Set to `true` or `false` to enable/disable governance body mode for the V2 API.
-  * **GOVERNANCE**: Section for governance body settings.
-    * **GOVERNANCE_BODY_ID**: This determines the governance body your CADT V2 network will be connected to. The V2 governance body may be different from the V1 governance body.
-  * **MIRROR_DB**: This section is for configuring a MySQL-compatible database that can be used for easy querying for report generation. This is optional and only provides a read-only mirror of the V2 data CADT uses.
-    * **DB_USERNAME**: MySQL username.
-    * **DB_PASSWORD**: MySQL password.
-    * **DB_NAME**: MySQL database name.
-    * **DB_HOST**: Hostname of the MySQL database.
-
-Note that the CADT application will need to be restarted after any changes to the config.yaml file.
-
-### Diagnostics
-
-When debugging a local CADT install (wallet not reachable, DataLayer not syncing, network mismatch, low disk space), use the system-wide diagnostics endpoint. It is mounted at the server root, not under `/v1` or `/v2`:
-
-```bash
-curl -s -H 'x-api-key: YOUR_CADT_API_KEY' http://localhost:31310/diagnostics | jq .
-```
-
-The endpoint returns **403** on read-only observer nodes (`READ_ONLY=true`). It is designed to stay usable while other API routes are blocked by sync checks. If you cannot use the API endpoint, the diagnostics output is written to the CADT log upon startup.
-
-The diagnostics endpoint contains a `status` field in each section, which reports `ok` if everything matches expected healthy values. Look for sections where the `status` value does not say `ok` for potential problem areas.
-
-Lighter-weight health checks are also available: `GET /health`, `GET /v1/health`, `GET /v2/health`, and `GET /v1/health/wallet` or `GET /v2/health/wallet` for wallet-specific status.
-
-See [System endpoints in the V1 RPC guide](docs/cadt_rpc_api.md#system-endpoints) and [System endpoints in the V2 RPC guide](docs/cadt_rpc_api_v2.md#system-endpoints) for request examples and response fields.
 
 ## Tools
 
