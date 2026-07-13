@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
 import datalayer from '../../../src/datalayer/index.js';
 import { getConfig, getConfigV2 } from '../../../src/utils/config-loader.js';
