@@ -29,7 +29,7 @@ create_config_if_not_exists() {
         # Use a temporary .mjs file to properly handle ES module imports with top-level await
         local temp_script=$(mktemp /app/create-config-XXXXXX.mjs)
         cat > "$temp_script" << 'EOF'
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 import fs from "fs";
 import { defaultConfig } from "/app/src/utils/defaultConfig.js";
 try {
