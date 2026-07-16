@@ -741,6 +741,10 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       expect(response.body.data[0].projectSector).to.deep.equal(['Agriculture']);
       expect(response.body.data[0].program).to.exist;
       expect(response.body.data[0].program.programName).to.equal('Test Program for Project');
+      expect(response.body.data[0].program.createdAt).to.exist;
+      expect(response.body.data[0].program.updatedAt).to.exist;
+      expect(response.body.data[0].program).to.not.have.property('created_at');
+      expect(response.body.data[0].program).to.not.have.property('updated_at');
     });
   });
 
@@ -775,6 +779,10 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       expect(response.body.projectSector).to.deep.equal(['Energy industries (renewable-/ non renewable sources)']);
       expect(response.body.program).to.exist;
       expect(response.body.program.programName).to.equal('Test Program for Project');
+      expect(response.body.program.createdAt).to.exist;
+      expect(response.body.program.updatedAt).to.exist;
+      expect(response.body.program).to.not.have.property('created_at');
+      expect(response.body.program).to.not.have.property('updated_at');
     });
   });
 

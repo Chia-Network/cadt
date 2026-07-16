@@ -669,14 +669,10 @@ const runBackfillMirror = async () => {
         // mean we can't ask a single MAX() question that both sides answer
         // consistently.
         //
-        // Known limitation: an in-place UPDATE to a non-max-row whose
-        // newly-bumped updatedAt happens to remain below the table's
-        // existing MAX(updatedAt) would not be detected by the gate.
-        // Sequelize-driven UPDATEs always bump updatedAt to NOW(), which
-        // is necessarily greater than any prior MAX, so this requires
-        // raw-SQL manipulation that bypasses the ORM. No such code path
-        // exists in CADT today; if one is added, switch the gate to a
-        // SUM(UNIX_TIMESTAMP(updatedAt)) checksum.
+        // The comparison is done at whole-second resolution and has a
+        // documented same-second sub-second-drift limitation; see
+        // isMirrorInSync in ./mirror-sync-gate.js for the full rationale
+        // and the checksum escape hatch.
         const updatedAtAttr = matchingUpdatedAtAttr(source, mirror);
         if (updatedAtAttr) {
           const inSync = await isMirrorInSync(

@@ -51,7 +51,8 @@ export const matchingUpdatedAtAttr = (source, mirror) => {
  * Returns true ONLY when BOTH conditions hold:
  *   1. count(source) === count(mirror)
  *   2. Either both counts are 0 (truly empty on both sides), OR
- *      max(mirror[updatedAtAttr]) >= max(source[updatedAtAttr])
+ *      floor(max(mirror[updatedAtAttr])) >= floor(max(source[updatedAtAttr]))
+ *      where floor() truncates to whole seconds (see resolution note below)
  *
  * Returns false in every other case (including any error), so the
  * caller falls through to the existing full upsert. Crucially, false
@@ -60,15 +61,34 @@ export const matchingUpdatedAtAttr = (source, mirror) => {
  * leave the mirror stale. We deliberately bias toward the
  * cheap-but-fully-correct fall-through.
  *
- * Known limitation - non-max-row UPDATE drift: if a row is updated in
- * source via raw SQL with an updatedAt that's strictly below the
- * table's existing MAX(updatedAt), the gate can't see the change.
- * Sequelize-driven UPDATEs auto-bump updatedAt to NOW() (necessarily
- * greater than any prior MAX), so this only happens via raw SQL that
- * bypasses the ORM or via clock-skew adjustments. No such code path
- * exists in CADT today. If composite drift patterns become a concern,
- * replace this with a SUM(UNIX_TIMESTAMP(updatedAt)) checksum or a
- * per-table hash digest.
+ * Timestamp resolution: the MAX(updatedAt) comparison is done at
+ * whole-second resolution. SQLite retains millisecond precision on
+ * updatedAt, but the mirror stores only whole seconds: Sequelize's mysql
+ * DATE serialization emits "YYYY-MM-DD HH:mm:ss" with no fractional part
+ * (pinned by tests/v2/integration/mirror-datetime-format.spec.js), so
+ * every value is truncated down to its whole second before it reaches
+ * MySQL - independent of the server's fractional-rounding SQL mode. A
+ * freshly-synced mirror therefore reads back at or just behind the source
+ * (e.g. source .899 vs mirror .000). Comparing at millisecond resolution
+ * treated that truncation as drift and forced a full re-upsert of the
+ * whole table on every restart. Flooring both sides to whole seconds
+ * compares like-with-like against the resolution the mirror can hold. (A
+ * fallback path can instead round a sub-second value half-up on a MariaDB
+ * DATETIME(0) column - see src/config/config.js - so the mirror is not
+ * guaranteed to land exactly at floor(source); the whole-second compare
+ * neither introduces nor removes that edge relative to the prior
+ * millisecond compare, and the count check, orphan sweep, and
+ * safe-false-negative bias remain the backstop.)
+ *
+ * Known limitation - sub-second UPDATE drift: an update whose new
+ * updatedAt lands in the same whole second as the mirror's newest row is
+ * not seen by the gate. Sequelize-driven UPDATEs auto-bump updatedAt to
+ * NOW(), so any change in a later whole second than the last synced write
+ * is still detected; only a same-second miss (or raw-SQL writes that
+ * bypass the ORM, which CADT does not do) is invisible, and the next
+ * write crossing a whole-second boundary repairs it. If sub-second drift
+ * detection ever becomes a hard requirement, replace this with a
+ * SUM(UNIX_TIMESTAMP(updatedAt)) checksum or a per-table hash digest.
  *
  * @param {string} [logPrefix=''] - Prepended to every log line so V2 callers
  *   can keep their '[v2]: ' tag without forking the implementation.
@@ -125,15 +145,22 @@ export const isMirrorInSync = async (
       return false;
     }
 
-    if (mirrorMs >= sourceMs) {
+    // Compare at whole-second resolution: the mirror's DATETIME column
+    // cannot represent the sub-second precision SQLite keeps, so a
+    // millisecond comparison reports a just-synced mirror as stale. See
+    // the resolution note in this function's doc comment.
+    const sourceSec = Math.floor(sourceMs / 1000);
+    const mirrorSec = Math.floor(mirrorMs / 1000);
+
+    if (mirrorSec >= sourceSec) {
       logger.debug(
-        `${logPrefix}Mirror backfill: ${name} - in sync, skipping (${sourceCount} rows, max(updatedAt) mirror=${mirrorMs} >= source=${sourceMs})`,
+        `${logPrefix}Mirror backfill: ${name} - in sync, skipping (${sourceCount} rows, max(updatedAt) second mirror=${mirrorSec} >= source=${sourceSec}; ms mirror=${mirrorMs} source=${sourceMs})`,
       );
       return true;
     }
 
     logger.debug(
-      `${logPrefix}Mirror backfill: ${name} - gate failed (mirror max(updatedAt)=${mirrorMs} < source=${sourceMs})`,
+      `${logPrefix}Mirror backfill: ${name} - gate failed (mirror max(updatedAt) second=${mirrorSec} < source=${sourceSec}; ms mirror=${mirrorMs} source=${sourceMs})`,
     );
     return false;
   } catch (error) {
