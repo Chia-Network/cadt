@@ -820,9 +820,10 @@ describe('Phase 17.5: AuditV2 Comprehensive Integration Tests', function () {
       expect(response.body.data).to.have.length(1);
       expect(response.body.data[0]).to.have.property('change', '{"test": "data1"}');
       // raw:true must not regress the timestamp wire format away from ISO-8601
-      expect(response.body.data[0].created_at).to.match(
+      expect(response.body.data[0].createdAt).to.match(
         /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
       );
+      expect(response.body.data[0]).to.not.have.property('created_at');
     });
 
     it('should omit the change column when excludeChange=true', async function () {

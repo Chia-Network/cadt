@@ -1199,8 +1199,8 @@ Response
       "action": "INSERT",
       "committed": false,
       "failed_commit": false,
-      "created_at": "2022-03-11T05:17:55.427Z",
-      "updated_at": "2022-03-11T05:17:55.427Z",
+      "createdAt": "2022-03-11T05:17:55.427Z",
+      "updatedAt": "2022-03-11T05:17:55.427Z",
       "diff": {
         "original": {},
         "change": {
@@ -1427,24 +1427,24 @@ Response
     "meta_key": "glossary",
     "meta_value": "{\"Project Statuses\":[...],\"Unit Statuses\":[...]}",
     "confirmed": true,
-    "created_at": "2022-03-13T03:08:15.156Z",
-    "updated_at": "2022-03-13T03:08:15.156Z"
+    "createdAt": "2022-03-13T03:08:15.156Z",
+    "updatedAt": "2022-03-13T03:08:15.156Z"
   },
   {
     "id": 2,
     "meta_key": "pickList",
     "meta_value": "{\"projectSector\":[...],\"unitType\":[...]}",
     "confirmed": true,
-    "created_at": "2022-03-13T03:08:15.156Z",
-    "updated_at": "2022-03-13T03:08:15.156Z"
+    "createdAt": "2022-03-13T03:08:15.156Z",
+    "updatedAt": "2022-03-13T03:08:15.156Z"
   },
   {
     "id": 3,
     "meta_key": "orgList",
     "meta_value": "[{\"orgUid\":\"723a2f97abd8a45826d97c1bdf6f38b11f6207a9a8cb80b18608505efd5ccc27\"}]",
     "confirmed": true,
-    "created_at": "2022-03-13T03:08:15.156Z",
-    "updated_at": "2022-03-13T03:08:15.156Z"
+    "createdAt": "2022-03-13T03:08:15.156Z",
+    "updatedAt": "2022-03-13T03:08:15.156Z"
   }
 ]
 ```

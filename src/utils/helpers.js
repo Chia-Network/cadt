@@ -70,6 +70,54 @@ export const normalizeRawTimestamps = (rows, fields) => {
   return rows;
 };
 
+export const normalizeApiTimestampFields = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeApiTimestampFields(item));
+  }
+
+  if (value instanceof Date || value === null || typeof value !== 'object') {
+    return value;
+  }
+
+  if (typeof value.toJSON === 'function' && value.dataValues) {
+    return normalizeApiTimestampFields(value.toJSON());
+  }
+
+  if (Object.prototype.toString.call(value) !== '[object Object]') {
+    return value;
+  }
+
+  const normalized = { ...value };
+  for (const [key, item] of Object.entries(value)) {
+    if (key === 'diff') {
+      continue;
+    }
+
+    if (
+      Array.isArray(item)
+      || item?.dataValues
+      || (
+        Object.prototype.toString.call(item) === '[object Object]'
+        && (item.created_at !== undefined || item.updated_at !== undefined)
+      )
+    ) {
+      normalized[key] = normalizeApiTimestampFields(item);
+    }
+  }
+
+  if (normalized.createdAt === undefined && normalized.created_at !== undefined) {
+    normalized.createdAt = normalized.created_at;
+  }
+  if (normalized.updatedAt === undefined && normalized.updated_at !== undefined) {
+    normalized.updatedAt = normalized.updated_at;
+  }
+
+  delete normalized.created_at;
+  delete normalized.updated_at;
+
+  return normalized;
+};
+
 /**
  *
  * @param userColumns {string[]}

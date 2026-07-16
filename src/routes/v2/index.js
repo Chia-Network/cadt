@@ -29,8 +29,54 @@ import { AuditV2Router } from './resources/audit-v2.js';
 import { OfferV2Router } from './resources/offer-v2.js';
 import { FilestoreV2Router } from './resources/filestore-v2.js';
 import { buildHealthDiskSpacePayload } from '../../utils/disk-space.js';
+import { normalizeApiTimestampFields } from '../../utils/helpers.js';
 
 const V2Router = express.Router();
+
+const TIMESTAMP_NORMALIZED_PREFIXES = [
+  '/methodology',
+  '/program',
+  '/project',
+  '/validation',
+  '/verification',
+  '/issuance',
+  '/unit',
+  '/location',
+  '/estimation',
+  '/rating',
+  '/co-benefit',
+  '/project-methodology',
+  '/stakeholder',
+  '/stakeholder-projects',
+  '/label',
+  '/unit-label',
+  '/aef-t1-submission',
+  '/aef-t5-authorized-entities',
+  '/aef-t2-authorizations',
+  '/aef-t3-actions',
+  '/aef-t4-holdings',
+  '/staging',
+  '/audit',
+];
+
+const TIMESTAMP_NORMALIZED_EXACT_ROUTES = [
+  '/governance',
+];
+
+V2Router.use((req, res, next) => {
+  const shouldNormalizeTimestamps =
+    TIMESTAMP_NORMALIZED_EXACT_ROUTES.includes(req.path)
+    || TIMESTAMP_NORMALIZED_PREFIXES.some(
+      (route) => req.path === route || req.path.startsWith(`${route}/`),
+    );
+  if (!shouldNormalizeTimestamps) {
+    return next();
+  }
+
+  const json = res.json.bind(res);
+  res.json = (body) => json(normalizeApiTimestampFields(body));
+  next();
+});
 
 V2Router.get('/health', (req, res) => {
   // Non-blocking: see bare /health in src/middleware.js. The shared
