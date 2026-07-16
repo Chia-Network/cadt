@@ -550,6 +550,33 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
     });
   });
 
+  describe('GET /v2/project-methodology/:cadTrustProjectMethodologyId', function () {
+    it('should return timestamp fields in camelCase only', async function () {
+      const newMethodology = await MethodologyV2.create({
+        cadTrustMethodologyId: uuidv4(),
+        methodologyName: 'Test Methodology for Timestamp API Test',
+        methodologyCode: 'TEST-METH-TIMESTAMP-001',
+        methodologyType: 'Methodology for timestamp API test',
+      });
+
+      const projectMethodology = await ProjectMethodologyV2.create({
+        cadTrustProjectMethodologyId: uuidv4(),
+        cadTrustProjectId: testProjectId,
+        cadTrustMethodologyId: newMethodology.cadTrustMethodologyId,
+        projectMethodologyDate: '2024-01-01',
+      });
+
+      const response = await supertest(app)
+        .get(`/v2/project-methodology/${projectMethodology.cadTrustProjectMethodologyId}`)
+        .expect(200);
+
+      expect(response.body.createdAt).to.exist;
+      expect(response.body.updatedAt).to.exist;
+      expect(response.body).to.not.have.property('created_at');
+      expect(response.body).to.not.have.property('updated_at');
+    });
+  });
+
   describe('POST /v2/project-methodology (Create)', function () {
     it('should create a new project-methodology relationship via API', async function () {
       // Create a new methodology for this test to avoid conflicts with previous tests
