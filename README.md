@@ -363,6 +363,10 @@ This script does the following:
 
 ## Developer Guide
 
+For developers looking to use AI to assist with a CADT integration, please reference the below machine-to-machine schema document:
+
+[_CAD_Trust_v2.0.2__machine-readable_schema_reference.pdf](https://github.com/cadt/docs/_CAD_Trust_v2.0.2__machine-readable_schema_reference.pdf)
+
 A development environment for CADT assumes a synced Chia wallet running locally. [Node version manager (nvm)](https://github.com/nvm-sh/nvm) is used to switch node environments quickly. The repo contains a `.nvmrc` file that specifies the node version the CADT is expected to use and developers can do `nvm use` to switch to the version in the `.nvmrc`.
 
 ### Installation from Source
