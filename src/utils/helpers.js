@@ -88,16 +88,19 @@ export const normalizeApiTimestampFields = (value) => {
   }
 
   const normalized = { ...value };
-  if (Array.isArray(normalized.data)) {
-    normalized.data = normalized.data.map((item) => normalizeApiTimestampFields(item));
-  }
-
-  if (normalized.data?.dataValues) {
-    normalized.data = normalizeApiTimestampFields(normalized.data);
-  }
-
   for (const [key, item] of Object.entries(value)) {
-    if (item?.dataValues) {
+    if (key === 'diff') {
+      continue;
+    }
+
+    if (
+      Array.isArray(item)
+      || item?.dataValues
+      || (
+        Object.prototype.toString.call(item) === '[object Object]'
+        && (item.created_at !== undefined || item.updated_at !== undefined)
+      )
+    ) {
       normalized[key] = normalizeApiTimestampFields(item);
     }
   }
