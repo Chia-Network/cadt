@@ -2,261 +2,163 @@
 
 **Please review the [CAD Trust Terms and Conditions](docs/CAD_Trust_Registry_Terms_and_Conditions.pdf) and [CAD Trust User Terms and Conditions](docs/CAD_Trust_User_Terms_and_Conditions.pdf).**
 
-​This project provides the Climate Action Data Trust (CADT) API that integrates with the [Chia Blockchain](https://github.com/Chia-Network/chia-blockchain). For a user interface, see the [CADT UI project](https://github.com/Chia-Network/climate-warehouse-ui), which will connect to the CADT API.
+This project provides the Climate Action Data Trust (CADT) API that integrates with the [Chia Blockchain](https://github.com/Chia-Network/chia-blockchain). For a user interface, see the [CADT UI project](https://github.com/Chia-Network/climate-warehouse-ui), which will connect to the CADT API.
 
 This project was formerly known as the Climate Warehouse, and you may see this term used interchangeably with CADT.
 
-*Pagination is now strongly recommended on the units, projects, and issuances [API endpoints](docs/cadt_rpc_api.md) and will be mandatory in the future. Please adjust your API calls accordingly.*
+## Installation
+
+[Releases are available on the Github releases page](https://github.com/Chia-Network/cadt/releases) and binaries are built for Windows, macOS, and Linux. ARM binaries are available for Debian versions of Linux only.
+
+Ubuntu Linux is the recommended operating system and the majority of the development work and testing focuses on this platorm.
+
+System recommendation:
+
+* 2 CPU cores
+* 8 GB RAM
+* 500 GB disk space
+
+### Quickstart
+
+1. Use an Ubuntu Linux machine with at least 2 CPU cores, 8 GB RAM, and 500 GB disk space.
+1. Don't install as root, use a user account with sudo. This quickstart assumes a user account named `ubuntu`, as you would get by default on AWS.
+1. Install prerequisites.
+
+   ```bash
+   sudo apt-get update && sudo apt-get install ca-certificates curl gnupg python3-yq
+   ```
+
+1. Add the apt key.
+
+   ```bash
+   curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | sudo gpg --dearmor -o /usr/share/keyrings/chia.gpg
+   ```
+
+1. Add apt repos.
+
+   ```bash
+   echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/cadt/debian/ stable main" | sudo tee /etc/apt/sources.list.d/cadt.list > /dev/null
+   echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | sudo tee /etc/apt/sources.list.d/chia.list > /dev/null
+   echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | sudo tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
+   ```
+
+1. Install CADT, Chia, chia-tools, and Nginx.
+
+   ```bash
+   sudo apt-get update
+   sudo apt-get install chia-blockchain-cli cadt chia-tools nginx
+   ```
+
+1. Initialize Chia.
+
+   ```bash
+   chia init
+   ```
+
+1. Use testnet for development work (skip if this is your production setup).
+
+   ```bash
+   chia-tools network switch testneta
+   yq -y -i '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
+   sudo systemctl restart cadt@ubuntu chia-full-node@ubuntu chia-wallet@ubuntu chia-data-layer@ubuntu
+   ```
+
+1. Configure the Datalayer public directory.
+
+   ```bash
+   sudo mkdir -p /var/www/data_layer
+   sudo chown -R ubuntu /var/www/data_layer
+   chia-tools config edit --set data_layer.server_files_location=/var/www/data_layer
+   ```
+
+1. Configure Nginx to serve Datalayer files.
+
+   ```bash
+   sudo rm -f /etc/nginx/conf.d/* && sudo rm -f /etc/nginx/sites-enabled/*
+   sudo curl -fsSL -o /etc/nginx/conf.d/datalayer.conf https://raw.githubusercontent.com/Chia-Network/cadt/main/docs/nginx/datalayer.conf
+   sudo nginx -t && sudo systemctl restart nginx
+   ```
+
+1. Configure CADT with the Datalayer address.
+
+   Please use a domain name if possible instead of the IP address. Replace the `curl` part in `()` with your domain name if you can. Otherwise this will automatically use the IP address. **Note this IP address *MUST* be a static IP**.
+
+   ```bash
+   DATALAYER_FILE_SERVER_URL="http://$(curl -fsS https://ip.chia.net | tr -d '[:space:]')/data/"
+   yq -y -i ".APP.DATALAYER_FILE_SERVER_URL = \"$DATALAYER_FILE_SERVER_URL\"" ~/.chia/mainnet/cadt/config.yaml
+   ```
+
+1. Set your API key.
+
+   This sets it automatically to a random string, but you may use any API key you'd like by replacing the `openssl` section with your key.
+
+   ```bash
+   KEY=$(openssl rand -hex 10) yq -yi ".V1.CADT_API_KEY = \"$KEY\" | .V2.CADT_API_KEY = \"$KEY\"" ~/.chia/mainnet/cadt/config.yaml
+   ```
+
+1. Start and enable Chia, CADT, and Nginx.
+
+   ```bash
+   sudo systemctl enable nginx cadt@ubuntu chia-full-node@ubuntu chia-wallet@ubuntu chia-data-layer@ubuntu
+   sudo systemctl start cadt@ubuntu chia-full-node@ubuntu chia-wallet@ubuntu chia-data-layer@ubuntu
+   ```
+
+1. Fund your Chia wallet (mainnet only).
+
+   Sign up for an account at [https://vault.chia.net/](https://vault.chia.net/). Go to the "Buy XCH" section. We recommend buying at least 0.5 XCH. Once you have your funds, find your CADT wallet address:
+
+   ```bash
+   chia wallet get_address
+   ```
+
+   Send your XCH from vault.chia.net to your CADT chia wallet address.
+
+1. Monitor progress and status.
+
+   Chia full node syncing:
+
+   ```bash
+   chia show -s
+   ```
+
+   Chia wallet sync:
+
+   ```bash
+   chia wallet show
+   ```
+
+   Follow the Chia log:
+
+   ```bash
+   tail -f ~/.chia/mainnet/log/debug.log
+   ```
+
+   Follow the CADT log:
+
+   ```bash
+   journalctl -u cadt@ubuntu -f
+   ```
+
+1. Install a pre-release version (optional).
+
+   Pre-release versions are not recommended for production. Only install if you are confident in your decision.
+
+   ```bash
+   echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/cadt-test/debian/ stable main" | sudo tee /etc/apt/sources.list.d/cadt-test.list > /dev/null
+   echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/prerelease/debian/ prerelease main" | sudo tee /etc/apt/sources.list.d/chia-blockchain-prerelease.list > /dev/null
+   sudo apt update
+   sudo apt install cadt=1.7.26-rc3 chia-blockchain-cli=2.7.2-rc2
+   ```
 
 ## User Guide
 
-The CADT application is designed to run 24/7, much like any other API.  While it is possible to run it on-demand only when API requests need to be made, this guide assumes a permanently running solution.
+The CADT application is designed to run 24/7, much like any other API. The simplest way to run the CADT application is to use the same machine the Chia Full Node, Wallet, and Datalayer services reside on. A simple webserver to serve Chia Datalayer files is also required.  CADT communicates with the Chia services over an RPC interface.  The RPC interface uses certificates to authenticate, which will work automatically when the CADT application is run as the same user on the same machine as the Chia services.  To run CADT on a separate machine from Chia, a public certificate from the Chia node must be used to authenticate (not yet documented).
 
-The simplest way to run the CADT application is to use the same machine the Chia Full Node, Wallet, and Datalayer services reside on. A simple webserver to serve Chia Datalayer files is also required.  CADT communicates with the Chia services over an RPC interface.  The RPC interface uses certificates to authenticate, which will work automatically when the CADT application is run as the same user on the same machine as the Chia services.  To run CADT on a separate machine from Chia, a public certificate from the Chia node must be used to authenticate (not yet documented).
-
-Basic Chia installation instructions are provided below, but further installation options, please see the [Chia docs site](https://docs.chia.net/installation/).  For most CADT setups, we recommend the installing the headless `chia-blockchain-cli` package via the `apt` repo and using [systemd](https://docs.chia.net/installation/#systemd).
+Basic Chia installation instructions are provided above, but further installation options, please see the [Chia docs site](https://docs.chia.net/installation/).  For most CADT setups, we recommend the installing the headless `chia-blockchain-cli` package via the `apt` repo and using [systemd](https://docs.chia.net/installation/#systemd).
 
 After the initial installation, it will take anywhere from a few days (most likely for a cloud-hosted server) to a few weeks (possible on lower-powered systems or servers with slow connections) to sync the Chia full node.  During this time, CADT can start syncing, but any writes to CADT are likely to fail.  For best results, we recommend waiting for the Chia full node to finish syncing before using CADT.  Check the status of the full node sync with `chia show -s`.
 
 *Those familiar with bittorrent and have a fast connection can speed up the full node syncing by [downloading the database](https://www.chia.net/downloads/#database-checkpoint) and copying it into place manually*
-
-### How to use the API
-
-CADT will be transitioning to version 2 of the API while phasing out version 1 of the API.  For v2 documenentation, please see the [CADT v2 RPC Guide](docs/cadt_rpc_api_v2.md).  For v1, please see the [CADT v1 RPC Guide](docs/cadt_rpc_api.md).
-
-### Upgrading a v1 system to v2
-
-V2 of the CADT API is available on versions above 1.7.25.  When a v2 compatible version is first run, the CADT config file will be migrated from the `~/.chia/mainnet/cadt/v1` directory to the `~/.chia/mainnet/cadt` directory.  This new config file will contain parameters for both the v1 and v2 API.  The v1 and v2 endpoints and sync services can be enabled and disabled individually.
-
-Data cannot be migrated automatically from v1 to v2, but a v1 organization [can be upgraded](/docs/cadt_rpc_api_v2.md#upgrade-v1-organization-to-v2).
-
-## Installation
-
-[Releases are tagged in Github](https://github.com/Chia-Network/climate-warehouse/tags), and binaries are built for Windows, macOS, and Linux. ARM binaries are available for Debian versions of Linux only.
-
-### System Requirements
-
-CADT and Chia system usage will depend on many factors, including how busy the blockchain is, how much data is being mirrored by DataLayer, and how much data CADT is ingesting and processing.  The current minimum requirements for running CADT and Chia together on a system are:
-
-* 4 CPU cores
-* 8 GB RAM
-* 300 GB disk space
-
-ARM and x86 systems are supported.  While Windows, MacOS, and all versions of Linux are supported, Ubuntu Linux is the recommended operating system as it is used most in testing and our internal hosting.
-
-#### Disk space guard
-
-CADT defensively rejects write requests when the filesystem holding the V1/V2 SQLite databases drops below a low-space threshold, so a full disk cannot corrupt the database mid-transaction. Operators should monitor for this and free space (or expand the volume) before it triggers.
-
-* When free space falls below **1 GiB** (2³⁰ bytes), CADT logs a warning. Writes are still served.
-* When free space falls below **512 MiB** (2²⁰ × 512 bytes), CADT rejects `POST`, `PUT`, and `PATCH` requests with HTTP `507 Insufficient Storage` and logs an error. `GET` reads and `DELETE` requests are still served so operators can free space without restarting the service. Note that a very large `DELETE` (e.g., a cascading delete that touches many rows) writes to the SQLite WAL during the transaction; if the disk is critically low even an allowed `DELETE` may run out of space before the next checkpoint, so prefer freeing files outside the database first.
-* Log lines are emitted only on **severity transitions** (`ok` → `warn`, `warn` → `block`, recovery to `ok`, etc.) — not on every observation — so monitoring scrapes against `/health` cannot drown out the alert when free space first drops below a threshold.
-* Current status is exposed under the `diskSpace` field on the `/health`, `/v1/health`, and `/v2/health` endpoints for monitoring. The field is `null` until the first probe completes, otherwise an object with `severity` (`ok` / `warn` / `block` / `unknown`), `freeBytes` (the lowest free-space figure observed across the V1/V2 data directories, or `null` when every probe failed), and the `blockBytes` / `warnBytes` thresholds. The 507 response body itself only contains `{message, error: "INSUFFICIENT_DISK_SPACE", success: false}` — exact byte counts are reserved for `/health` so anonymous callers (the disk-space gate runs before the `CADT_API_KEY` check) cannot enumerate operational state.
-
-### Linux
-
-A binary file that can run on all Linux distributions on x86 hardware can be found for each tagged release named `cadt-linux-x64-<version>.zip`.  This zip file will extract to the `cadt-linux-64` directory by default, where the `cadt` file can be executed to run the API.
-
-#### Recommended Method: APT on Debian-based Linux Distros (Ubuntu, Mint, etc)
-
-The CADT API and the Chia Blockchain software can be installed with `apt`.  Both ARM and x86 versions can be installed this way.
-
-1. Start by updating apt and allowing repository download over HTTPS:
-
-```
-sudo apt-get update
-sudo apt-get install ca-certificates curl gnupg
-```
-
-2.  Add Chia's official GPG Key (if you have installed Chia with `apt`, you'll have this key already and will get a message about overwriting the existing key, which is safe to do):
-
-```
-curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | sudo gpg --dearmor -o /usr/share/keyrings/chia.gpg
-```
-
-3. Use the following command to set up the CADT repository.
-
-```
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/cadt/debian/ stable main" | sudo tee /etc/apt/sources.list.d/cadt.list > /dev/null
-```
-
-4. Add the Chia repository (via the [official Chia installation instructions](https://docs.chia.net/installation/#using-the-cli))
-
-```
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | sudo tee /etc/apt/sources.list.d/chia.list > /dev/null
-```
-
-5.  Install Chia CLI and CADT
-
-```
-sudo apt-get update
-sudo apt-get install chia-blockchain-cli cadt
-```
-
-6.  Start Chia Wallet, Full Node, and Datalayer with [systemd](https://docs.chia.net/installation/#systemd)
-
-```
-sudo systemctl start chia-wallet@<USERNAME> chia-data-layer@<USERNAME> chia-full-node@<USERNAME>
-```
-
-For `<USERNAME>`, enter the user that Chia runs as (the user with the `.chia` directory in their home directory).  For example, if the `ubuntu` is where Chia runs, start Chia with `systemctl start chia-wallet@ubuntu`.
-
-
-7.  Start CADT with systemd
-
-```
-sudo systemctl start cadt@<USERNAME>
-```
-
-8.  Set Chia and CADT to run at boot
-
-```
-sudo systemctl enable chia-wallet@<USERNAME> chia-data-layer@<USERNAME> chia-full-node@<USERNAME> cadt@<USERNAME>
-```
-
-9.  View CADT logs to validate
-
-```
-journalctl -u cadt@<USERNAME> -f
-(ctrl+c to exit)
-```
-
-10.  Install webserver of choice to serve datalayer files (Nginx documented here)
-
-```sudo apt install nginx
-sudo systemctl enable nginx
-```
-
-See the [Datalayer HTTP File Serving](#datalayer-http-file-serving) section below for information on configuring Nginx.
-
-#### Installation from Source
-
-*Installation from source is only recommended for those contributing code to CADT and is not intended to be used in production.*
-
-You'll need:
-​
-- Git
-- [nvm](https://github.com/nvm-sh/nvm) - This app uses `nvm` to align node versions across development, CI and production. If you're working on Windows, you should consider [nvm-windows](https://github.com/coreybutler/nvm-windows)
-- C/C++ build tools for compiling the SQLite native module (see below)
-- A working [Chia installation](https://docs.chia.net/installation/#using-the-cli) running wallet and datalayer (full node recommended)
-
-##### Build Prerequisites
-
-The `sqlite3` npm package is compiled from source during `npm install` to ensure compatibility across platforms. This requires a C/C++ toolchain and Python 3:
-
-**Debian / Ubuntu:**
-
-```
-sudo apt-get install -y build-essential python3
-```
-
-**macOS:**
-
-```
-xcode-select --install
-```
-
-To install from source:
-
-```
-git clone git@github.com:Chia-Network/cadt.git
-cd cadt
-nvm install
-nvm use
-npm install
-npm run start
-```
-
-#### Pre-release Versions
-
-Experimental code is released with a "release candidate" naming convention and can be found on the [releases](/releases) page with `-rc` in the version number. Not all of the release candidates will be stable and caution should be used.
-
-Release candidates can be installed via `apt` using the instructions (above)[#debian-based-linux-distros-ubuntu-mint-etc] except replace step 3 with the following:
-
-```
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/cadt-test/debian/ stable main" | sudo tee /etc/apt/sources.list.d/cadt-test.list > /dev/null
-```
-
-If both the stable and release-candidate repos are added, `apt` can switch between versions installed using by appending `=<version-number>` to the install command:
-
-```
-apt install cadt=1.7.19
-apt install cadt=1.7.21-rc7
-```
-
-Without specifying the version number, `apt` will install the latest release candidate if it exists, which might not always be desired.
-
-### Datalayer HTTP File Serving
-
-CADT relies on all participants publicly sharing their data over Chia Datalayer, which includes sharing the Chia-generated `.dat` files over HTTP.  The files are located in `~/.chia/mainnet/data_layer/db/server_files_location_<NETWORK>/` (where `<NETWORK>` is the Chia network, usually either "mainnet" or "testneta") and can be shared over any web-accessible HTTP endpoint, including
-
-* Using Nginx, Apache, Caddy, or any other web server.  A static IP address, or stable DNS record, will be required, which is not offered by default on some hosting providers.  On AWS, assign an Elastic IP to the EC2 instance or use an Application Load Balancer to solve this.  Another challenge is that the default location for the .dat files is in the user's home directory, which the web server software will not have read-access to.  One simple solution is
-  * `mv ~/.chia/mainnet/data_layer/db/server_files_location_<NETWORK> /var/www/` - move the datalayer file directory outside of the home directory
-  * `chmod -R 744 /var/www/server_files_location_<NETWORK>` - change permissions on all datalayer files to be read by any user
-  * `ln -s /var/www/server_files_location_<NETWORK> ~/.chia/mainnet/data_layer/db/server_files_location_<NETWORK>` - create a shortcut from the old location to the new
-  * Use [Nginx](https://nginx.org/), [Apache](https://httpd.apache.org/), [Caddy](https://caddyserver.com/), or any web server to serve the files over HTTP.  Here is a sample Nginx config:
-
-  ```
-  server {
-    listen 80;
-
-    root /var/www/server_files_location_<NETWORK>;
-
-    server_name datalayer.example.com;
-
-    index index.html;
-
-    expires 30d;
-    add_header Pragma "public";
-    add_header Cache-Control "public";
-
-  }
-  ```
-
-* Use [S3](https://aws.amazon.com/s3/) or other object store.  Datalayer .dat files can be synced to any cloud file storage solution that can serve them publicly over HTTP.  One recommended solution using S3 is to [use this script and follow the installation and usage instructions in the README](https://github.com/TheLastCicada/Chia-Datalayer-S3-Sync).
-
-Once the .dat files are publicly available, update `DATALAYER_FILE_SERVER_URL` in the [CADT configuration file](#configuration) with the URL or IP address (always include http:// or https://) and the port, then restart CADT.  CADT will begin to create mirrors at this URL for your data and all stores you are subscribed to.
-
-### Run CADT on a Testnet
-
-Chia has a few test networks called "[testnets](https://docs.chia.net/testnets/)".  Testnets allow anyone to test applications using plentiful and low value TXCH instead of needing to purchace XCH.  We recommend running a testnet version of CADT in order to test integrations, software updates, and experiment in a low-stakes environment.
-
-CADT runs on a testnet called "testnetA" which is different than the main Chia testnet, testnet11.  TestnetA has a CADT governance node and an [observer](https://chia-cadt-demo.chiamanaged.com/).  To configure your Chia and CADT environment to use testnetA, do the following:
-
-*Note - these instructions only work with Chia version 2.4.4 and above*
-
- 1. Follow the [instructions here and install chia-tools](https://github.com/chia-network/chia-tools?tab=readme-ov-file#apt-repo-installation).
-
- 2.  Use chia-tools to switch to testneta in the Chia config
-
-      `chia-tools network switch testneta`
-
- 3.  Restart Chia
-
-     `sudo systemctl restart chia-wallet@<USERNAME> chia-data-layer@<USERNAME> chia-full-node@<USERNAME>`
-
- 4.  Stop CADT
-
-     `sudo systemctl stop cadt@<USERNAME>`
-
- 5.  Update the `GOVERNANCE_BODY_ID` in the `V1` section of `~/.chia/mainnet/cadt/config.yaml` to be `1019153f631bb82e7fc4984dc1f0f2af9e95a7c29df743f7b4dcc2b975857409`
-
- 6.  If you already were running CADT on mainnet, delete the CADT database
-
-     `rm ~/.chia/mainnet/cadt/v1/data.sqlite3*`
-
- 7.  Start CADT
-
-     `sudo systemctl start cadt@<USERNAME>`
-
-
-### Ports, Networking, and Security
-
-By default, the CADT API will listen on localhost only on port 31310. If running a node with `READ_ONLY` set to `false`, it is highly recommended that CADT is run on a private network or with access limited by IP address. To allow remote connections to CADT, set the `BIND_ADDRESS` (see the [Configuration](#configuration) section below) to the IP to listen on, or `0.0.0.0` to listen on all interfaces. The port for the CADT API can be set with the parameter `CW_PORT`.  The default port is 31310. In many cases, users will need to access the API from their workstations for either the [CADT UI](https://github.com/Chia-Network/cadt-ui) or to integrate with existing tools and scripts. To add authentication to the API, use the `CADT_API_KEY` parameter.  Alternatively, the API can be served behind an authentication proxy to restrict access and the `CADT_API_KEY` can be left blank. If running an observer node with `READ_ONLY` set to `true`, the CADT API will only share data from the public blockchain, and running without authentication is usually safe. If `READ_ONLY` is set to `false`, authentication must be used to prevent unauthorized writes to the blockchain.
-
-### Adding Encryption to the CADT API
-
-The CADT API uses HTTP and is unencrypted. To add encryption, use a reverse proxy like [Nginx](https://docs.nginx.com/nginx/admin-guide/web-server/reverse-proxy/) with an SSL certificate. In this scenario, the CADT application can be set to listen only on localhost, and Nginx (on the same server) will proxy incoming requests to port 31310.
 
 ### Configuration
 
@@ -278,8 +180,6 @@ In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), CADT will add
   * **AUTO_SUBSCRIBE_FILESTORE**: Subscribing to the filestore for any organization is optional. To automatically subscribe and sync the filestore to every organization you subscribe to, set this to `true`.
   * **AUTO_MIRROR_EXTERNAL_STORES**: When set to true (the default), CADT will automatically create mirrors for each store you are subscribed to. Mirroring all subscriptions using the `DATALAYER_FILE_SERVER_URL` will make the entire CADT network more resilient and distributed. Note: `DATALAYER_FILE_SERVER_URL` must also be set to a valid URL or IP address for mirrors to be created. Both settings are required for external store mirroring to function.
   * **ONLY_CADT_SUBSCRIPTIONS**: When `true` (the default), CADT keeps DataLayer subscriptions aligned with the governance **orgList** in both directions. Organizations removed from the orgList are first unsubscribed from DataLayer, then removed from this node after unsubscribe is confirmed and the purge grace period has elapsed — the organization record and **all** of its local data (projects, units, and every related record it created) are deleted from the database. The deletion is unconditional: it does **not** check whether another organization references that data. Organizations on the orgList that are not subscribed are subscribed (including orgs re-added after a prior removal, including orgs previously removed via the API delete flow). The home organization and governance body store are never auto-removed. Reconciliation runs only after a successful governance sync provides a non-empty **orgList**; empty or stale cached governance data does not trigger removals. Set to `false` to disable orglist-driven subscribe/remove reconciliation. While enabled, a manual unsubscribe of an org still listed on the orgList will be reverted on the next sync cycle.
-  * **ONLY_CADT_SUBSCRIPTIONS_PURGE_GRACE_CYCLES**: Number of consecutive reconcile cycles an unsubscribed off-orgList organization must remain off the governance orgList before local data is purged. The default is `3`; invalid or non-positive values fall back to `3`.
-  * **ORG_PURGE_DELETE_BATCH_SIZE**: Maximum number of rows deleted per purge batch when removing an organization's local data. The default is `5000`; invalid or non-positive values fall back to `5000`. For orglist-driven background purges, smaller values release the SQLite write lock more often but increase total purge overhead.
   * **LOG_LEVEL**: Controls verbosity of logging. Common settings are `info` and `debug`. Setting to `silly` will log all queries.
   * **TASKS**: Section for configuring sync intervals.
     * **GOVERNANCE_SYNC_TASK_INTERVAL**: Syncs picklist, orgList, and glossary from the governance node. Default 120 seconds (2 minutes).
@@ -322,8 +222,122 @@ In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), CADT will add
     * **DB_NAME**: MySQL database name.
     * **DB_HOST**: Hostname of the MySQL database.
 
-​
 Note that the CADT application will need to be restarted after any changes to the config.yaml file.
+
+### Diagnostics
+
+When debugging a local CADT install (wallet not reachable, DataLayer not syncing, network mismatch, low disk space), use the system-wide diagnostics endpoint. It is mounted at the server root, not under `/v1` or `/v2`:
+
+```bash
+curl -s -H 'x-api-key: YOUR_CADT_API_KEY' http://localhost:31310/diagnostics | jq .
+```
+
+The endpoint returns **403** on read-only observer nodes (`READ_ONLY=true`). It is designed to stay usable while other API routes are blocked by sync checks. If you cannot use the API endpoint, the diagnostics output is written to the CADT log upon startup.
+
+The diagnostics endpoint contains a `status` field in each section, which reports `ok` if everything matches expected healthy values. Look for sections where the `status` value does not say `ok` for potential problem areas.
+
+Lighter-weight health checks are also available: `GET /health`, `GET /v1/health`, `GET /v2/health`, and `GET /v1/health/wallet` or `GET /v2/health/wallet` for wallet-specific status.
+
+See [System endpoints in the V1 RPC guide](docs/cadt_rpc_api.md#system-endpoints) and [System endpoints in the V2 RPC guide](docs/cadt_rpc_api_v2.md#system-endpoints) for request examples and response fields.
+
+### How to use the API
+
+CADT will be transitioning to version 2 of the API while phasing out version 1 of the API.  For v2 documenentation, please see the [CADT v2 RPC Guide](docs/cadt_rpc_api_v2.md).  For v1, please see the [CADT v1 RPC Guide](docs/cadt_rpc_api.md).
+
+### Upgrading a v1 system to v2
+
+V2 of the CADT API is available on versions above 1.7.25.  When a v2 compatible version is first run, the CADT config file will be migrated from the `~/.chia/mainnet/cadt/v1` directory to the `~/.chia/mainnet/cadt` directory.  This new config file will contain parameters for both the v1 and v2 API.  The v1 and v2 endpoints and sync services can be enabled and disabled individually.
+
+Data cannot be migrated automatically from v1 to v2, but a v1 organization [can be upgraded](/docs/cadt_rpc_api_v2.md#upgrade-v1-organization-to-v2).
+
+#### Disk space guard
+
+CADT defensively rejects write requests when the filesystem holding the V1/V2 SQLite databases drops below a low-space threshold, so a full disk cannot corrupt the database mid-transaction. Operators should monitor for this and free space (or expand the volume) before it triggers.
+
+* When free space falls below **1 GiB** (2³⁰ bytes), CADT logs a warning. Writes are still served.
+* When free space falls below **512 MiB** (2²⁰ × 512 bytes), CADT rejects `POST`, `PUT`, and `PATCH` requests with HTTP `507 Insufficient Storage` and logs an error. `GET` reads and `DELETE` requests are still served so operators can free space without restarting the service. Note that a very large `DELETE` (e.g., a cascading delete that touches many rows) writes to the SQLite WAL during the transaction; if the disk is critically low even an allowed `DELETE` may run out of space before the next checkpoint, so prefer freeing files outside the database first.
+* Log lines are emitted only on **severity transitions** (`ok` → `warn`, `warn` → `block`, recovery to `ok`, etc.) — not on every observation — so monitoring scrapes against `/health` cannot drown out the alert when free space first drops below a threshold.
+* Current status is exposed under the `diskSpace` field on the `/health`, `/v1/health`, and `/v2/health` endpoints for monitoring. The field is `null` until the first probe completes, otherwise an object with `severity` (`ok` / `warn` / `block` / `unknown`), `freeBytes` (the lowest free-space figure observed across the V1/V2 data directories, or `null` when every probe failed), and the `blockBytes` / `warnBytes` thresholds. The 507 response body itself only contains `{message, error: "INSUFFICIENT_DISK_SPACE", success: false}` — exact byte counts are reserved for `/health` so anonymous callers (the disk-space gate runs before the `CADT_API_KEY` check) cannot enumerate operational state.
+
+### Datalayer HTTP File Serving
+
+CADT relies on all participants publicly sharing their data over Chia Datalayer, which includes sharing the Chia-generated `.dat` files over HTTP. See the [Quickstart](#quickstart) section for the recommended way to set this up. By default, the `.dat` files are located in `~/.chia/mainnet/data_layer/db/server_files_location_<NETWORK>/` (where `<NETWORK>` is the Chia network, usually either "mainnet" or "testneta") and can be shared over any web-accessible HTTP endpoint, including
+
+* Using Nginx, Apache, Caddy, or any other web server.  A static IP address, or stable DNS record, will be required, which is not offered by default on some hosting providers.  On AWS, assign an Elastic IP to the EC2 instance or use an Application Load Balancer to solve this.  Another challenge is that the default location for the .dat files is in the user's home directory, which the web server software will not have read-access to.  One simple solution is
+  * `mv ~/.chia/mainnet/data_layer/db/server_files_location_<NETWORK> /var/www/` - move the datalayer file directory outside of the home directory
+  * `chmod -R 744 /var/www/server_files_location_<NETWORK>` - change permissions on all datalayer files to be read by any user
+  * `ln -s /var/www/server_files_location_<NETWORK> ~/.chia/mainnet/data_layer/db/server_files_location_<NETWORK>` - create a shortcut from the old location to the new
+  * Use [Nginx](https://nginx.org/), [Apache](https://httpd.apache.org/), [Caddy](https://caddyserver.com/), or any web server to serve the files over HTTP.
+* Use [S3](https://aws.amazon.com/s3/) or other object store.  Datalayer .dat files can be synced to any cloud file storage solution that can serve them publicly over HTTP.  One recommended solution using S3 is to [use this script and follow the installation and usage instructions in the README](https://github.com/TheLastCicada/Chia-Datalayer-S3-Sync).
+
+Once the .dat files are publicly available, update `DATALAYER_FILE_SERVER_URL` in the [CADT configuration file](#configuration) with the URL or IP address (always include http:// or https://) and the port, then restart CADT.  CADT will begin to create mirrors at this URL for your data and all stores you are subscribed to.
+
+### Pre-release Versions
+
+Experimental code is released with a "release candidate" naming convention and can be found on the [releases](/releases) page with `-rc` in the version number. Not all of the release candidates will be stable and caution should be used.
+
+Release candidates can be installed via `apt` using the [Quickstart](#quickstart) instructions, except replace the CADT apt repository with the following:
+
+```bash
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/cadt-test/debian/ stable main" | sudo tee /etc/apt/sources.list.d/cadt-test.list > /dev/null
+```
+
+If both the stable and release-candidate repos are added, `apt` can switch between versions installed using by appending `=<version-number>` to the install command:
+
+```bash
+apt install cadt=1.7.19
+apt install cadt=1.7.21-rc7
+```
+
+Without specifying the version number, `apt` will install the latest release candidate if it exists, which might not always be desired.
+
+### Run CADT on a Testnet
+
+Chia has a few test networks called "[testnets](https://docs.chia.net/testnets/)".  Testnets allow anyone to test applications using plentiful and low value TXCH instead of needing to purchace XCH.  We recommend running a testnet version of CADT in order to test integrations, software updates, and experiment in a low-stakes environment.
+
+CADT runs on a testnet called "testnetA" which is different than the main Chia testnet, testnet11.  TestnetA has a CADT governance node and an [observer](https://chia-cadt-demo.chiamanaged.com/).  To configure your Chia and CADT environment to use testnetA, do the following:
+
+*Note - these instructions only work with Chia version 2.4.4 and above*
+
+1. Follow the [instructions here and install chia-tools](https://github.com/chia-network/chia-tools?tab=readme-ov-file#apt-repo-installation).
+1. Use chia-tools to switch to testneta in the Chia config.
+
+   ```bash
+   chia-tools network switch testneta
+   ```
+
+1. Restart Chia.
+
+   ```bash
+   sudo systemctl restart chia-wallet@<USERNAME> chia-data-layer@<USERNAME> chia-full-node@<USERNAME>
+   ```
+
+1. Stop CADT.
+
+   ```bash
+   sudo systemctl stop cadt@<USERNAME>
+   ```
+
+1. Update the `GOVERNANCE_BODY_ID` in the `V1` section of `~/.chia/mainnet/cadt/config.yaml` to be `1019153f631bb82e7fc4984dc1f0f2af9e95a7c29df743f7b4dcc2b975857409`.
+1. If you already were running CADT on mainnet, delete the CADT database.
+
+   ```bash
+   rm ~/.chia/mainnet/cadt/v1/data.sqlite3*
+   ```
+
+1. Start CADT.
+
+   ```bash
+   sudo systemctl start cadt@<USERNAME>
+   ```
+
+### Ports, Networking, and Security
+
+By default, the CADT API will listen on localhost only on port 31310. If running a node with `READ_ONLY` set to `false`, it is highly recommended that CADT is run on a private network or with access limited by IP address. To allow remote connections to CADT, set the `BIND_ADDRESS` (see the [Configuration](#configuration) section below) to the IP to listen on, or `0.0.0.0` to listen on all interfaces. The port for the CADT API can be set with the parameter `CW_PORT`.  The default port is 31310. In many cases, users will need to access the API from their workstations for either the [CADT UI](https://github.com/Chia-Network/cadt-ui) or to integrate with existing tools and scripts. To add authentication to the API, use the `CADT_API_KEY` parameter.  Alternatively, the API can be served behind an authentication proxy to restrict access and the `CADT_API_KEY` can be left blank. If running an observer node with `READ_ONLY` set to `true`, the CADT API will only share data from the public blockchain, and running without authentication is usually safe. If `READ_ONLY` is set to `false`, authentication must be used to prevent unauthorized writes to the blockchain.
+
+### Adding Encryption to the CADT API
+
+The CADT API uses HTTP and is unencrypted. To add encryption, use a reverse proxy like [Nginx](https://docs.nginx.com/nginx/admin-guide/web-server/reverse-proxy/) with an SSL certificate. In this scenario, the CADT application can be set to listen only on localhost, and Nginx (on the same server) will proxy incoming requests to port 31310.
 
 ## Tools
 
@@ -355,32 +369,55 @@ For developers looking to use AI to assist with a CADT integration, please refer
 
 A development environment for CADT assumes a synced Chia wallet running locally. [Node version manager (nvm)](https://github.com/nvm-sh/nvm) is used to switch node environments quickly. The repo contains a `.nvmrc` file that specifies the node version the CADT is expected to use and developers can do `nvm use` to switch to the version in the `.nvmrc`.
 
-### Diagnostics
+### Installation from Source
 
-When debugging a local CADT install (wallet not reachable, DataLayer not syncing, network mismatch, low disk space), use the system-wide diagnostics endpoint. It is mounted at the server root, not under `/v1` or `/v2`:
+*Installation from source is only recommended for those contributing code to CADT and is not intended to be used in production.*
+
+You'll need:
+
+- Git
+- [nvm](https://github.com/nvm-sh/nvm) - This app uses `nvm` to align node versions across development, CI and production. If you're working on Windows, you should consider [nvm-windows](https://github.com/coreybutler/nvm-windows)
+- C/C++ build tools for compiling the SQLite native module (see below)
+- A working [Chia installation](https://docs.chia.net/installation/#using-the-cli) running wallet and datalayer (full node recommended)
+
+#### Build Prerequisites
+
+The `sqlite3` npm package is compiled from source during `npm install` to ensure compatibility across platforms. This requires a C/C++ toolchain and Python 3:
+
+**Debian / Ubuntu:**
 
 ```bash
-curl -s -H 'x-api-key: YOUR_CADT_API_KEY' http://localhost:31310/diagnostics | jq .
+sudo apt-get install -y build-essential python3
 ```
 
-Omit the `x-api-key` header only when `CADT_API_KEY` is not configured. The endpoint returns **403** on read-only observer nodes (`READ_ONLY=true`). It is designed to stay usable while other API routes are blocked by sync checks.
+**macOS:**
 
-Lighter-weight health checks are also available: `GET /health`, `GET /v1/health`, `GET /v2/health`, and `GET /v1/health/wallet` or `GET /v2/health/wallet` for wallet-specific status.
+```bash
+xcode-select --install
+```
 
-See [System endpoints in the V1 RPC guide](docs/cadt_rpc_api.md#system-endpoints) and [System endpoints in the V2 RPC guide](docs/cadt_rpc_api_v2.md#system-endpoints) for request examples and response fields.
+To install from source:
+
+```bash
+git clone git@github.com:Chia-Network/cadt.git
+cd cadt
+nvm install
+nvm use
+npm install
+npm run start
+```
 
 ### Contributing
 
 All branches should be created from the `develop` branch and not from `main`. All pull requests should be made against the `develop` branch unless it is a new release. The `develop` branch will be merged into the `main` branch to create a release. Automation in the CI will create the [release](https://github.com/Chia-Network/cadt/releases) and attach the installation files to it automatically whenever code is merged to `main`. Additionally, the changelog will automatically be updated in the `main` branch. Therefore, the `main` branch should always be a representation of the latest released code.
 
-​This repo uses a [commit convention](https://www.conventionalcommits.org/en/v1.0.0/). A typical commit message might read:
-​
+This repo uses a [commit convention](https://www.conventionalcommits.org/en/v1.0.0/). A typical commit message might read:
+
+```text
+fix: correct home screen layout
 ```
-    fix: correct home screen layout
-```
-​
+
 The first part of this is the commit "type". The most common types are "feat" for new features and "fix" for bugfixes. Using these commit types helps us correctly manage our version numbers and changelogs. Since our release process calculates new version numbers from our commits, getting this right is very important.
-​
 
 - `feat` is for introducing a new feature
 - `fix` is for bug fixes
@@ -393,29 +430,27 @@ The first part of this is the commit "type". The most common types are "feat" fo
 - `ci` is for changes to the continuous integration files and scripts
 - `chore` is for changes that don't modify code, like a version bump
 - `revert` is for reverting a previous commit
-  ​
-  After the type and scope, there should be a colon (`:`).
-  ​
-  The "subject" of the commit follows. It should be a short indication of the change. The commit convention prefers that this is written in the present-imperative tense.
+
+After the type and scope, there should be a colon (`:`).
+
+The "subject" of the commit follows. It should be a short indication of the change. The commit convention prefers that this is written in the present-imperative tense.
 
 ### Versioning
 
 This project mostly adheres to semantic versioning.  The version specified in `package.json` will be used by the ci to create the new release in Github, so it is important to set that correctly.  The major version (version 1.0, 2.0, etc) should only be changed when the data model changes and the API goes from v1 to v2.  Minor version changes (version 1.2 to 1.3, etc.) are for breaking or substantial changes, usually requiring some action on the user's part.
-  ​
 
 ### Commit linting
 
-​
 Each time you commit the message will be checked against these standards in a pre-commit hook. Additionally, all the commits in a PR branch will be linted before it can be merged to master.
 
 To set up the pre-commit hooks on your local, run the following:
-​
-```
+
+```bash
 npm install -g @babel/cli husky prettier lint-staged cross-env
 npm set-script prepare "husky install"
 npm run prepare
-​
-// If you are on linux or mac run
+
+# If you are on linux or mac run
 chmod ug+x .husky/*
 chmod ug+x .git/hooks/*
 ```
@@ -424,65 +459,26 @@ chmod ug+x .git/hooks/*
 
 After running the ["Installation from Source"](https://github.com/Chia-Network/cadt#installation-from-source) steps above, do the following:
 
-```
-// transcompile project to es5
+```bash
+# transcompile project to es5
 npm run build
-​
-// Output binaries to dist folder
+
+# Output binaries to dist folder
 npm run create-win-x64-dist
 npm run create-mac-x64-dist
 npm run create-linux-x64-dist
 ```
 
-### Sequelize Generator
-​
-#### Creating Model and Migration Script
+#### Connecting to Socket.IO
 
-​
-Use the following command to create a model and a migration script
-​
-npx sequelize-cli model:generate --name User --attributes firstName:string,lastName:string,email:string
-​
+CADT exposes Socket.IO namespaces at `http://localhost:31310/v1/ws` and `http://localhost:31310/v2/ws`.
 
-#### Running Migrations
+After connecting, emit `'/subscribe'` with the feed you want to receive:
 
-​
-Migrations run automatically when you run the software. There is no manual tool that needs to be used.
-​
+* V1 feeds: `projects`, `units`, `staging`
+* V2 feeds: `projects-v2`, `units-v2`, `staging-v2`
 
-#### Making changes to Migrations without rolling back
-
-​
-If you want to alter, drop, or add a column or add a foreign key or anything with the table. Use the following command to create a barebones migration script
-​
-npx sequelize-cli migration:generate --name <enter-type-of-change-here>
-​
-
-#### Running Full Text Search Queries
-
-​
-To run an FTS query on a supported table, you can use the `MATCH` operator. A virtual column `rank` is also available for sorting purposes.
-​
-Example:
-​
-
-```
-SELECT rank, * FROM projects_fts WHERE projects_fts MATCH "PartialMatch*" ORDER BY rank
-​
-The '*' in the match is needed for wildcard
-```
-
-​
-More info: https://www.sqlite.org/fts5.html
-​
-
-#### Connecting to the WebSocket
-
-
-1. Open a WebSocket connection to http://localhost:31310/v1/ws
-   1. Once subscribed, emit either emit ...['subscribe', 'units'] or ['subscribe', 'projects']. You can emit both on the same connection
-2. You will receive frames that look like ...[change:units, {orgUid: '123'}], letting you know that there has been an update to a record
-   Coll
+Subscribed clients receive Socket.IO events such as `change:projects`, `change:units`, `change:projects-v2`, or `change:units-v2` when matching records change.
 
 ## Attribution
 

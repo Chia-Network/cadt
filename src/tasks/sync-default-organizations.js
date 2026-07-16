@@ -141,7 +141,6 @@ const task = new Task('sync-default-organizations', async () => {
             }),
           logger,
           apiVersionLabel: 'v1',
-          graceCycles: CONFIG.APP.ONLY_CADT_SUBSCRIPTIONS_PURGE_GRACE_CYCLES,
         });
       } else if (
         onlyCadtSubscriptions &&

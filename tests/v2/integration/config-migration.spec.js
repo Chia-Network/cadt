@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import fs from 'fs';
 import path from 'path';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import os from 'os';
 import { migrateConfigFiles } from '../../../src/utils/config-migration.js';
 import { getConfig, getConfigV2 } from '../../../src/utils/config-loader.js';

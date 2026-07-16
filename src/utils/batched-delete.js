@@ -2,7 +2,13 @@
 
 import { Op } from 'sequelize';
 
-export const DEFAULT_ORG_PURGE_DELETE_BATCH_SIZE = 5000;
+// Rows deleted per organization-purge batch. Background orglist purges run in
+// committed-batch mode, so each batch is its own transaction: a smaller batch
+// holds the SQLite write lock for a shorter window between commits, letting
+// other writers interleave. Kept deliberately conservative to avoid the purge
+// ever becoming a lock-contention source, at the cost of some extra overhead on
+// very large purges.
+export const DEFAULT_ORG_PURGE_DELETE_BATCH_SIZE = 1000;
 
 export const resolveDeleteBatchSize = (value) => {
   const parsed = Number(value);

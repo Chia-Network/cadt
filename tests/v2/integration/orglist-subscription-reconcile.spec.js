@@ -36,7 +36,6 @@ import {
 } from '../../../src/utils/orglist-subscription-reconcile.js';
 import { purgeV2OrganizationData } from '../../../src/utils/v2-org-data-purge.js';
 import { defaultConfig } from '../../../src/utils/defaultConfig.js';
-import { getConfig } from '../../../src/utils/config-loader.js';
 import {
   isGovernanceReady,
   markGovernanceReady,
@@ -877,32 +876,26 @@ describe('orglist-subscription-reconcile (V2)', function () {
     });
 
     it('should delete V2 org data through the full model path across multiple batches', async function () {
-      const config = getConfig();
-      const originalBatchSize = config.APP.ORG_PURGE_DELETE_BATCH_SIZE;
-      config.APP.ORG_PURGE_DELETE_BATCH_SIZE = 1;
-      try {
-        await createOrg({ org_uid: ORG_C, name: 'Org C' });
-        for (let i = 0; i < 3; i += 1) {
-          await ProjectV2.create({
-            cadTrustProjectId: uuidv4(),
-            orgUid: ORG_C,
-            projectRegistryName: `Registry ${i}`,
-            projectId: `full-delete-proj-${i}`,
-            projectName: `Project ${i}`,
-          });
-        }
-
-        const deletedCount = await OrganizationsV2.deleteAllOrganizationData(ORG_C, {
-          recordUserDeleted: false,
-          useCommittedBatches: true,
+      await createOrg({ org_uid: ORG_C, name: 'Org C' });
+      for (let i = 0; i < 3; i += 1) {
+        await ProjectV2.create({
+          cadTrustProjectId: uuidv4(),
+          orgUid: ORG_C,
+          projectRegistryName: `Registry ${i}`,
+          projectId: `full-delete-proj-${i}`,
+          projectName: `Project ${i}`,
         });
-
-        expect(deletedCount).to.be.greaterThan(3);
-        expect(await ProjectV2.count({ where: { orgUid: ORG_C } })).to.equal(0);
-        expect(await OrganizationsV2.count({ where: { org_uid: ORG_C } })).to.equal(0);
-      } finally {
-        config.APP.ORG_PURGE_DELETE_BATCH_SIZE = originalBatchSize;
       }
+
+      const deletedCount = await OrganizationsV2.deleteAllOrganizationData(ORG_C, {
+        recordUserDeleted: false,
+        useCommittedBatches: true,
+        batchSize: 1,
+      });
+
+      expect(deletedCount).to.be.greaterThan(3);
+      expect(await ProjectV2.count({ where: { orgUid: ORG_C } })).to.equal(0);
+      expect(await OrganizationsV2.count({ where: { org_uid: ORG_C } })).to.equal(0);
     });
 
     it('should record the org as user-deleted by default', async function () {
@@ -1007,8 +1000,6 @@ describe('orglist-subscription-reconcile (V2)', function () {
 
     it('should default ONLY_CADT_SUBSCRIPTIONS to true', function () {
       expect(defaultConfig.APP.ONLY_CADT_SUBSCRIPTIONS).to.equal(true);
-      expect(defaultConfig.APP.ONLY_CADT_SUBSCRIPTIONS_PURGE_GRACE_CYCLES).to.equal(3);
-      expect(defaultConfig.APP.ORG_PURGE_DELETE_BATCH_SIZE).to.equal(5000);
       expect(resolvePurgeGraceCycles('invalid')).to.equal(3);
       expect(resolvePurgeGraceCycles('2cycles')).to.equal(3);
       expect(resolvePurgeGraceCycles('2.5')).to.equal(3);
