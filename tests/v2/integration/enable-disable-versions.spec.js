@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import fs from 'fs';
 import path from 'path';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { getConfig, getConfigV2 } from '../../../src/utils/config-loader.js';
 import { initializeDatabases } from '../../../src/routes/index.js';
 import scheduler from '../../../src/tasks/index.js';

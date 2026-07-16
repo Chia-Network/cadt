@@ -1,4 +1,4 @@
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import fs from 'fs';
 import path from 'path';
 import { getChiaRoot } from './chia-root.js';

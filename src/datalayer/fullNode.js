@@ -1,7 +1,7 @@
 import _ from 'lodash';
 import fs from 'fs';
 import path from 'path';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { getChiaRoot } from '../utils/chia-root.js';
 
 export const getChiaConfig = _.memoize(() => {
