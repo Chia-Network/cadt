@@ -150,6 +150,58 @@ System recommendation:
    sudo apt install cadt=1.7.26-rc3 chia-blockchain-cli=2.7.2-rc2
    ```
 
+## Getting Started
+
+This section is your entry point. What you need to set up depends on whether you are consuming data or writing it.
+
+→ See [Installation](#installation)
+→ See [Configuration](#configuration)
+→ See [Run CADT on a Testnet](#run-cadt-on-a-testnet)
+
+### For data users
+
+If you only need to read and consume carbon credit data, set up CADT as usual: install the Chia services (wallet, full node, DataLayer) and run CADT as an observer node (`READ_ONLY` set to `true`). Once synced, CADT exposes a full set of GET endpoints for querying projects, units, issuances, and more.
+
+→ See the GET endpoints in [`docs/cadt_rpc_api_v2.md`](docs/cadt_rpc_api_v2.md)
+
+### For registries
+
+If you are a registry writing carbon credit data to the blockchain, consider Node as a Service before self-hosting.
+
+**Node as a Service (recommended)**
+Chia provides a free hosted Node as a Service (NaaS) for registry partners. Chia manages all Chia blockchain infrastructure on your behalf, so your team can focus entirely on data mapping and API integration rather than node operations. To get started with NaaS, contact CAD Trust to be onboarded as a registry partner. If you self-host instead, complete the [Installation](#installation) and [Configuration](#configuration) steps with `READ_ONLY` set to `false`.
+
+**1. Understand the v2 data model**
+Review the machine-readable schema to understand the data tables, their fields, required values, picklists, and insert order. This is the reference your team (and any automated tools) should use when mapping your registry's data to CADT.
+→ See [`docs/cadtrust-schema-v2.0.2.json`](docs/cadtrust-schema-v2.0.2.json)
+
+**2. Map your registry fields to the CADT schema**
+For each field in your source data, identify the corresponding CADT `apiField`, confirm the type and required status, and check picklist constraints. The schema file is designed to drive this mapping process directly — whether done manually or via an automated ETL pipeline or AI mapping agent.
+
+**3. Submit data via the v2 API**
+Use the RPC guide to understand the data model, endpoints, field tables, staging workflow, and curl examples for every entity.
+→ See [`docs/cadt_rpc_api_v2.md`](docs/cadt_rpc_api_v2.md)
+
+### For automated integrations and AI mapping agents (registries)
+
+If you are building a machine-to-machine ETL pipeline or using an AI agent to automate field mapping, follow these steps:
+
+**1. Load the schema**
+Load [`docs/cadtrust-schema-v2.0.2.json`](docs/cadtrust-schema-v2.0.2.json) as your source of truth for field definitions, types, required flags, and picklist values.
+
+**2. Map your registry fields**
+Match source fields against the schema's `apiField`, `type`, `required`, `source`, and `description` properties. Only submit fields where `source` is `user_input` — fields with `source: system` or `source: api_generated` are set automatically by CADT.
+
+**3. Validate picklist values**
+For fields with a `picklist` property, check allowed values in the schema's `picklists` object. When a live CADT node is available, prefer the live values from `GET /v2/governance/meta/pickList` as the authoritative source.
+
+**4. Follow insert order**
+Create records in the sequence defined by `insert_order` in the schema — parent records must exist before children. Example: `program` → `methodology` → `project` → `project_methodology` → `issuance` → `unit`.
+
+**5. Stage, review, commit**
+All write operations in CADT go through a staging workflow. Records are staged first (POST/PUT returns a staged UUID), then committed to the blockchain in a single commit call. Nothing is written to the blockchain until commit.
+→ See [Staging endpoints in the v2 RPC guide](docs/cadt_rpc_api_v2.md#staging)
+
 ## User Guide
 
 The CADT application is designed to run 24/7, much like any other API. The simplest way to run the CADT application is to use the same machine the Chia Full Node, Wallet, and Datalayer services reside on. A simple webserver to serve Chia Datalayer files is also required.  CADT communicates with the Chia services over an RPC interface.  The RPC interface uses certificates to authenticate, which will work automatically when the CADT application is run as the same user on the same machine as the Chia services.  To run CADT on a separate machine from Chia, a public certificate from the Chia node must be used to authenticate (not yet documented).
@@ -363,9 +415,11 @@ This script does the following:
 
 ## Developer Guide
 
-For developers looking to use AI to assist with a CADT integration, please reference the below machine-to-machine schema document:
+For developers looking to use AI to assist with a CADT integration, please reference the machine-to-machine schema and its human-readable mapping reference:
 
-[_CAD_Trust_v2.0.2__machine-readable_schema_reference.pdf](https://github.com/cadt/docs/_CAD_Trust_v2.0.2__machine-readable_schema_reference.pdf)
+- [`docs/cadtrust-schema-v2.0.2.json`](docs/cadtrust-schema-v2.0.2.json) — machine-readable schema (field definitions, picklists, insert order, validation rules, v1 → v2 migration notes)
+- [`docs/CADTrust_Machine_Readable_Schema_v2.0.2_Schema_Mapping_Reference.pdf`](docs/CADTrust_Machine_Readable_Schema_v2.0.2_Schema_Mapping_Reference.pdf) — schema mapping reference document
+- [Data Model Overview in the v2 RPC guide](docs/cadt_rpc_api_v2.md#data-model-overview) — table hierarchy, insert order, and integration rules for AI agents and ETL pipelines
 
 A development environment for CADT assumes a synced Chia wallet running locally. [Node version manager (nvm)](https://github.com/nvm-sh/nvm) is used to switch node environments quickly. The repo contains a `.nvmrc` file that specifies the node version the CADT is expected to use and developers can do `nvm use` to switch to the version in the `.nvmrc`.
 
