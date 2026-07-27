@@ -169,7 +169,7 @@ If you only need to read and consume carbon credit data, set up CADT as usual: i
 If you are a registry writing carbon credit data to the blockchain, consider Node as a Service before self-hosting.
 
 **Node as a Service (recommended)**
-Chia provides a free hosted Node as a Service (NaaS) for registry partners. Chia manages all Chia blockchain infrastructure on your behalf, so your team can focus entirely on data mapping and API integration rather than node operations. To get started with NaaS, contact CAD Trust to be onboarded as a registry partner. If you self-host instead, complete the [Installation](#installation) and [Configuration](#configuration) steps with `READ_ONLY` set to `false`.
+Chia provides an affordable hosted Node as a Service (NaaS) for registry partners. Chia manages all Chia blockchain infrastructure on your behalf, so your team can focus entirely on data mapping and API integration rather than node operations. To get started with NaaS, contact CAD Trust to be onboarded as a registry partner. If you self-host instead, complete the [Installation](#installation) and [Configuration](#configuration) steps with `READ_ONLY` set to `false`.
 
 **1. Understand the v2 data model**
 Review the machine-readable schema to understand the data tables, their fields, required values, picklists, and insert order. This is the reference your team (and any automated tools) should use when mapping your registry's data to CADT.
