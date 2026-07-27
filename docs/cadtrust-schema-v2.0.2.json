@@ -1,0 +1,3025 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Chia-Network/cadt/blob/develop/docs/cadtrust-schema-v2.0.2.json",
+  "title": "CAD Trust Data Schema v2.0.2",
+  "version": "2.0.2",
+  "generated": "2026-06-30",
+  "source": "CAD Trust Data Dictionary v2.0.2 (27 Jan)",
+  "description": "Machine-readable schema for the CAD Trust v2.0.2 data model. Use to map registry fields to CAD Trust API fields, validate data before submission, drive automated ETL pipelines, or power an AI mapping agent. Always prefer live picklist values from GET /v2/governance/meta/pickList when a CADT node is available; the picklists in this file are a static, version-dated snapshot.",
+  "picklist_version_date": "2026-06-30",
+  "erd": "https://dbdiagram.io/d/CAD-Trust-V2-0-October-202-68ecbee72e68d21b41249f79",
+  "changelog": {
+    "v2.0_key_changes": [
+      "NEW TABLE: methodology — standalone methodology registry with versioning",
+      "NEW TABLE: project_methodology — junction table, supports multiple methodologies per project",
+      "NEW TABLE: label — credit eligibility labels (CORSIA, CCP, ITMO, SDG, etc.)",
+      "NEW TABLE: unit_label — junction table linking units to labels",
+      "NEW TABLE: stakeholder — named project participants (owner, developer, consultant, etc.)",
+      "NEW TABLE: program — programme/activity grouping with program_registry_id",
+      "NEW TABLES: aef_t1_submission, aef_t2_authorizations, aef_t3_actions, aef_t4_holdings, aef_t5_authorized_entities — Article 6 AEF reporting",
+      "RESTRUCTURED: validation split into separate validation and verification tables",
+      "NEW FIELDS on unit: unit_retirement_detail, unit_retirement_beneficiary, unit_retirement_beneficiary_id (LEI), unit_itmos_reference_id",
+      "NEW FIELD on location: location_map_type (GIS file format picklist), location_map_file_link",
+      "ISSUANCE now links to project_methodology via cad_trust_project_methodology_id"
+    ],
+    "deprecated_fields": [
+      "project.methodology (use project_methodology table instead)",
+      "project.validationBody (use validation table instead)"
+    ]
+  },
+  "insert_order": [
+    "program",
+    "methodology",
+    "stakeholder",
+    "label",
+    "project",
+    "project_methodology",
+    "validation",
+    "verification",
+    "location",
+    "estimation",
+    "rating",
+    "co_benefit",
+    "issuance",
+    "unit",
+    "unit_label"
+  ],
+  "source_values": {
+    "user_input": "Registry supplies this field in the API request body.",
+    "system": "Auto-generated or inferred by CADT. Do NOT include in API requests.",
+    "api_generated": "Set by the API layer (e.g. createdAt, updatedAt). Do NOT include in API requests."
+  },
+  "tables": {
+    "program": {
+      "api_endpoint": "/v2/program",
+      "status": "existing",
+      "parent_fk": null,
+      "description": "A crediting program under which projects are registered (e.g. Gold Standard, VCS). Projects reference a program via cadTrustProgramId.",
+      "fields": {
+        "cad_trust_program_id": {
+          "column": "cad_trust_program_id",
+          "apiField": "cadTrustProgramId",
+          "type": "GUID",
+          "required": true,
+          "source": "system",
+          "description": "Auto-generated on create. Used as FK by project records.",
+          "example": "Internal use only"
+        },
+        "program_name": {
+          "column": "program_name",
+          "apiField": "programName",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "description": "Full name of the crediting program.",
+          "example": "Overlapping projects in Country Y"
+        },
+        "program_registry": {
+          "column": "program_registry",
+          "apiField": "programRegistry",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "description": "Name of the registry managing this program.",
+          "example": "Verra"
+        },
+        "program_registry_id": {
+          "column": "program_registry_id",
+          "apiField": "programRegistryId",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "description": "Registry-assigned program identifier.",
+          "example": "PROVSC001"
+        },
+        "program_description": {
+          "column": "program_description",
+          "apiField": "programDescription",
+          "type": "Text",
+          "required": false,
+          "source": "user_input",
+          "description": "Optional description of the program.",
+          "example": "Description"
+        },
+        "created_at": {
+          "column": "created_at",
+          "apiField": "createdAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated",
+          "example": "DD/MM/YYYY"
+        },
+        "updated_at": {
+          "column": "updated_at",
+          "apiField": "updatedAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated",
+          "example": "DD/MM/YYYY"
+        }
+      }
+    },
+    "methodology": {
+      "api_endpoint": "/v2/methodology",
+      "status": "existing",
+      "parent_fk": null,
+      "description": "A carbon accounting methodology. Linked to projects via the project_methodology join table.",
+      "fields": {
+        "cad_trust_methodology_id": {
+          "column": "cad_trust_methodology_id",
+          "apiField": "cadTrustMethodologyId",
+          "type": "GUID",
+          "required": true,
+          "source": "system",
+          "example": "Internal use only"
+        },
+        "methodology_code": {
+          "column": "methodology_code",
+          "apiField": "methodologyCode",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "description": "Registry-assigned code for the methodology.",
+          "example": "GS"
+        },
+        "methodology_name": {
+          "column": "methodology_name",
+          "apiField": "methodologyName",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "example": "METHODOLOGY FOR METERED & MEASURED ENERGY COOKING DEVICES"
+        },
+        "methodology_type": {
+          "column": "methodology_type",
+          "apiField": "methodologyType",
+          "type": "Picklist",
+          "required": false,
+          "source": "user_input",
+          "picklist": "methodology_type",
+          "description": "Classification of the methodology."
+        },
+        "methodology_version": {
+          "column": "methodology_version",
+          "apiField": "methodologyVersion",
+          "type": "String",
+          "required": false,
+          "source": "user_input",
+          "example": "2.1"
+        },
+        "methodology_date": {
+          "column": "methodology_date",
+          "apiField": "methodologyDate",
+          "type": "Date (ISO 8601)",
+          "required": false,
+          "source": "user_input"
+        },
+        "methodology_link": {
+          "column": "methodology_link",
+          "apiField": "methodologyLink",
+          "type": "URL",
+          "required": false,
+          "source": "user_input"
+        },
+        "created_at": {
+          "column": "created_at",
+          "apiField": "createdAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "updated_at": {
+          "column": "updated_at",
+          "apiField": "updatedAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        }
+      }
+    },
+    "stakeholder": {
+      "api_endpoint": "/v2/stakeholder",
+      "status": "new",
+      "v2_new": true,
+      "parent_fk": {
+        "field": "cadTrustProjectId",
+        "references": "project.cadTrustProjectId"
+      },
+      "description": "New in v2.0. An organisation or individual with a defined role on a project. Has a direct FK to project rather than a separate join table.",
+      "fields": {
+        "cad_trust_stakeholder_id": {
+          "column": "cad_trust_stakeholder_id",
+          "apiField": "cadTrustStakeholderId",
+          "type": "GUID",
+          "required": true,
+          "source": "system"
+        },
+        "stakeholder_name": {
+          "column": "stakeholder_name",
+          "apiField": "stakeholderName",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "v2_new": true,
+          "example": "Company Name / Organisation Name"
+        },
+        "stakeholder_type": {
+          "column": "stakeholder_type",
+          "apiField": "stakeholderType",
+          "type": "Picklist",
+          "required": true,
+          "source": "user_input",
+          "picklist": "stakeholder_type",
+          "v2_new": true
+        },
+        "stakeholder_link": {
+          "column": "stakeholder_link",
+          "apiField": "stakeholderLink",
+          "type": "URL",
+          "required": false,
+          "source": "user_input",
+          "v2_new": true
+        },
+        "created_at": {
+          "column": "created_at",
+          "apiField": "createdAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "updated_at": {
+          "column": "updated_at",
+          "apiField": "updatedAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "cad_trust_project_id": {
+          "column": "cad_trust_project_id",
+          "apiField": "cadTrustProjectId",
+          "type": "GUID (FK)",
+          "required": true,
+          "source": "user_input",
+          "description": "FK to the parent project."
+        }
+      }
+    },
+    "label": {
+      "api_endpoint": "/v2/label",
+      "status": "new",
+      "v2_new": true,
+      "parent_fk": null,
+      "description": "New in v2.0. A certification label (e.g. CCB Standards, SD VISta, Article 6 endorsements/authorisations). Assigned to units via the unit_label join table.",
+      "fields": {
+        "cad_trust_label_id": {
+          "column": "cad_trust_label_id",
+          "apiField": "cadTrustLabelId",
+          "type": "GUID",
+          "required": true,
+          "source": "system"
+        },
+        "label_name": {
+          "column": "label_name",
+          "apiField": "labelName",
+          "type": "Picklist",
+          "required": true,
+          "source": "user_input",
+          "picklist": "label_name",
+          "v2_new": true
+        },
+        "label_type": {
+          "column": "label_type",
+          "apiField": "labelType",
+          "type": "Picklist",
+          "required": true,
+          "source": "user_input",
+          "picklist": "label_type",
+          "v2_new": true
+        },
+        "label_link": {
+          "column": "label_link",
+          "apiField": "labelLink",
+          "type": "URL",
+          "required": false,
+          "source": "user_input",
+          "v2_new": true
+        },
+        "label_date": {
+          "column": "label_date",
+          "apiField": "labelDate",
+          "type": "Date (ISO 8601)",
+          "required": false,
+          "source": "user_input",
+          "v2_new": true
+        },
+        "created_at": {
+          "column": "created_at",
+          "apiField": "createdAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "updated_at": {
+          "column": "updated_at",
+          "apiField": "updatedAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        }
+      }
+    },
+    "project": {
+      "api_endpoint": "/v2/project",
+      "status": "existing",
+      "parent_fk": {
+        "field": "cadTrustProgramId",
+        "references": "program.cadTrustProgramId"
+      },
+      "description": "The central entity in the v2.0 data model. All child records reference a project via cadTrustProjectId. Create project before any of its children.",
+      "fields": {
+        "cad_trust_project_id": {
+          "column": "cad_trust_project_id",
+          "apiField": "cadTrustProjectId",
+          "type": "GUID (PK)",
+          "required": true,
+          "source": "system",
+          "description": "Auto-generated on create. FK for all child records."
+        },
+        "org_uid": {
+          "column": "org_uid",
+          "apiField": "orgUid",
+          "type": "GUID (FK)",
+          "required": true,
+          "source": "system",
+          "description": "Auto-set from home organisation."
+        },
+        "project_registry_name": {
+          "column": "project_registry_name",
+          "apiField": "projectRegistryName",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "example": "Verra"
+        },
+        "project_id": {
+          "column": "project_id",
+          "apiField": "projectId",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "description": "The registry's own ID for the project. Not a CADT UUID.",
+          "example": "3989"
+        },
+        "project_crediting_program": {
+          "column": "project_crediting_program",
+          "apiField": "projectCreditingProgram",
+          "type": "String",
+          "required": false,
+          "source": "user_input",
+          "example": "VCS"
+        },
+        "project_name": {
+          "column": "project_name",
+          "apiField": "projectName",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "example": "CMM Power Generation Project"
+        },
+        "project_link": {
+          "column": "project_link",
+          "apiField": "projectLink",
+          "type": "URL",
+          "required": true,
+          "source": "user_input"
+        },
+        "project_description": {
+          "column": "project_description",
+          "apiField": "projectDescription",
+          "type": "Text",
+          "required": false,
+          "source": "user_input"
+        },
+        "project_sector": {
+          "column": "project_sector",
+          "apiField": "projectSector",
+          "type": "Array[String]",
+          "required": true,
+          "source": "user_input",
+          "picklist": "project_sector",
+          "description": "One or more IPCC sectors. Submit as an array even for a single value."
+        },
+        "project_type": {
+          "column": "project_type",
+          "apiField": "projectType",
+          "type": "Array[String]",
+          "required": true,
+          "source": "user_input",
+          "picklist": "project_type",
+          "description": "One or more project type classifications. Submit as an array even for a single value."
+        },
+        "project_subtype": {
+          "column": "project_subtype",
+          "apiField": "projectSubtype",
+          "type": "Text",
+          "required": false,
+          "source": "user_input",
+          "example": "Sub Type description"
+        },
+        "project_status": {
+          "column": "project_status",
+          "apiField": "projectStatus",
+          "type": "Picklist",
+          "required": true,
+          "source": "user_input",
+          "picklist": "project_status"
+        },
+        "project_status_date": {
+          "column": "project_status_date",
+          "apiField": "projectStatusDate",
+          "type": "Date (ISO 8601)",
+          "required": true,
+          "source": "user_input"
+        },
+        "project_unit_metric": {
+          "column": "project_unit_metric",
+          "apiField": "projectUnitMetric",
+          "type": "Picklist",
+          "required": true,
+          "source": "user_input",
+          "picklist": "unit_metric"
+        },
+        "created_at": {
+          "column": "created_at",
+          "apiField": "createdAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "updated_at": {
+          "column": "updated_at",
+          "apiField": "updatedAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "cad_trust_reference_project_id": {
+          "column": "cad_trust_reference_project_id",
+          "apiField": "cadTrustReferenceProjectId",
+          "type": "String",
+          "required": false,
+          "source": "system",
+          "example": "VER-3989-C0234"
+        },
+        "cad_trust_program_id": {
+          "column": "cad_trust_program_id",
+          "apiField": "cadTrustProgramId",
+          "type": "GUID (FK)",
+          "required": false,
+          "source": "user_input"
+        }
+      }
+    },
+    "project_methodology": {
+      "api_endpoint": "/v2/project-methodology",
+      "status": "new",
+      "v2_new": true,
+      "parent_fk": {
+        "field": "cadTrustProjectId + cadTrustMethodologyId",
+        "references": "project + methodology"
+      },
+      "description": "Join table linking a project to a methodology.",
+      "fields": {
+        "cad_trust_project_methodology_id": {
+          "column": "cad_trust_project_methodology_id",
+          "apiField": "cadTrustProjectMethodologyId",
+          "type": "GUID",
+          "required": true,
+          "source": "user_input",
+          "v2_new": true,
+          "description": "Used as required FK by issuance."
+        },
+        "cad_trust_project_id": {
+          "column": "cad_trust_project_id",
+          "apiField": "cadTrustProjectId",
+          "type": "GUID (Composite PK, FK)",
+          "required": true,
+          "source": "user_input"
+        },
+        "cad_trust_methodology_id": {
+          "column": "cad_trust_methodology_id",
+          "apiField": "cadTrustMethodologyId",
+          "type": "GUID (Composite PK, FK)",
+          "required": true,
+          "source": "system"
+        },
+        "project_methodology_date": {
+          "column": "project_methodology_date",
+          "apiField": "projectMethodologyDate",
+          "type": "Date (ISO 8601)",
+          "required": false,
+          "source": "user_input",
+          "v2_new": true
+        },
+        "project_methodology_description": {
+          "column": "project_methodology_description",
+          "apiField": "projectMethodologyDescription",
+          "type": "Text",
+          "required": false,
+          "source": "user_input",
+          "v2_new": true
+        },
+        "created_at": {
+          "column": "created_at",
+          "apiField": "createdAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "updated_at": {
+          "column": "updated_at",
+          "apiField": "updatedAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        }
+      }
+    },
+    "validation": {
+      "api_endpoint": "/v2/validation",
+      "status": "new",
+      "v2_new": true,
+      "parent_fk": {
+        "field": "cadTrustProjectId",
+        "references": "project.cadTrustProjectId"
+      },
+      "description": "A third-party validation event for a project — confirms the project is designed correctly before it generates credits.",
+      "fields": {
+        "cad_trust_validation_id": {
+          "column": "cad_trust_validation_id",
+          "apiField": "cadTrustValidationId",
+          "type": "GUID",
+          "required": true,
+          "source": "system",
+          "description": "Used as optional FK by verification."
+        },
+        "validation_id": {
+          "column": "validation_id",
+          "apiField": "validationId",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "v2_new": true,
+          "example": "VCS9218-Valid1023CP01"
+        },
+        "validation_type": {
+          "column": "validation_type",
+          "apiField": "validationType",
+          "type": "Picklist",
+          "required": true,
+          "source": "user_input",
+          "picklist": "validation_type",
+          "v2_new": true
+        },
+        "validation_body": {
+          "column": "validation_body",
+          "apiField": "validationBody",
+          "type": "Picklist",
+          "required": true,
+          "source": "user_input",
+          "picklist": "validation_body",
+          "v2_new": true
+        },
+        "validation_date": {
+          "column": "validation_date",
+          "apiField": "validationDate",
+          "type": "Date (ISO 8601)",
+          "required": false,
+          "source": "user_input",
+          "v2_new": true
+        },
+        "validation_credit_period_start_date": {
+          "column": "validation_credit_period_start_date",
+          "apiField": "validationCreditPeriodStartDate",
+          "type": "Date (ISO 8601)",
+          "required": false,
+          "source": "user_input",
+          "v2_new": true
+        },
+        "validation_credit_period_end_date": {
+          "column": "validation_credit_period_end_date",
+          "apiField": "validationCreditPeriodEndDate",
+          "type": "Date (ISO 8601)",
+          "required": false,
+          "source": "user_input",
+          "v2_new": true
+        },
+        "created_at": {
+          "column": "created_at",
+          "apiField": "createdAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "updated_at": {
+          "column": "updated_at",
+          "apiField": "updatedAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "cad_trust_project_id": {
+          "column": "cad_trust_project_id",
+          "apiField": "cadTrustProjectId",
+          "type": "GUID (FK)",
+          "required": true,
+          "source": "user_input"
+        }
+      }
+    },
+    "verification": {
+      "api_endpoint": "/v2/verification",
+      "status": "new",
+      "v2_new": true,
+      "parent_fk": {
+        "field": "cadTrustProjectId",
+        "references": "project.cadTrustProjectId"
+      },
+      "description": "A verification event confirming that emission reductions or removals occurred as claimed.",
+      "fields": {
+        "cad_trust_verification_id": {
+          "column": "cad_trust_verification_id",
+          "apiField": "cadTrustVerificationId",
+          "type": "GUID",
+          "required": true,
+          "source": "system",
+          "description": "Used as required FK by issuance."
+        },
+        "verification_id": {
+          "column": "verification_id",
+          "apiField": "verificationId",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "v2_new": true,
+          "example": "VCS9218-V1023"
+        },
+        "verification_start_date": {
+          "column": "verification_start_date",
+          "apiField": "verificationStartDate",
+          "type": "Date (ISO 8601)",
+          "required": false,
+          "source": "user_input",
+          "v2_new": true
+        },
+        "verification_end_date": {
+          "column": "verification_end_date",
+          "apiField": "verificationEndDate",
+          "type": "Date (ISO 8601)",
+          "required": false,
+          "source": "user_input",
+          "v2_new": true
+        },
+        "verification_body": {
+          "column": "verification_body",
+          "apiField": "verificationBody",
+          "type": "Picklist",
+          "required": true,
+          "source": "user_input",
+          "picklist": "verification_body",
+          "v2_new": true
+        },
+        "created_at": {
+          "column": "created_at",
+          "apiField": "createdAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "updated_at": {
+          "column": "updated_at",
+          "apiField": "updatedAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "cad_trust_project_id": {
+          "column": "cad_trust_project_id",
+          "apiField": "cadTrustProjectId",
+          "type": "GUID (FK)",
+          "required": true,
+          "source": "user_input"
+        },
+        "cad_trust_validation_id": {
+          "column": "cad_trust_validation_id",
+          "apiField": "cadTrustValidationId",
+          "type": "GUID (FK)",
+          "required": false,
+          "source": "user_input",
+          "description": "Optional FK to the related validation record."
+        }
+      }
+    },
+    "location": {
+      "api_endpoint": "/v2/location",
+      "status": "existing",
+      "parent_fk": {
+        "field": "cadTrustProjectId",
+        "references": "project.cadTrustProjectId"
+      },
+      "description": "Geographic location of a project. A project can have multiple location records.",
+      "fields": {
+        "cad_trust_location_id": {
+          "column": "cad_trust_location_id",
+          "apiField": "cadTrustLocationId",
+          "type": "GUID",
+          "required": true,
+          "source": "system",
+          "description": "Used as required FK by issuance."
+        },
+        "location_country": {
+          "column": "location_country",
+          "apiField": "locationCountry",
+          "type": "Picklist",
+          "required": true,
+          "source": "user_input",
+          "picklist": "location_country"
+        },
+        "location_region": {
+          "column": "location_region",
+          "apiField": "locationRegion",
+          "type": "Text",
+          "required": false,
+          "source": "user_input",
+          "example": "Country North Region A"
+        },
+        "location_gis": {
+          "column": "location_gis",
+          "apiField": "locationGis",
+          "type": "String",
+          "required": false,
+          "source": "user_input",
+          "example": "Lat / Long"
+        },
+        "location_map_type": {
+          "column": "location_map_type",
+          "apiField": "locationMapType",
+          "type": "Picklist",
+          "required": false,
+          "source": "user_input",
+          "picklist": "location_map_type"
+        },
+        "location_map_file_link": {
+          "column": "location_map_file_link",
+          "apiField": "locationMapFileLink",
+          "type": "URL",
+          "required": false,
+          "source": "user_input"
+        },
+        "created_at": {
+          "column": "created_at",
+          "apiField": "createdAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "updated_at": {
+          "column": "updated_at",
+          "apiField": "updatedAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "cad_trust_project_id": {
+          "column": "cad_trust_project_id",
+          "apiField": "cadTrustProjectId",
+          "type": "GUID (FK)",
+          "required": true,
+          "source": "user_input"
+        }
+      }
+    },
+    "estimation": {
+      "api_endpoint": "/v2/estimation",
+      "status": "existing",
+      "parent_fk": {
+        "field": "cadTrustProjectId",
+        "references": "project.cadTrustProjectId"
+      },
+      "description": "Projected emission reductions for a project over a defined period. Multiple records allowed per project.",
+      "fields": {
+        "cad_trust_estimation_id": {
+          "column": "cad_trust_estimation_id",
+          "apiField": "cadTrustEstimationId",
+          "type": "GUID",
+          "required": true,
+          "source": "system"
+        },
+        "estimation_start_date": {
+          "column": "estimation_start_date",
+          "apiField": "estimationStartDate",
+          "type": "Date (ISO 8601)",
+          "required": true,
+          "source": "user_input"
+        },
+        "estimation_end_date": {
+          "column": "estimation_end_date",
+          "apiField": "estimationEndDate",
+          "type": "Date (ISO 8601)",
+          "required": true,
+          "source": "user_input"
+        },
+        "estimation_unit_count": {
+          "column": "estimation_unit_count",
+          "apiField": "estimationUnitCount",
+          "type": "Decimal",
+          "required": true,
+          "source": "user_input",
+          "example": "1000"
+        },
+        "estimation_reference_no": {
+          "column": "estimation_reference_no",
+          "apiField": "estimationReferenceNo",
+          "type": "String",
+          "required": false,
+          "source": "user_input",
+          "example": "E12332321"
+        },
+        "created_at": {
+          "column": "created_at",
+          "apiField": "createdAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "updated_at": {
+          "column": "updated_at",
+          "apiField": "updatedAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "cad_trust_project_id": {
+          "column": "cad_trust_project_id",
+          "apiField": "cadTrustProjectId",
+          "type": "GUID (FK)",
+          "required": true,
+          "source": "user_input"
+        }
+      }
+    },
+    "rating": {
+      "api_endpoint": "/v2/rating",
+      "status": "existing",
+      "parent_fk": {
+        "field": "cadTrustProjectId",
+        "references": "project.cadTrustProjectId"
+      },
+      "description": "Independent assessment of additional project attributes (e.g. sustainable development co-benefits, project risk). Multiple ratings allowed per project.",
+      "fields": {
+        "cad_trust_rating_id": {
+          "column": "cad_trust_rating_id",
+          "apiField": "cadTrustRatingId",
+          "type": "GUID",
+          "required": true,
+          "source": "system"
+        },
+        "rating_type": {
+          "column": "rating_type",
+          "apiField": "ratingType",
+          "type": "Picklist",
+          "required": true,
+          "source": "user_input",
+          "picklist": "rating_type"
+        },
+        "rating_name": {
+          "column": "rating_name",
+          "apiField": "ratingName",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "example": "BeZero"
+        },
+        "rating_value": {
+          "column": "rating_value",
+          "apiField": "ratingValue",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "description": "Rating score, stored as string to support alphanumeric ratings.",
+          "example": "5"
+        },
+        "rating_link": {
+          "column": "rating_link",
+          "apiField": "ratingLink",
+          "type": "URL",
+          "required": false,
+          "source": "user_input"
+        },
+        "created_at": {
+          "column": "created_at",
+          "apiField": "createdAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "updated_at": {
+          "column": "updated_at",
+          "apiField": "updatedAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "cad_trust_project_id": {
+          "column": "cad_trust_project_id",
+          "apiField": "cadTrustProjectId",
+          "type": "GUID (FK)",
+          "required": true,
+          "source": "user_input"
+        }
+      }
+    },
+    "co_benefit": {
+      "api_endpoint": "/v2/co-benefit",
+      "status": "existing",
+      "parent_fk": {
+        "field": "cadTrustProjectId",
+        "references": "project.cadTrustProjectId"
+      },
+      "description": "UN Sustainable Development Goal (SDG) co-benefit. One record per SDG. Multiple records allowed per project. Key Article 6 objective: foster increases in collective ambition while supporting sustainable development.",
+      "fields": {
+        "cad_trust_co_benefit_id": {
+          "column": "cad_trust_co_benefit_id",
+          "apiField": "cadTrustCobenefitId",
+          "type": "GUID",
+          "required": true,
+          "source": "system"
+        },
+        "co_benefit_id": {
+          "column": "co_benefit_id",
+          "apiField": "cobenefit",
+          "type": "Picklist",
+          "required": true,
+          "source": "user_input",
+          "picklist": "co_benefit_id",
+          "description": "UN SDG value. API field name is 'cobenefit' (lowercase, no 'Id' suffix) — do not use 'coBenefitId'."
+        },
+        "created_at": {
+          "column": "created_at",
+          "apiField": "createdAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "updated_at": {
+          "column": "updated_at",
+          "apiField": "updatedAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "cad_trust_project_id": {
+          "column": "cad_trust_project_id",
+          "apiField": "cadTrustProjectId",
+          "type": "GUID (FK)",
+          "required": true,
+          "source": "user_input"
+        }
+      }
+    },
+    "issuance": {
+      "api_endpoint": "/v2/issuance",
+      "status": "restructured",
+      "parent_fk": {
+        "field": "cadTrustVerificationId + cadTrustProjectMethodologyId + cadTrustLocationId",
+        "references": "verification + project_methodology + location"
+      },
+      "description": "A credit issuance batch. Units are children of an issuance.",
+      "fields": {
+        "cad_trust_issuance_id": {
+          "column": "cad_trust_issuance_id",
+          "apiField": "cadTrustIssuanceId",
+          "type": "GUID",
+          "required": true,
+          "source": "system",
+          "description": "Used as FK by unit records."
+        },
+        "issuance_id": {
+          "column": "issuance_id",
+          "apiField": "issuanceId",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "example": "VCS9218-V1023-I212"
+        },
+        "issuance_date": {
+          "column": "issuance_date",
+          "apiField": "issuanceDate",
+          "type": "Date (ISO 8601)",
+          "required": false,
+          "source": "user_input"
+        },
+        "created_at": {
+          "column": "created_at",
+          "apiField": "createdAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "updated_at": {
+          "column": "updated_at",
+          "apiField": "updatedAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "cad_trust_verification_id": {
+          "column": "cad_trust_verification_id",
+          "apiField": "cadTrustVerificationId",
+          "type": "GUID (FK)",
+          "required": true,
+          "source": "user_input",
+          "v2_new": true,
+          "description": "Required FK to verification. New in v2.0."
+        },
+        "cad_trust_project_methodology_id": {
+          "column": "cad_trust_project_methodology_id",
+          "apiField": "cadTrustProjectMethodologyId",
+          "type": "GUID (FK)",
+          "required": true,
+          "source": "user_input",
+          "v2_new": true,
+          "description": "Required FK to project_methodology. New in v2.0."
+        },
+        "cad_trust_location_id": {
+          "column": "cad_trust_location_id",
+          "apiField": "cadTrustLocationId",
+          "type": "GUID (FK)",
+          "required": true,
+          "source": "user_input",
+          "v2_new": true,
+          "description": "Required FK to location. New in v2.0."
+        }
+      }
+    },
+    "unit": {
+      "api_endpoint": "/v2/unit",
+      "status": "restructured",
+      "parent_fk": {
+        "field": "cadTrustIssuanceId",
+        "references": "issuance.cadTrustIssuanceId"
+      },
+      "description": "An individual carbon credit unit or block. The leaf-level entity.",
+      "fields": {
+        "cad_trust_unit_id": {
+          "column": "cad_trust_unit_id",
+          "apiField": "cadTrustUnitId",
+          "type": "GUID",
+          "required": true,
+          "source": "system"
+        },
+        "org_uid": {
+          "column": "org_uid",
+          "apiField": "orgUid",
+          "type": "GUID (FK)",
+          "required": true,
+          "source": "system",
+          "description": "Auto-set from home organisation."
+        },
+        "unit_serial_id": {
+          "column": "unit_serial_id",
+          "apiField": "unitSerialId",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "example": "VCS9819-2014-1233022-1234022"
+        },
+        "unit_start_block": {
+          "column": "unit_start_block",
+          "apiField": "unitStartBlock",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "example": "1233022"
+        },
+        "unit_end_block": {
+          "column": "unit_end_block",
+          "apiField": "unitEndBlock",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "example": "1234023"
+        },
+        "unit_count": {
+          "column": "unit_count",
+          "apiField": "unitCount",
+          "type": "Decimal",
+          "required": true,
+          "source": "system",
+          "description": "Auto-inferred from the start/end block range.",
+          "example": "1000"
+        },
+        "unit_type": {
+          "column": "unit_type",
+          "apiField": "unitType",
+          "type": "Picklist",
+          "required": true,
+          "source": "user_input",
+          "picklist": "unit_type"
+        },
+        "unit_vintage_year": {
+          "column": "unit_vintage_year",
+          "apiField": "unitVintageYear",
+          "type": "Year",
+          "required": true,
+          "source": "user_input"
+        },
+        "unit_status": {
+          "column": "unit_status",
+          "apiField": "unitStatus",
+          "type": "Picklist",
+          "required": true,
+          "source": "user_input",
+          "picklist": "unit_status",
+          "v2_renamed": "Active -> Held"
+        },
+        "unit_status_reason": {
+          "column": "unit_status_reason",
+          "apiField": "unitStatusReason",
+          "type": "Text",
+          "required": true,
+          "source": "user_input",
+          "example": "Description for reason"
+        },
+        "unit_status_date": {
+          "column": "unit_status_date",
+          "apiField": "unitStatusDate",
+          "type": "Date (ISO 8601)",
+          "required": true,
+          "source": "user_input"
+        },
+        "unit_retirement_detail": {
+          "column": "unit_retirement_detail",
+          "apiField": "unitRetirementDetail",
+          "type": "Text",
+          "required": false,
+          "source": "user_input",
+          "description": "Recommended when unitStatus = Retired."
+        },
+        "unit_retirement_beneficiary": {
+          "column": "unit_retirement_beneficiary",
+          "apiField": "unitRetirementBeneficiary",
+          "type": "String",
+          "required": false,
+          "source": "user_input"
+        },
+        "unit_retirement_beneficiary_id": {
+          "column": "unit_retirement_beneficiary_id",
+          "apiField": "unitRetirementBeneficiaryId",
+          "type": "String",
+          "required": false,
+          "source": "user_input",
+          "example": "529900T8BM49AURSDO55"
+        },
+        "unit_link": {
+          "column": "unit_link",
+          "apiField": "unitLink",
+          "type": "URL",
+          "required": false,
+          "source": "user_input"
+        },
+        "unit_metric": {
+          "column": "unit_metric",
+          "apiField": "unitMetric",
+          "type": "Picklist",
+          "required": true,
+          "source": "user_input",
+          "picklist": "unit_metric"
+        },
+        "unit_current_owner": {
+          "column": "unit_current_owner",
+          "apiField": "unitCurrentOwner",
+          "type": "String",
+          "required": false,
+          "source": "user_input"
+        },
+        "unit_itmos_reference_id": {
+          "column": "unit_itmos_reference_id",
+          "apiField": "unitItmosReferenceId",
+          "type": "String",
+          "required": false,
+          "source": "user_input",
+          "v2_new": true,
+          "description": "Article 6.2 ITMOS tracking reference.",
+          "example": "CA0004-VU-CH-356-1-3000-2023"
+        },
+        "created_at": {
+          "column": "created_at",
+          "apiField": "createdAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "updated_at": {
+          "column": "updated_at",
+          "apiField": "updatedAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "cad_trust_issuance_id": {
+          "column": "cad_trust_issuance_id",
+          "apiField": "cadTrustIssuanceId",
+          "type": "GUID (FK)",
+          "required": true,
+          "source": "user_input"
+        }
+      }
+    },
+    "unit_label": {
+      "api_endpoint": "/v2/unit-label",
+      "status": "new",
+      "v2_new": true,
+      "parent_fk": {
+        "field": "cadTrustUnitId + cadTrustLabelId",
+        "references": "unit + label"
+      },
+      "description": "Join table assigning a label to a unit. Both label and unit must exist before creating this record. One unit can hold multiple labels.",
+      "fields": {
+        "cad_trust_unit_label_id": {
+          "column": "cad_trust_unit_label_id",
+          "apiField": "cadTrustUnitLabelId",
+          "type": "GUID",
+          "required": true,
+          "source": "api_generated",
+          "v2_new": true
+        },
+        "cad_trust_label_id": {
+          "column": "cad_trust_label_id",
+          "apiField": "cadTrustLabelId",
+          "type": "GUID (Composite PK, FK)",
+          "required": true,
+          "source": "user_input",
+          "v2_new": true
+        },
+        "cad_trust_unit_id": {
+          "column": "cad_trust_unit_id",
+          "apiField": "cadTrustUnitId",
+          "type": "GUID (Composite PK, FK)",
+          "required": true,
+          "source": "user_input",
+          "v2_new": true
+        },
+        "label_unit_date": {
+          "column": "label_unit_date",
+          "apiField": "labelUnitDate",
+          "type": "Date (Composite PK)",
+          "required": true,
+          "source": "user_input",
+          "v2_new": true
+        },
+        "label_unit_description": {
+          "column": "label_unit_description",
+          "apiField": "labelUnitDescription",
+          "type": "Text",
+          "required": false,
+          "source": "user_input",
+          "v2_new": true
+        },
+        "created_at": {
+          "column": "created_at",
+          "apiField": "createdAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "updated_at": {
+          "column": "updated_at",
+          "apiField": "updatedAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        }
+      }
+    }
+  },
+  "aef_tables": {
+    "insert_order": [
+      "aef_t5_authorized_entities",
+      "aef_t1_submission",
+      "aef_t2_authorizations",
+      "aef_t3_actions",
+      "aef_t4_holdings"
+    ],
+    "aef_t1_submission": {
+      "api_endpoint": "/v2/aef-t1-submission",
+      "status": "new",
+      "description": "Root AEF record for a country's Article 6 submission to the UNFCCC. Only used if a BTR report has been generated and is retrievable from the registry.",
+      "fields": {
+        "cad_trust_aef_t1_submission_id": {
+          "apiField": "cadTrustAefT1SubmissionId",
+          "type": "GUID",
+          "required": true,
+          "source": "system"
+        },
+        "aef_t1_submission_party": {
+          "apiField": "aefT1SubmissionParty",
+          "type": "String",
+          "required": true,
+          "source": "system",
+          "description": "Inferred from aef_t5_authorized_entities.",
+          "example": "Kenya"
+        },
+        "aef_t1_submission_version": {
+          "apiField": "aefT1SubmissionVersion",
+          "type": "Decimal",
+          "required": true,
+          "source": "user_input",
+          "example": "1"
+        },
+        "aef_t1_submission_report_year": {
+          "apiField": "aefT1SubmissionReportYear",
+          "type": "Year",
+          "required": true,
+          "source": "user_input",
+          "example": "2025"
+        },
+        "aef_t1_submission_submission_date": {
+          "apiField": "aefT1SubmissionSubmissionDate",
+          "type": "Date (ISO 8601)",
+          "required": true,
+          "source": "user_input"
+        },
+        "aef_t1_submission_review_status": {
+          "apiField": "aefT1SubmissionReviewStatus",
+          "type": "Text",
+          "required": false,
+          "source": "user_input",
+          "description": "Populated by CARP."
+        },
+        "aef_t1_submission_result_check": {
+          "apiField": "aefT1SubmissionResultCheck",
+          "type": "Text",
+          "required": false,
+          "source": "user_input",
+          "description": "Populated by CARP."
+        },
+        "aef_t1_submission_ndc_first_year": {
+          "apiField": "aefT1SubmissionNdcFirstYear",
+          "type": "Year",
+          "required": false,
+          "source": "user_input",
+          "example": "2026"
+        },
+        "aef_t1_submission_ndc_last_year": {
+          "apiField": "aefT1SubmissionNdcLastYear",
+          "type": "Year",
+          "required": false,
+          "source": "user_input",
+          "example": "2028"
+        },
+        "aef_t1_submission_reference_review_report": {
+          "apiField": "aefT1SubmissionReferenceReviewReport",
+          "type": "URL",
+          "required": false,
+          "source": "system"
+        },
+        "created_at": {
+          "apiField": "createdAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "updated_at": {
+          "apiField": "updatedAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        }
+      }
+    },
+    "aef_t2_authorizations": {
+      "api_endpoint": "/v2/aef-t2-authorizations",
+      "status": "new",
+      "description": "Article 6.2 Table 2 — authorizations granted by a Party for ITMOs.",
+      "optional_fk": [
+        "cadTrustAefT1SubmissionId",
+        "cadTrustUnitId",
+        "cadTrustProjectId",
+        "cadTrustAefT5AuthorizedEntitiesId"
+      ],
+      "fields": {
+        "cad_trust_aef_t2_authorizations_id": {
+          "apiField": "cadTrustAefT2AuthorizationsId",
+          "type": "GUID",
+          "required": true,
+          "source": "system"
+        },
+        "aef_t2_authorizations_id": {
+          "apiField": "aefT2AuthorizationsId",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "example": "RWA-AUTH-001"
+        },
+        "aef_t2_authorizations_date": {
+          "apiField": "aefT2AuthorizationsDate",
+          "type": "Date (ISO 8601)",
+          "required": true,
+          "source": "user_input"
+        },
+        "aef_t2_authorizations_cooperative_approach_id": {
+          "apiField": "aefT2AuthorizationsCooperativeApproachId",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "example": "RWA-CA-ENERGY-2025"
+        },
+        "aef_t2_authorizations_version": {
+          "apiField": "aefT2AuthorizationsVersion",
+          "type": "String",
+          "required": false,
+          "source": "user_input",
+          "example": "1.0"
+        },
+        "aef_t2_authorizations_quantity": {
+          "apiField": "aefT2AuthorizationsQuantity",
+          "type": "Decimal",
+          "required": false,
+          "source": "user_input",
+          "example": "90000"
+        },
+        "aef_t2_authorizations_metric": {
+          "apiField": "aefT2AuthorizationsMetric",
+          "type": "Picklist",
+          "required": true,
+          "source": "user_input",
+          "picklist": "aef_t2_authorizations_metric"
+        },
+        "aef_t2_authorizations_gwp_value": {
+          "apiField": "aefT2AuthorizationsGwpValue",
+          "type": "String",
+          "required": false,
+          "source": "user_input",
+          "example": "100-year values from 5th IPCC assessment"
+        },
+        "aef_t2_authorizations_applicable_non_ghg_metric": {
+          "apiField": "aefT2AuthorizationsApplicableNonGhgMetric",
+          "type": "String",
+          "required": false,
+          "source": "user_input",
+          "example": "Not applicable"
+        },
+        "aef_t2_authorizations_sector": {
+          "apiField": "aefT2AuthorizationsSector",
+          "type": "Picklist",
+          "required": true,
+          "source": "system",
+          "picklist": "aef_t2_authorizations_sector",
+          "description": "Inferred. Distinct picklist from project_sector — includes 'Agriculture forestry and other land use (AFOLU)', which project_sector does not."
+        },
+        "aef_t2_authorizations_activity_type": {
+          "apiField": "aefT2AuthorizationsActivityType",
+          "type": "Picklist",
+          "required": true,
+          "source": "system",
+          "picklist": "aef_t2_authorizations_activity_type",
+          "description": "Inferred. Distinct picklist from project_type — includes 'Fossil fuel switch', which project_type does not."
+        },
+        "aef_t2_authorizations_purposes_for_authorization": {
+          "apiField": "aefT2AuthorizationsPurposesForAuthorization",
+          "type": "Picklist",
+          "required": true,
+          "source": "user_input",
+          "picklist": "aef_t2_authorizations_purposes_for_authorization"
+        },
+        "aef_t2_authorizations_authorized_party_id": {
+          "apiField": "aefT2AuthorizationsAuthorizedPartyId",
+          "type": "String",
+          "required": true,
+          "source": "system",
+          "description": "Inferred from T5.",
+          "example": "Afghanistan"
+        },
+        "aef_t2_authorizations_authorized_entity_id": {
+          "apiField": "aefT2AuthorizationsAuthorizedEntityId",
+          "type": "String",
+          "required": false,
+          "source": "system",
+          "description": "Inferred from T5.",
+          "example": "AF"
+        },
+        "aef_t2_authorizations_oimp_authorized_party": {
+          "apiField": "aefT2AuthorizationsOimpAuthorizedParty",
+          "type": "String",
+          "required": false,
+          "source": "user_input",
+          "example": "use under CORSIA"
+        },
+        "aef_t2_authorizations_authorized_timeframe": {
+          "apiField": "aefT2AuthorizationsAuthorizedTimeframe",
+          "type": "String",
+          "required": false,
+          "source": "user_input",
+          "example": "2021 to 2030"
+        },
+        "aef_t2_authorizations_authorization_terms": {
+          "apiField": "aefT2AuthorizationsAuthorizationTerms",
+          "type": "Text",
+          "required": false,
+          "source": "user_input"
+        },
+        "aef_t2_authorizations_authorization_documentation": {
+          "apiField": "aefT2AuthorizationsAuthorizationDocumentation",
+          "type": "URL",
+          "required": false,
+          "source": "user_input"
+        },
+        "aef_t2_authorizations_first_transfer_definition_oimp": {
+          "apiField": "aefT2AuthorizationsFirstTransferDefinitionOimp",
+          "type": "Picklist",
+          "required": false,
+          "source": "user_input",
+          "picklist": "aef_t2_authorizations_first_transfer_definition_oimp"
+        },
+        "aef_t2_authorizations_additional_information": {
+          "apiField": "aefT2AuthorizationsAdditionalInformation",
+          "type": "Text",
+          "required": false,
+          "source": "user_input"
+        },
+        "created_at": {
+          "apiField": "createdAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "updated_at": {
+          "apiField": "updatedAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "cad_trust_aef_t1_submission_id": {
+          "apiField": "cadTrustAefT1SubmissionId",
+          "type": "GUID (FK)",
+          "required": false,
+          "source": "user_input"
+        },
+        "cad_trust_unit_id": {
+          "apiField": "cadTrustUnitId",
+          "type": "GUID (FK)",
+          "required": false,
+          "source": "user_input"
+        },
+        "cad_trust_project_id": {
+          "apiField": "cadTrustProjectId",
+          "type": "GUID (FK)",
+          "required": false,
+          "source": "user_input"
+        },
+        "cad_trust_aef_t5_authorized_entities_id": {
+          "apiField": "cadTrustAefT5AuthorizedEntitiesId",
+          "type": "GUID (FK)",
+          "required": false,
+          "source": "user_input"
+        }
+      }
+    },
+    "aef_t5_authorized_entities": {
+      "api_endpoint": "/v2/aef-t5-authorized-entities",
+      "status": "new",
+      "description": "Article 6.2 Table 5 — authorized entities permitted to participate in cooperative approaches. Create before T2 (T2 references T5).",
+      "optional_fk": [
+        "cadTrustAefT1SubmissionId",
+        "cadTrustUnitId",
+        "cadTrustProjectId",
+        "cadTrustAefT2AuthorizationsId"
+      ],
+      "fields": {
+        "cad_trust_aef_t5_authorized_entities_id": {
+          "apiField": "cadTrustAefT5AuthorizedEntitiesId",
+          "type": "GUID",
+          "required": true,
+          "source": "system"
+        },
+        "aef_t5_authorized_entities_authorization_date": {
+          "apiField": "aefT5AuthorizedEntitiesAuthorizationDate",
+          "type": "Date (ISO 8601)",
+          "required": true,
+          "source": "user_input"
+        },
+        "aef_t5_authorized_entities_name": {
+          "apiField": "aefT5AuthorizedEntitiesName",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "example": "Corporation XYZ"
+        },
+        "aef_t5_authorized_entities_incorporation_country": {
+          "apiField": "aefT5AuthorizedEntitiesIncorporationCountry",
+          "type": "Picklist",
+          "required": true,
+          "source": "user_input",
+          "picklist": "aef_t5_authorized_entities_incorporation_country",
+          "description": "Distinct picklist from location_country — 'Australia' is absent from this list."
+        },
+        "aef_t5_authorized_entities_id": {
+          "apiField": "aefT5AuthorizedEntitiesId",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "example": "BR-022"
+        },
+        "aef_t5_authorized_entities_cooperative_approach_id": {
+          "apiField": "aefT5AuthorizedEntitiesCooperativeApproachId",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "example": "RWA-AUTH-001"
+        },
+        "aef_t5_authorized_entities_conditions": {
+          "apiField": "aefT5AuthorizedEntitiesConditions",
+          "type": "Text",
+          "required": false,
+          "source": "user_input"
+        },
+        "aef_t5_authorized_entities_change_conditions": {
+          "apiField": "aefT5AuthorizedEntitiesChangeConditions",
+          "type": "Text",
+          "required": false,
+          "source": "user_input"
+        },
+        "aef_t5_authorized_entities_additional_information": {
+          "apiField": "aefT5AuthorizedEntitiesAdditionalInformation",
+          "type": "Text",
+          "required": false,
+          "source": "user_input"
+        },
+        "created_at": {
+          "apiField": "createdAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "updated_at": {
+          "apiField": "updatedAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "cad_trust_aef_t1_submission_id": {
+          "apiField": "cadTrustAefT1SubmissionId",
+          "type": "GUID (FK)",
+          "required": false,
+          "source": "user_input"
+        },
+        "cad_trust_unit_id": {
+          "apiField": "cadTrustUnitId",
+          "type": "GUID (FK)",
+          "required": false,
+          "source": "user_input"
+        },
+        "cad_trust_project_id": {
+          "apiField": "cadTrustProjectId",
+          "type": "GUID (FK)",
+          "required": false,
+          "source": "user_input"
+        },
+        "cad_trust_aef_t2_authorizations_id": {
+          "apiField": "cadTrustAefT2AuthorizationsId",
+          "type": "GUID (FK)",
+          "required": false,
+          "source": "user_input"
+        }
+      }
+    },
+    "aef_t3_actions": {
+      "api_endpoint": "/v2/aef-t3-actions",
+      "status": "new",
+      "description": "Article 6.2 Table 3 — ITMO transfer and use actions. The most field-dense AEF table.",
+      "optional_fk": [
+        "cadTrustAefT1SubmissionId",
+        "cadTrustUnitId",
+        "cadTrustProjectId"
+      ],
+      "required_fk": [
+        "cadTrustAefT2AuthorizationsId"
+      ],
+      "fields": {
+        "cad_trust_aef_t3_actions_id": {
+          "apiField": "cadTrustAefT3ActionsId",
+          "type": "GUID",
+          "required": true,
+          "source": "system"
+        },
+        "aef_t3_actions_date": {
+          "apiField": "aefT3ActionsDate",
+          "type": "Date (ISO 8601)",
+          "required": true,
+          "source": "user_input"
+        },
+        "aef_t3_actions_type": {
+          "apiField": "aefT3ActionsType",
+          "type": "Picklist",
+          "required": true,
+          "source": "user_input",
+          "picklist": "aef_t3_actions_type"
+        },
+        "aef_t3_actions_subtype": {
+          "apiField": "aefT3ActionsSubtype",
+          "type": "String",
+          "required": false,
+          "source": "user_input"
+        },
+        "aef_t3_actions_cooperative_approach_id": {
+          "apiField": "aefT3ActionsCooperativeApproachId",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "example": "RWA-CA-GS-HYDRO-2025"
+        },
+        "aef_t3_actions_authorization_id": {
+          "apiField": "aefT3ActionsAuthorizationId",
+          "type": "String",
+          "required": true,
+          "source": "system",
+          "description": "Inferred from aef_t2_authorizations_id.",
+          "example": "RWA-AUTH-001"
+        },
+        "aef_t3_actions_first_transferring_party_id": {
+          "apiField": "aefT3ActionsFirstTransferringPartyId",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "example": "VU"
+        },
+        "aef_t3_actions_party_itmo_registry_id": {
+          "apiField": "aefT3ActionsPartyItmoRegistryId",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "example": "CH"
+        },
+        "aef_t3_actions_itmo_first_id": {
+          "apiField": "aefT3ActionsItmoFirstId",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "example": "9000"
+        },
+        "aef_t3_actions_itmo_last_id": {
+          "apiField": "aefT3ActionsItmoLastId",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "example": "10000"
+        },
+        "aef_t3_actions_unit_registry_id": {
+          "apiField": "aefT3ActionsUnitRegistryId",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "example": "VCS"
+        },
+        "aef_t3_actions_unit_first_id": {
+          "apiField": "aefT3ActionsUnitFirstId",
+          "type": "String",
+          "required": true,
+          "source": "system",
+          "description": "Inferred from unit_start_block.",
+          "example": "9000"
+        },
+        "aef_t3_actions_unit_last_id": {
+          "apiField": "aefT3ActionsUnitLastId",
+          "type": "String",
+          "required": true,
+          "source": "system",
+          "description": "Inferred from unit_end_block.",
+          "example": "10000"
+        },
+        "aef_t3_actions_metric": {
+          "apiField": "aefT3ActionsMetric",
+          "type": "Picklist",
+          "required": true,
+          "source": "user_input",
+          "picklist": "aef_t2_authorizations_metric"
+        },
+        "aef_t3_actions_gwp_value": {
+          "apiField": "aefT3ActionsGwpValue",
+          "type": "String",
+          "required": false,
+          "source": "user_input",
+          "example": "100-year values from 5th IPCC assessment"
+        },
+        "aef_t3_actions_applicable_non_ghg_metric": {
+          "apiField": "aefT3ActionsApplicableNonGhgMetric",
+          "type": "String",
+          "required": false,
+          "source": "user_input",
+          "example": "Not applicable"
+        },
+        "aef_t3_actions_quantity_t_co2": {
+          "apiField": "aefT3ActionsQuantityTCo2",
+          "type": "Decimal",
+          "required": true,
+          "source": "system",
+          "description": "Inferred from unit_count.",
+          "example": "90000"
+        },
+        "aef_t3_actions_quantity_non_ghg": {
+          "apiField": "aefT3ActionsQuantityNonGhg",
+          "type": "String",
+          "required": false,
+          "source": "user_input",
+          "example": "NA"
+        },
+        "aef_t3_actions_mitigation_type": {
+          "apiField": "aefT3ActionsMitigationType",
+          "type": "Picklist",
+          "required": true,
+          "source": "system",
+          "picklist": "aef_t3_actions_mitigation_type",
+          "description": "Inferred from unit_type."
+        },
+        "aef_t3_actions_vintage_year": {
+          "apiField": "aefT3ActionsVintageYear",
+          "type": "Year",
+          "required": true,
+          "source": "system",
+          "description": "Inferred from unit_vintage_year."
+        },
+        "aef_t3_actions_transferring_party_id": {
+          "apiField": "aefT3ActionsTransferringPartyId",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "example": "VU"
+        },
+        "aef_t3_actions_acquiring_party_id": {
+          "apiField": "aefT3ActionsAcquiringPartyId",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "example": "CH"
+        },
+        "aef_t3_actions_purpose_of_use_oimp": {
+          "apiField": "aefT3ActionsPurposeOfUseOimp",
+          "type": "String",
+          "required": false,
+          "source": "user_input"
+        },
+        "aef_t3_actions_using_participating_party_id": {
+          "apiField": "aefT3ActionsUsingParticipatingPartyId",
+          "type": "String",
+          "required": false,
+          "source": "user_input",
+          "example": "VU"
+        },
+        "aef_t3_actions_using_authorized_entity_id": {
+          "apiField": "aefT3ActionsUsingAuthorizedEntityId",
+          "type": "String",
+          "required": false,
+          "source": "user_input",
+          "example": "CH"
+        },
+        "aef_t3_actions_itmo_used_year": {
+          "apiField": "aefT3ActionsItmoUsedYear",
+          "type": "Year",
+          "required": false,
+          "source": "user_input"
+        },
+        "aef_t3_actions_consistency_check_result": {
+          "apiField": "aefT3ActionsConsistencyCheckResult",
+          "type": "Text",
+          "required": false,
+          "source": "user_input"
+        },
+        "aef_t3_actions_additional_information": {
+          "apiField": "aefT3ActionsAdditionalInformation",
+          "type": "Text",
+          "required": false,
+          "source": "user_input"
+        },
+        "created_at": {
+          "apiField": "createdAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "updated_at": {
+          "apiField": "updatedAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "cad_trust_aef_t1_submission_id": {
+          "apiField": "cadTrustAefT1SubmissionId",
+          "type": "GUID (FK)",
+          "required": false,
+          "source": "user_input"
+        },
+        "cad_trust_unit_id": {
+          "apiField": "cadTrustUnitId",
+          "type": "GUID (FK)",
+          "required": false,
+          "source": "user_input"
+        },
+        "cad_trust_project_id": {
+          "apiField": "cadTrustProjectId",
+          "type": "GUID (FK)",
+          "required": false,
+          "source": "user_input"
+        },
+        "cad_trust_aef_t2_authorizations_id": {
+          "apiField": "cadTrustAefT2AuthorizationsId",
+          "type": "GUID (FK)",
+          "required": true,
+          "source": "user_input"
+        }
+      }
+    },
+    "aef_t4_holdings": {
+      "api_endpoint": "/v2/aef-t4-holdings",
+      "status": "new",
+      "description": "Article 6.2 Table 4 — ITMO holdings at end of reporting period. Structurally similar to T3 but represents stock held rather than transfer actions.",
+      "optional_fk": [
+        "cadTrustAefT1SubmissionId",
+        "cadTrustUnitId",
+        "cadTrustProjectId"
+      ],
+      "required_fk": [
+        "cadTrustAefT2AuthorizationsId"
+      ],
+      "fields": {
+        "cad_trust_aef_t4_holdings_id": {
+          "apiField": "cadTrustAefT4HoldingsId",
+          "type": "GUID",
+          "required": true,
+          "source": "system"
+        },
+        "aef_t4_holdings_cooperative_approach_id": {
+          "apiField": "aefT4HoldingsCooperativeApproachId",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "example": "RWA-CA-GS-HYDRO-2025"
+        },
+        "aef_t4_holdings_authorization_id": {
+          "apiField": "aefT4HoldingsAuthorizationId",
+          "type": "String",
+          "required": true,
+          "source": "system",
+          "description": "Inferred from aef_t2_authorizations_id.",
+          "example": "RWA-AUTH-001"
+        },
+        "aef_t4_holdings_first_transferring_party_id": {
+          "apiField": "aefT4HoldingsFirstTransferringPartyId",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "example": "VU"
+        },
+        "aef_t4_holdings_party_itmo_registry_id": {
+          "apiField": "aefT4HoldingsPartyItmoRegistryId",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "example": "CH"
+        },
+        "aef_t4_holdings_itmo_first_id": {
+          "apiField": "aefT4HoldingsItmoFirstId",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "example": "9000"
+        },
+        "aef_t4_holdings_itmo_last_id": {
+          "apiField": "aefT4HoldingsItmoLastId",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "example": "10000"
+        },
+        "aef_t4_holdings_unit_registry_id": {
+          "apiField": "aefT4HoldingsUnitRegistryId",
+          "type": "String",
+          "required": true,
+          "source": "user_input",
+          "example": "VCS"
+        },
+        "aef_t4_holdings_unit_first_id": {
+          "apiField": "aefT4HoldingsUnitFirstId",
+          "type": "String",
+          "required": true,
+          "source": "system",
+          "description": "Inferred from unit_start_block.",
+          "example": "9000"
+        },
+        "aef_t4_holdings_unit_last_id": {
+          "apiField": "aefT4HoldingsUnitLastId",
+          "type": "String",
+          "required": true,
+          "source": "system",
+          "description": "Inferred from unit_end_block.",
+          "example": "10000"
+        },
+        "aef_t4_holdings_metric": {
+          "apiField": "aefT4HoldingsMetric",
+          "type": "Picklist",
+          "required": true,
+          "source": "user_input",
+          "picklist": "aef_t2_authorizations_metric"
+        },
+        "aef_t4_holdings_gwp_value": {
+          "apiField": "aefT4HoldingsGwpValue",
+          "type": "String",
+          "required": false,
+          "source": "user_input",
+          "example": "100-year values from 5th IPCC assessment"
+        },
+        "aef_t4_holdings_applicable_non_ghg_metric": {
+          "apiField": "aefT4HoldingsApplicableNonGhgMetric",
+          "type": "String",
+          "required": false,
+          "source": "user_input",
+          "example": "Not applicable"
+        },
+        "aef_t4_holdings_quantity_t_co2": {
+          "apiField": "aefT4HoldingsQuantityTCo2",
+          "type": "Decimal",
+          "required": true,
+          "source": "system",
+          "description": "Inferred from unit_count.",
+          "example": "90000"
+        },
+        "aef_t4_holdings_quantity_non_ghg": {
+          "apiField": "aefT4HoldingsQuantityNonGhg",
+          "type": "String",
+          "required": false,
+          "source": "user_input",
+          "example": "NA"
+        },
+        "aef_t4_holdings_mitigation_type": {
+          "apiField": "aefT4HoldingsMitigationType",
+          "type": "Picklist",
+          "required": true,
+          "source": "system",
+          "picklist": "aef_t3_actions_mitigation_type",
+          "description": "Inferred from unit_type."
+        },
+        "aef_t4_holdings_vintage_year": {
+          "apiField": "aefT4HoldingsVintageYear",
+          "type": "Year",
+          "required": true,
+          "source": "system",
+          "description": "Inferred from unit_vintage_year."
+        },
+        "created_at": {
+          "apiField": "createdAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "updated_at": {
+          "apiField": "updatedAt",
+          "type": "API",
+          "required": true,
+          "source": "api_generated"
+        },
+        "cad_trust_aef_t1_submission_id": {
+          "apiField": "cadTrustAefT1SubmissionId",
+          "type": "GUID (FK)",
+          "required": false,
+          "source": "user_input"
+        },
+        "cad_trust_unit_id": {
+          "apiField": "cadTrustUnitId",
+          "type": "GUID (FK)",
+          "required": false,
+          "source": "user_input"
+        },
+        "cad_trust_project_id": {
+          "apiField": "cadTrustProjectId",
+          "type": "GUID (FK)",
+          "required": false,
+          "source": "user_input"
+        },
+        "cad_trust_aef_t2_authorizations_id": {
+          "apiField": "cadTrustAefT2AuthorizationsId",
+          "type": "GUID (FK)",
+          "required": true,
+          "source": "user_input"
+        }
+      }
+    }
+  },
+  "picklists": {
+    "project_sector": [
+      "Afforestation and reforestation",
+      "Agriculture",
+      "Any combination of the above",
+      "Carbon capture and storage",
+      "Chemical industries",
+      "Construction",
+      "Energy demand",
+      "Energy distribution",
+      "Energy industries (renewable-/ non renewable sources)",
+      "Fugitive emissions from fuel (solid, oil and gas)",
+      "Fugitive emissions from the production and consumption of halocarbons and sulfur hexafluoride",
+      "Livestock and manure management",
+      "Manufacturing industries",
+      "Metal production",
+      "Mining/mineral production",
+      "Others",
+      "Solvent use",
+      "Transport",
+      "Urban Development",
+      "Waste handling and disposal"
+    ],
+    "aef_t2_authorizations_sector": [
+      "Afforestation and reforestation",
+      "Agriculture",
+      "Agriculture forestry and other land use (AFOLU)",
+      "Any combination of the above",
+      "Carbon capture and storage",
+      "Chemical industries",
+      "Construction",
+      "Energy demand",
+      "Energy distribution",
+      "Energy industries (renewable-/ non renewable sources)",
+      "Fugitive emissions from fuel (solid, oil and gas)",
+      "Fugitive emissions from the production and consumption of halocarbons and sulfur hexafluoride",
+      "Livestock and manure management",
+      "Manufacturing industries",
+      "Metal production",
+      "Mining/mineral production",
+      "Others",
+      "Solvent use",
+      "Transport",
+      "Urban Development",
+      "Waste handling and disposal"
+    ],
+    "project_type": [
+      "Afforestation",
+      "Agriculture",
+      "Agriculture, forestry and other land use (AFOLU)",
+      "Any combination of the above",
+      "Biogas",
+      "Biomass Energy",
+      "CO2 usage",
+      "Cement",
+      "Coal bed/mine methane",
+      "Energy Efficiency Industry",
+      "Energy Efficiency households",
+      "Energy Efficiency own generation",
+      "Energy Efficiency service",
+      "Energy Efficiency supply side",
+      "Energy distribution",
+      "Fugitive",
+      "Geothermal",
+      "Hydro",
+      "Landfill gas",
+      "Methane avoidance",
+      "N2O",
+      "PFCs and SF6",
+      "Reforestation",
+      "Solar",
+      "Tidal",
+      "Transport",
+      "Waste",
+      "Wind"
+    ],
+    "aef_t2_authorizations_activity_type": [
+      "Afforestation",
+      "Agriculture",
+      "Any combination of the above",
+      "Biogas",
+      "Biomass Energy",
+      "CO2 usage",
+      "Cement",
+      "Coal bed/mine methane",
+      "Energy Efficiency Industry",
+      "Energy Efficiency households",
+      "Energy Efficiency own generation",
+      "Energy Efficiency service",
+      "Energy Efficiency supply side",
+      "Energy distribution",
+      "Fossil fuel switch",
+      "Fugitive",
+      "Geothermal",
+      "Hydro",
+      "Landfill gas",
+      "Methane avoidance",
+      "N2O",
+      "PFCs and SF6",
+      "Reforestation",
+      "Solar",
+      "Tidal",
+      "Transport",
+      "Waste",
+      "Wind"
+    ],
+    "project_status": [
+      "Certified",
+      "Completed",
+      "Inactive",
+      "Listed",
+      "Registered",
+      "Rejected",
+      "Validated",
+      "Verified",
+      "Withdrawn"
+    ],
+    "unit_metric": [
+      "gCO2eq/kWh",
+      "kt (Kiloton)",
+      "tCO2e"
+    ],
+    "unit_type": [
+      "Avoidance - nature",
+      "Avoidance - technical",
+      "Not Determined",
+      "Reduction - nature",
+      "Reduction - technical",
+      "Removal - nature",
+      "Removal - technical"
+    ],
+    "unit_status": [
+      "Buffer",
+      "Cancelled",
+      "Expired",
+      "Held",
+      "Inactive",
+      "Issued",
+      "Rejected",
+      "Retired"
+    ],
+    "validation_type": [
+      "Validation of Post Registration Change",
+      "Validation of Project Design Document",
+      "Validation of Renewal of Credit Period"
+    ],
+    "validation_body": [
+      "350 Solutions",
+      "4K Earth Science Private Limited",
+      "AENOR International S.A.U.",
+      "Agri-Waste Technology Inc.",
+      "Ampere For Renewable Energy",
+      "Asociación de Normalización y Certificación A.C.",
+      "Aster Global Environmental Solutions Inc.",
+      "Bureau Veritas India Private Limited",
+      "CGN Certification",
+      "Carbon Check (India) Private Limited",
+      "China Building Material Test & Certification Group Co. Limited",
+      "China Certification Center Inc.",
+      "China Classification Society Certification Co. Limited",
+      "China Environmental United Certification Center Co. Limited",
+      "China Quality Certification Center",
+      "China Testing & Certification International Group Co. Limited",
+      "Colombian Institute for Technical Standards and Certification",
+      "Control Union Certifications Germany GmbH",
+      "Deloitte Tohmatsu Sustainability Co. Limited",
+      "Det Norske Veritas (U.S.A.) Inc.",
+      "Deutsche Certification Body",
+      "EPIC Sustainability Services Private Limited",
+      "ERM Certification and Verification Services Limited",
+      "Earthood Services Private Limited",
+      "EnergyLink Services",
+      "Enviance Services Private",
+      "Enviro-Accès Inc.",
+      "Environmental Services Inc.",
+      "First Environment Inc.",
+      "GHD Limited",
+      "GHD Services Inc.",
+      "Japan Quality Assurance Organisation",
+      "KBS Certification Services Private Limited",
+      "KPMG International Limited",
+      "Korea Energy Agency",
+      "Korea Testing & Research Institute",
+      "Korean Foundation for Quality",
+      "Korean Standards Association",
+      "LGAI Technological Center S.A.",
+      "PT Superintending Company of Indonesia (PT SUCOFINDO) - SBU Sertifikasi da Eco Framework (Sucofindo International Certification Services)",
+      "QSI Belgelendirme Muayene Ve Test Hizmetleri Limited Şti.",
+      "RINA Services S.p.A",
+      "Rainforest Alliance Inc.",
+      "Re Carbon Limited",
+      "Ruby Canyon Environmental Inc",
+      "S&A Carbon LLC",
+      "SCS Global Services",
+      "SQS (The Swiss Association for Quality and Management Systems)",
+      "Shenzhen CTI International Certification Co. Limited",
+      "The Earth Lab",
+      "TÜV Nord Cert GmbH",
+      "TÜV Rheinland (China) Limited",
+      "TÜV SÜD America Inc. - Ruby Canyon",
+      "TÜV SÜD South Asia Private Limited",
+      "VKU Certification Private Limited",
+      "Verico SCE",
+      "Verifit",
+      "Versa Expertos en Certificación"
+    ],
+    "verification_body": [
+      "350 Solutions",
+      "4K Earth Science Private Limited",
+      "AENOR International S.A.U.",
+      "Agri-Waste Technology Inc.",
+      "Ampere For Renewable Energy",
+      "Asociación de Normalización y Certificación A.C.",
+      "Aster Global Environmental Solutions Inc.",
+      "Bureau Veritas India Private Limited",
+      "CGN Certification",
+      "Carbon Check (India) Private Limited",
+      "China Building Material Test & Certification Group Co. Limited",
+      "China Certification Center Inc.",
+      "China Classification Society Certification Co. Limited",
+      "China Environmental United Certification Center Co. Limited",
+      "China Quality Certification Center",
+      "China Testing & Certification International Group Co. Limited",
+      "Colombian Institute for Technical Standards and Certification",
+      "Control Union Certifications Germany GmbH",
+      "Deloitte Tohmatsu Sustainability Co. Limited",
+      "Det Norske Veritas (U.S.A.) Inc.",
+      "Deutsche Certification Body",
+      "EPIC Sustainability Services Private Limited",
+      "ERM Certification and Verification Services Limited",
+      "Earthood Services Private Limited",
+      "EnergyLink Services",
+      "Enviance Services Private",
+      "Enviro-Accès Inc.",
+      "Environmental Services Inc.",
+      "First Environment Inc.",
+      "GHD Limited",
+      "GHD Services Inc.",
+      "Japan Quality Assurance Organisation",
+      "KBS Certification Services Private Limited",
+      "KPMG International Limited",
+      "Korea Energy Agency",
+      "Korea Testing & Research Institute",
+      "Korean Foundation for Quality",
+      "Korean Standards Association",
+      "LGAI Technological Center S.A.",
+      "PT Superintending Company of Indonesia (PT SUCOFINDO) - SBU Sertifikasi da Eco Framework (Sucofindo International Certification Services)",
+      "QSI Belgelendirme Muayene Ve Test Hizmetleri Limited Şti.",
+      "RINA Services S.p.A",
+      "Rainforest Alliance Inc.",
+      "Re Carbon Limited",
+      "Ruby Canyon Environmental Inc",
+      "S&A Carbon LLC",
+      "SCS Global Services",
+      "SQS (The Swiss Association for Quality and Management Systems)",
+      "Shenzhen CTI International Certification Co. Limited",
+      "The Earth Lab",
+      "TÜV Nord Cert GmbH",
+      "TÜV Rheinland (China) Limited",
+      "TÜV SÜD America Inc. - Ruby Canyon",
+      "TÜV SÜD South Asia Private Limited",
+      "VKU Certification Private Limited",
+      "Verico SCE",
+      "Verifit",
+      "Versa Expertos en Certificación"
+    ],
+    "methodology_type": [
+      "Avoidance - nature",
+      "Avoidance - technical",
+      "Not Determined",
+      "Reduction - nature",
+      "Reduction - technical",
+      "Removal - nature",
+      "Removal - technical"
+    ],
+    "location_country": [
+      "Afghanistan",
+      "Albania",
+      "Algeria",
+      "Andorra",
+      "Angola",
+      "Antarctica",
+      "Antigua and Barduba",
+      "Argentina",
+      "Armenia",
+      "Australia",
+      "Austria",
+      "Azerbaijan",
+      "Bahamas",
+      "Bahrain",
+      "Bangladesh",
+      "Barbados",
+      "Belarus",
+      "Belgium",
+      "Belize",
+      "Benin",
+      "Bhutan",
+      "Bolivia",
+      "Bosnia and Herzegovina",
+      "Botswana",
+      "Brazil",
+      "Brunei Darussalam",
+      "Bulgaria",
+      "Burkina Faso",
+      "Burundi",
+      "Cabo Verde",
+      "Cambodia",
+      "Cameroon",
+      "Canada",
+      "Central African Republic",
+      "Chad",
+      "Chile",
+      "China",
+      "Colombia",
+      "Comoros",
+      "Congo",
+      "Cook Islands",
+      "Costa Rica",
+      "Cote d'Ivoire",
+      "Croatia",
+      "Cuba",
+      "Cyprus",
+      "Czech Republic",
+      "Democratic People's Republic of Korea",
+      "Democratic Republic of Congo",
+      "Denmark",
+      "Djibouti",
+      "Dominica",
+      "Dominican Republic",
+      "Ecuador",
+      "Egypt",
+      "El Salvador",
+      "Equatorial New Guinea",
+      "Eritrea",
+      "Estonia",
+      "Eswatini",
+      "Ethiopia",
+      "European Union",
+      "Fiji",
+      "Finland",
+      "France",
+      "Gabon",
+      "Gambia",
+      "Georgia",
+      "Germany",
+      "Ghana",
+      "Greece",
+      "Grenada",
+      "Guatemala",
+      "Guinea",
+      "Guinea-Bissau",
+      "Guyana",
+      "Haiti",
+      "Holy See",
+      "Honduras",
+      "Hong Kong S.A.R.",
+      "Hungary",
+      "Iceland",
+      "India",
+      "Indonesia",
+      "Iran (Islamic Republic of)",
+      "Iraq",
+      "Ireland",
+      "Israel",
+      "Italy",
+      "Jamaica",
+      "Japan",
+      "Jordan",
+      "Kazakhstan",
+      "Kenya",
+      "Kiribati",
+      "Kuwait",
+      "Kyrgyzstan",
+      "Lao People's Democratic Republic",
+      "Latvia",
+      "Lebanon",
+      "Lesotho",
+      "Liberia",
+      "Libya",
+      "Liechtenstein",
+      "Lithuania",
+      "Luxembourg",
+      "Macau S.A.R.",
+      "Madagascar",
+      "Malawi",
+      "Malaysia",
+      "Maldives",
+      "Mali",
+      "Malta",
+      "Marshall Islands",
+      "Mauritania",
+      "Mauritius",
+      "Mexico",
+      "Micronesia (Federated States of)",
+      "Monaco",
+      "Mongolia",
+      "Montenegro",
+      "Morocco",
+      "Mozambique",
+      "Myanmar",
+      "Namibia",
+      "Nauru",
+      "Nepal",
+      "Netherlands (Kingdom of the)",
+      "New Zealand",
+      "Nicaragua",
+      "Niger",
+      "Nigeria",
+      "Niue",
+      "North Macedonia",
+      "Norway",
+      "Oman",
+      "Pakistan",
+      "Palau",
+      "Panama",
+      "Papua New Guinea",
+      "Paraguay",
+      "Peru",
+      "Philippines",
+      "Poland",
+      "Portugal",
+      "Puerto Rico",
+      "Qatar",
+      "Republic of Korea",
+      "Republic of Moldova",
+      "Romania",
+      "Russian Federation",
+      "Rwanda",
+      "Samoa",
+      "San Marino",
+      "Sao Tome and Principe",
+      "Saudi Arabia",
+      "Senegal",
+      "Serbia",
+      "Seychelles",
+      "Sierra Leone",
+      "Singapore",
+      "Slovakia",
+      "Slovenia",
+      "Solomon Islands",
+      "Somalia",
+      "South Africa",
+      "South Sudan",
+      "Spain",
+      "Sri Lanka",
+      "St. Kitts and Nevis",
+      "St. Lucia",
+      "St. Vincent and the Grenadines",
+      "State of Palestine",
+      "Sudan",
+      "Suriname",
+      "Swaziland",
+      "Sweden",
+      "Switzerland",
+      "Syria Arab Republic",
+      "Taiwan",
+      "Tajikistan",
+      "Thailand",
+      "Timor-Leste",
+      "Togo",
+      "Tonga",
+      "Trinidad and Tobago",
+      "Tunisia",
+      "Turkey",
+      "Turkmenistan",
+      "Tuvalu",
+      "Uganda",
+      "Ukraine",
+      "United Arab Emirates",
+      "United Kingdom of Great Britain and Northern Ireland",
+      "United Republic of Tanzania",
+      "United States of America",
+      "Uruguay",
+      "Uzbekistan",
+      "Vanuatu",
+      "Venezuela (Bolivarian Republic of)",
+      "Viet Nam",
+      "Western Sahara",
+      "Yemen",
+      "Zambia",
+      "Zimbabwe"
+    ],
+    "aef_t5_authorized_entities_incorporation_country": [
+      "Afghanistan",
+      "Albania",
+      "Algeria",
+      "Andorra",
+      "Angola",
+      "Antarctica",
+      "Antigua and Barduba",
+      "Argentina",
+      "Armenia",
+      "Austria",
+      "Azerbaijan",
+      "Bahamas",
+      "Bahrain",
+      "Bangladesh",
+      "Barbados",
+      "Belarus",
+      "Belgium",
+      "Belize",
+      "Benin",
+      "Bhutan",
+      "Bolivia",
+      "Bosnia and Herzegovina",
+      "Botswana",
+      "Brazil",
+      "Brunei Darussalam",
+      "Bulgaria",
+      "Burkina Faso",
+      "Burundi",
+      "Cabo Verde",
+      "Cambodia",
+      "Cameroon",
+      "Canada",
+      "Central African Republic",
+      "Chad",
+      "Chile",
+      "China",
+      "Colombia",
+      "Comoros",
+      "Congo",
+      "Cook Islands",
+      "Costa Rica",
+      "Cote d'Ivoire",
+      "Croatia",
+      "Cuba",
+      "Cyprus",
+      "Czech Republic",
+      "Democratic People's Republic of Korea",
+      "Democratic Republic of Congo",
+      "Denmark",
+      "Djibouti",
+      "Dominica",
+      "Dominican Republic",
+      "Ecuador",
+      "Egypt",
+      "El Salvador",
+      "Equatorial New Guinea",
+      "Eritrea",
+      "Estonia",
+      "Eswatini",
+      "Ethiopia",
+      "European Union",
+      "Fiji",
+      "Finland",
+      "France",
+      "Gabon",
+      "Gambia",
+      "Georgia",
+      "Germany",
+      "Ghana",
+      "Greece",
+      "Grenada",
+      "Guatemala",
+      "Guinea",
+      "Guinea-Bissau",
+      "Guyana",
+      "Haiti",
+      "Holy See",
+      "Honduras",
+      "Hong Kong S.A.R.",
+      "Hungary",
+      "Iceland",
+      "India",
+      "Indonesia",
+      "Iran (Islamic Republic of)",
+      "Iraq",
+      "Ireland",
+      "Israel",
+      "Italy",
+      "Jamaica",
+      "Japan",
+      "Jordan",
+      "Kazakhstan",
+      "Kenya",
+      "Kiribati",
+      "Kuwait",
+      "Kyrgyzstan",
+      "Lao People's Democratic Republic",
+      "Latvia",
+      "Lebanon",
+      "Lesotho",
+      "Liberia",
+      "Libya",
+      "Liechtenstein",
+      "Lithuania",
+      "Luxembourg",
+      "Macau S.A.R.",
+      "Madagascar",
+      "Malawi",
+      "Malaysia",
+      "Maldives",
+      "Mali",
+      "Malta",
+      "Marshall Islands",
+      "Mauritania",
+      "Mauritius",
+      "Mexico",
+      "Micronesia (Federated States of)",
+      "Monaco",
+      "Mongolia",
+      "Montenegro",
+      "Morocco",
+      "Mozambique",
+      "Myanmar",
+      "Namibia",
+      "Nauru",
+      "Nepal",
+      "Netherlands (Kingdom of the)",
+      "New Zealand",
+      "Nicaragua",
+      "Niger",
+      "Nigeria",
+      "Niue",
+      "North Macedonia",
+      "Norway",
+      "Oman",
+      "Pakistan",
+      "Palau",
+      "Panama",
+      "Papua New Guinea",
+      "Paraguay",
+      "Peru",
+      "Philippines",
+      "Poland",
+      "Portugal",
+      "Puerto Rico",
+      "Qatar",
+      "Republic of Korea",
+      "Republic of Moldova",
+      "Romania",
+      "Russian Federation",
+      "Rwanda",
+      "Samoa",
+      "San Marino",
+      "Sao Tome and Principe",
+      "Saudi Arabia",
+      "Senegal",
+      "Serbia",
+      "Seychelles",
+      "Sierra Leone",
+      "Singapore",
+      "Slovakia",
+      "Slovenia",
+      "Solomon Islands",
+      "Somalia",
+      "South Africa",
+      "South Sudan",
+      "Spain",
+      "Sri Lanka",
+      "St. Kitts and Nevis",
+      "St. Lucia",
+      "St. Vincent and the Grenadines",
+      "State of Palestine",
+      "Sudan",
+      "Suriname",
+      "Swaziland",
+      "Sweden",
+      "Switzerland",
+      "Syria Arab Republic",
+      "Taiwan",
+      "Tajikistan",
+      "Thailand",
+      "Timor-Leste",
+      "Togo",
+      "Tonga",
+      "Trinidad and Tobago",
+      "Tunisia",
+      "Turkey",
+      "Turkmenistan",
+      "Tuvalu",
+      "Uganda",
+      "Ukraine",
+      "United Arab Emirates",
+      "United Kingdom of Great Britain and Northern Ireland",
+      "United Republic of Tanzania",
+      "United States of America",
+      "Uruguay",
+      "Uzbekistan",
+      "Vanuatu",
+      "Venezuela (Bolivarian Republic of)",
+      "Viet Nam",
+      "Western Sahara",
+      "Yemen",
+      "Zambia",
+      "Zimbabwe"
+    ],
+    "location_map_type": [
+      "DXF",
+      "GML",
+      "GPX",
+      "GeoJSON",
+      "GeoPackage",
+      "GeoTIFF",
+      "Geodatabases",
+      "JGEP 2000",
+      "KML / KMZ",
+      "LiDAR",
+      "Shapefiles"
+    ],
+    "stakeholder_type": [
+      "Consultant",
+      "Developer",
+      "Owner"
+    ],
+    "label_type": [
+      "Article 6 - Authorisation",
+      "Article 6 - Endorsement",
+      "Article 6 - Letter of Approvals",
+      "Article 6 - Letter of Qualification",
+      "Certification",
+      "SDG 10 - Reduced inequalities"
+    ],
+    "label_name": {
+      "note": "No server-side constraint — label_name is free-text. Any string is accepted by the API."
+    },
+    "rating_type": [
+      "CCQI",
+      "CDP"
+    ],
+    "co_benefit_id": [
+      "SDG 1 - No poverty",
+      "SDG 11 - Sustainable cities and communities",
+      "SDG 12 - Responsible consumption and production",
+      "SDG 13 - Climate action",
+      "SDG 14 - Life below water",
+      "SDG 15 - Life on land",
+      "SDG 16 - Peace and justice strong institutions",
+      "SDG 17 - Partnerships for the goals",
+      "SDG 2 - Zero hunger",
+      "SDG 3 - Good health and well-being",
+      "SDG 4 - Quality education",
+      "SDG 5 - Gender equality",
+      "SDG 6 - Clean water and sanitation",
+      "SDG 7 - Affordable and clean energy",
+      "SDG 8 - Decent work and economic growth",
+      "SDG 9 - Industry innovation and infrastructure"
+    ],
+    "aef_t2_authorizations_metric": [
+      "GHC",
+      "Non-GHG"
+    ],
+    "aef_t2_authorizations_purposes_for_authorization": [
+      "IMP",
+      "NDC",
+      "NDC and IMP",
+      "NDC and OIMP",
+      "NDC and OP",
+      "OIMP",
+      "OP"
+    ],
+    "aef_t2_authorizations_first_transfer_definition_oimp": [
+      "Authorization",
+      "First international transfer",
+      "Issuance",
+      "Use or cancellation"
+    ],
+    "aef_t3_actions_type": [
+      "Acquisition",
+      "Authorization",
+      "Cancellation",
+      "First Transfer",
+      "Transfer",
+      "Use"
+    ],
+    "aef_t3_actions_mitigation_type": [
+      "Emission reductions",
+      "Removals"
+    ]
+  },
+  "validation_rules": {
+    "required_for_data_activation": {
+      "fields": [
+        "project.project_registry_name",
+        "project.project_id",
+        "project.project_name",
+        "project.project_link",
+        "project.project_sector",
+        "project.project_type",
+        "project.project_status",
+        "project.project_status_date",
+        "project.project_unit_metric",
+        "location.location_country",
+        "validation.validation_id",
+        "validation.validation_type",
+        "validation.validation_body",
+        "verification.verification_id",
+        "verification.verification_body",
+        "issuance.issuance_id",
+        "issuance.cad_trust_verification_id",
+        "issuance.cad_trust_project_methodology_id",
+        "issuance.cad_trust_location_id",
+        "unit.unit_serial_id",
+        "unit.unit_start_block",
+        "unit.unit_end_block",
+        "unit.unit_count",
+        "unit.unit_type",
+        "unit.unit_vintage_year",
+        "unit.unit_status",
+        "unit.unit_status_reason",
+        "unit.unit_status_date",
+        "unit.unit_metric",
+        "methodology.methodology_code",
+        "methodology.methodology_name"
+      ]
+    },
+    "conditional_requirements": [
+      {
+        "if": "verification.cadTrustValidationId is set",
+        "then": "the referenced validation record must already exist",
+        "table": "validation"
+      },
+      {
+        "if": "an issuance is being created",
+        "then": "verification, project_methodology, and location records must already exist for the parent project",
+        "table": "issuance"
+      },
+      {
+        "if": "aef_t3_actions or aef_t4_holdings records are submitted",
+        "then": "a corresponding aef_t2_authorizations record must exist (required FK)",
+        "table": "aef_t3_actions / aef_t4_holdings"
+      }
+    ],
+    "common_enum_mistakes": [
+      {
+        "mistake": "unitStatus 'Active' (v1 value)",
+        "correct": "unitStatus 'Held' (v2.0 value)",
+        "note": "'Active' was renamed to 'Held' in v2.0. Sending 'Active' fails validation with no fallback."
+      },
+      {
+        "mistake": "Assuming unit_status has only 3-4 values",
+        "correct": "unit_status has 8 values: Issued, Held, Retired, Cancelled, Expired, Buffer, Inactive, Rejected",
+        "note": "Defaulting unrecognised values to 'Held' will misclassify units that should be 'Buffer' or 'Inactive'."
+      },
+      {
+        "mistake": "coBenefitId",
+        "correct": "cobenefit",
+        "note": "The actual API field name is 'cobenefit' (lowercase, no 'Id' suffix). Sending 'coBenefitId' is silently ignored, not rejected."
+      },
+      {
+        "mistake": "country, region, coordinates (v1-style field names)",
+        "correct": "locationCountry, locationRegion, locationGis",
+        "note": "None of the v1-style names exist in v2.0. Field names changed completely for location."
+      },
+      {
+        "mistake": "projectSector: \"Energy\" (string)",
+        "correct": "projectSector: [\"Energy\"] (array)",
+        "note": "projectSector and projectType must be arrays even for a single value."
+      },
+      {
+        "mistake": "Hand-typed validationBody/verificationBody values",
+        "correct": "Source exact values from GET /v2/governance/meta/pickList",
+        "note": "Both fields are constrained to a list of 58 named VVBs. Capitalisation and punctuation must match exactly."
+      }
+    ]
+  },
+  "migration_from_v1": {
+    "summary": "v1 to v2.0 migration guide for registries.",
+    "steps": [
+      {
+        "step": 1,
+        "title": "methodology",
+        "v1": "project.methodology was a single free-text string.",
+        "v2": "Create a methodology record for each unique methodology. Link projects via the project_methodology join table.",
+        "example_sql": [
+          "INSERT INTO methodology (methodology_code, methodology_name, methodology_version) VALUES ('VM0007', 'REDD+ Methodology', '1.6');",
+          "INSERT INTO project_methodology (cad_trust_project_id, cad_trust_methodology_id) VALUES (<project_id>, <new_methodology_id>);"
+        ]
+      },
+      {
+        "step": 2,
+        "title": "validation + verification (split)",
+        "v1": "Single combined record.",
+        "v2": "Create one validation record and one verification record, optionally linked via verification.cad_trust_validation_id."
+      },
+      {
+        "step": 3,
+        "title": "issuance — new required FKs",
+        "v1": "Issuance linked directly to a project.",
+        "v2": "Every issuance record now requires THREE FKs: cad_trust_verification_id, cad_trust_project_methodology_id, and cad_trust_location_id. Backfill by creating verification, project_methodology, and location records first, then update issuance records."
+      },
+      {
+        "step": 4,
+        "title": "unit_status enum values",
+        "v1": "'Active' represented a held, non-retired unit.",
+        "v2": "'Active' renamed to 'Held'. Also note the full v2.0 picklist has 8 values, not the 3-4 commonly assumed."
+      },
+      {
+        "step": 5,
+        "title": "unit labels (new concept)",
+        "v1": "No equivalent.",
+        "v2": "If your registry tracks credit eligibility (CORSIA, CCP, ICVCM, etc.), create label records and link to units via unit_label."
+      },
+      {
+        "step": 6,
+        "title": "program (new structured table)",
+        "v1": "Programme name stored as a free-text string on project.",
+        "v2": "Migrate to a program record (with programRegistry, programRegistryId) and reference via cadTrustProgramId on the project."
+      },
+      {
+        "step": 7,
+        "title": "stakeholder (new structured table)",
+        "v1": "No equivalent.",
+        "v2": "Create stakeholder records for any organisation or individual with a role on the project (Owner, Developer, Consultant) and link via the direct cadTrustProjectId FK."
+      }
+    ]
+  }
+}
