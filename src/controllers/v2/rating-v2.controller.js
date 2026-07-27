@@ -18,7 +18,7 @@ import { loggerV2 } from '../../config/logger.js';
 export const createRatingV2 = async (req, res) => {
   try {
     await assertV2IfReadOnlyMode();
-    await assertV2HomeOrgExists();
+    const homeOrg = await assertV2HomeOrgExists();
     await assertNoPendingCommitsExcludingTransfers();
 
     const newRecord = _.cloneDeep(req.body);
@@ -90,6 +90,7 @@ export const createRatingV2 = async (req, res) => {
       rating_value: newRecord.ratingValue,
       rating_link: newRecord.ratingLink,
       cad_trust_project_id: newRecord.cadTrustProjectId,
+      created_by_org_uid: homeOrg.org_uid,
     };
 
     // Stage the record
@@ -153,9 +154,10 @@ export const getRatingV2 = async (req, res) => {
 
 export const getAllRatingsV2 = async (req, res) => {
   try {
-    const { page, limit, orgUid } = req.query;
+    const { page, limit, orgUid, createdByOrgUid } = req.query;
     const pagination = paginationParams(page, limit);
     const resolvedOrgUid = await resolveOrgUid(orgUid);
+    const resolvedCreatedByOrgUid = await resolveOrgUid(createdByOrgUid);
 
     const queryOptions = { distinct: true, order: [['createdAt', 'DESC']], ...pagination };
     if (resolvedOrgUid) {
@@ -166,6 +168,9 @@ export const getAllRatingsV2 = async (req, res) => {
         where: { orgUid: resolvedOrgUid },
         required: true,
       }];
+    }
+    if (resolvedCreatedByOrgUid) {
+      queryOptions.where = { ...queryOptions.where, createdByOrgUid: resolvedCreatedByOrgUid };
     }
 
     const records = await RatingV2.findAndCountAll(queryOptions);
@@ -253,6 +258,9 @@ export const updateRatingV2 = async (req, res) => {
     if (updateData.ratingValue !== undefined) dbUpdateData.rating_value = updateData.ratingValue;
     if (updateData.ratingLink !== undefined) dbUpdateData.rating_link = updateData.ratingLink;
     if (updateData.cadTrustProjectId !== undefined) dbUpdateData.cad_trust_project_id = updateData.cadTrustProjectId;
+    if (existingRecord?.createdByOrgUid) {
+      dbUpdateData.created_by_org_uid = existingRecord.createdByOrgUid;
+    }
 
     // Stage the update
     await StagingV2.create({

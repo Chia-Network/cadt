@@ -19,7 +19,7 @@ import { checkReferences, buildReferenceConflictBody } from '../../utils/v2-refe
 export const createProjectMethodologyV2 = async (req, res) => {
   try {
     await assertV2IfReadOnlyMode();
-    await assertV2HomeOrgExists();
+    const homeOrg = await assertV2HomeOrgExists();
     await assertNoPendingCommitsExcludingTransfers();
 
     const newRecord = _.cloneDeep(req.body);
@@ -148,6 +148,7 @@ export const createProjectMethodologyV2 = async (req, res) => {
       cad_trust_methodology_id: newRecord.cadTrustMethodologyId,
       project_methodology_date: newRecord.projectMethodologyDate,
       project_methodology_description: newRecord.projectMethodologyDescription,
+      created_by_org_uid: homeOrg.org_uid,
     };
 
     // Stage the record
@@ -207,9 +208,10 @@ export const getProjectMethodologyV2 = async (req, res) => {
 
 export const getAllProjectMethodologiesV2 = async (req, res) => {
   try {
-    const { page, limit, orgUid } = req.query;
+    const { page, limit, orgUid, createdByOrgUid } = req.query;
     const pagination = paginationParams(page, limit);
     const resolvedOrgUid = await resolveOrgUid(orgUid);
+    const resolvedCreatedByOrgUid = await resolveOrgUid(createdByOrgUid);
 
     const queryOptions = { distinct: true, order: [['createdAt', 'DESC']], ...pagination };
     if (resolvedOrgUid) {
@@ -220,6 +222,9 @@ export const getAllProjectMethodologiesV2 = async (req, res) => {
         where: { orgUid: resolvedOrgUid },
         required: true,
       }];
+    }
+    if (resolvedCreatedByOrgUid) {
+      queryOptions.where = { ...queryOptions.where, createdByOrgUid: resolvedCreatedByOrgUid };
     }
 
     const records = await ProjectMethodologyV2.findAndCountAll(queryOptions);
@@ -320,6 +325,9 @@ export const updateProjectMethodologyV2 = async (req, res) => {
     if (updateData.cadTrustMethodologyId !== undefined) dbUpdateData.cad_trust_methodology_id = updateData.cadTrustMethodologyId;
     if (updateData.projectMethodologyDate !== undefined) dbUpdateData.project_methodology_date = updateData.projectMethodologyDate;
     if (updateData.projectMethodologyDescription !== undefined) dbUpdateData.project_methodology_description = updateData.projectMethodologyDescription;
+    if (existingRecord?.createdByOrgUid) {
+      dbUpdateData.created_by_org_uid = existingRecord.createdByOrgUid;
+    }
 
     // Stage the update
     await StagingV2.create({

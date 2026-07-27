@@ -159,4 +159,7 @@ export const aefT3ActionsV2Schema = Joi.object({
   updatedAt: Joi.date().forbidden().messages({
     'any.unknown': 'updatedAt is automatically managed and cannot be set via API',
   }),
+  createdByOrgUid: Joi.string().forbidden().messages({
+    'any.unknown': 'createdByOrgUid is server-managed and cannot be set via API',
+  }),
 });

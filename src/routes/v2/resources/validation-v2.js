@@ -14,6 +14,7 @@ const validationGetSchema = Joi.object({
     Joi.array().items(Joi.string()),
   ).optional(),
   orgUid: Joi.string().optional(),
+  createdByOrgUid: Joi.string().optional(),
 });
 
 // CRUD routes for validation

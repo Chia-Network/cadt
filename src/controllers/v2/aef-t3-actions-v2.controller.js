@@ -19,7 +19,7 @@ import { loggerV2 } from '../../config/logger.js';
 export const createAefT3ActionsV2 = async (req, res) => {
   try {
     await assertV2IfReadOnlyMode();
-    await assertV2HomeOrgExists();
+    const homeOrg = await assertV2HomeOrgExists();
     await assertNoPendingCommitsExcludingTransfers();
 
     const newRecord = _.cloneDeep(req.body);
@@ -108,6 +108,7 @@ export const createAefT3ActionsV2 = async (req, res) => {
     const dbRecord = {
       cad_trust_aef_t3_actions_id: cadTrustAefT3ActionsId,
       ...convertToSnakeCase(_.omit(newRecord, ['cadTrustAefT3ActionsId', 'createdAt', 'updatedAt'])),
+      created_by_org_uid: homeOrg.org_uid,
     };
 
     // Stage the record
@@ -163,9 +164,10 @@ export const getAefT3ActionsV2 = async (req, res) => {
 
 export const getAllAefT3ActionsV2 = async (req, res) => {
   try {
-    const { page, limit, orgUid } = req.query;
+    const { page, limit, orgUid, createdByOrgUid } = req.query;
     const pagination = paginationParams(page, limit);
     const resolvedOrgUid = await resolveOrgUid(orgUid);
+    const resolvedCreatedByOrgUid = await resolveOrgUid(createdByOrgUid);
 
     const queryOptions = { distinct: true, order: [['aefT3ActionsDate', 'DESC']], ...pagination };
     if (resolvedOrgUid) {
@@ -176,6 +178,9 @@ export const getAllAefT3ActionsV2 = async (req, res) => {
         where: { orgUid: resolvedOrgUid },
         required: true,
       }];
+    }
+    if (resolvedCreatedByOrgUid) {
+      queryOptions.where = { ...queryOptions.where, createdByOrgUid: resolvedCreatedByOrgUid };
     }
 
     const records = await AefT3ActionsV2.findAndCountAll(queryOptions);
@@ -194,7 +199,7 @@ export const getAllAefT3ActionsV2 = async (req, res) => {
 export const updateAefT3ActionsV2 = async (req, res) => {
   try {
     await assertV2IfReadOnlyMode();
-    await assertV2HomeOrgExists();
+    const homeOrg = await assertV2HomeOrgExists();
     await assertNoPendingCommitsExcludingTransfers();
 
     const { cadTrustAefT3ActionsId } = req.params;
@@ -280,10 +285,13 @@ export const updateAefT3ActionsV2 = async (req, res) => {
       });
     }
 
+    const existingRecord = await AefT3ActionsV2.findByPk(cadTrustAefT3ActionsId);
+
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbUpdateData = {
       cad_trust_aef_t3_actions_id: cadTrustAefT3ActionsId,
       ...convertToSnakeCase(_.omit(updateData, ['cadTrustAefT3ActionsId', 'createdAt', 'updatedAt'])),
+      created_by_org_uid: existingRecord?.createdByOrgUid || homeOrg.org_uid,
     };
 
     // Stage the update

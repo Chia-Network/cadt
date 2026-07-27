@@ -29,6 +29,9 @@ export const unitLabelV2Schema = Joi.object({
   updatedAt: Joi.any().forbidden().messages({
     'any.unknown': 'updatedAt is automatically managed and cannot be set via API',
   }),
+  createdByOrgUid: Joi.string().forbidden().messages({
+    'any.unknown': 'createdByOrgUid is server-managed and cannot be set via API',
+  }),
   cadTrustUnitLabelId: Joi.any().forbidden().messages({
     'any.unknown': 'cadTrustUnitLabelId is auto-generated and cannot be set via API',
   }),

@@ -21,7 +21,7 @@ const createLocationController = (Model, ModelMirror, schema) => {
     async create(req, res) {
       try {
         await assertV2IfReadOnlyMode();
-        await assertV2HomeOrgExists();
+        const homeOrg = await assertV2HomeOrgExists();
         await assertNoPendingCommitsExcludingTransfers();
 
         const newRecord = req.body;
@@ -75,6 +75,7 @@ const createLocationController = (Model, ModelMirror, schema) => {
           location_map_type: value.locationMapType,
           location_map_file_link: value.locationMapFileLink,
           cad_trust_project_id: value.cadTrustProjectId,
+          created_by_org_uid: homeOrg.org_uid,
         };
 
         // Stage the record
@@ -107,9 +108,10 @@ const createLocationController = (Model, ModelMirror, schema) => {
     // Get all locations
     async findAll(req, res) {
       try {
-        const { page, limit, orgUid } = req.query;
+        const { page, limit, orgUid, createdByOrgUid } = req.query;
         const pagination = paginationParams(page, limit);
         const resolvedOrgUid = await resolveOrgUid(orgUid);
+        const resolvedCreatedByOrgUid = await resolveOrgUid(createdByOrgUid);
 
         const queryOptions = { distinct: true, ...pagination };
         if (resolvedOrgUid) {
@@ -120,6 +122,9 @@ const createLocationController = (Model, ModelMirror, schema) => {
             where: { orgUid: resolvedOrgUid },
             required: true,
           }];
+        }
+        if (resolvedCreatedByOrgUid) {
+          queryOptions.where = { ...queryOptions.where, createdByOrgUid: resolvedCreatedByOrgUid };
         }
 
         const records = await Model.findAndCountAll(queryOptions);
@@ -214,6 +219,9 @@ const createLocationController = (Model, ModelMirror, schema) => {
         if (value.locationMapType !== undefined) dbUpdateData.location_map_type = value.locationMapType;
         if (value.locationMapFileLink !== undefined) dbUpdateData.location_map_file_link = value.locationMapFileLink;
         if (value.cadTrustProjectId !== undefined) dbUpdateData.cad_trust_project_id = value.cadTrustProjectId;
+        if (existingLocation?.createdByOrgUid) {
+          dbUpdateData.created_by_org_uid = existingLocation.createdByOrgUid;
+        }
 
         // Generate UUID for staging
         const uuid = uuidv4();

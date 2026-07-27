@@ -19,7 +19,7 @@ import { loggerV2 } from '../../config/logger.js';
 export const createAefT2AuthorizationsV2 = async (req, res) => {
   try {
     await assertV2IfReadOnlyMode();
-    await assertV2HomeOrgExists();
+    const homeOrg = await assertV2HomeOrgExists();
     await assertNoPendingCommitsExcludingTransfers();
 
     const newRecord = _.cloneDeep(req.body);
@@ -108,6 +108,7 @@ export const createAefT2AuthorizationsV2 = async (req, res) => {
     const dbRecord = {
       cad_trust_aef_t2_authorizations_id: cadTrustAefT2AuthorizationsId,
       ...convertToSnakeCase(_.omit(newRecord, ['cadTrustAefT2AuthorizationsId', 'createdAt', 'updatedAt'])),
+      created_by_org_uid: homeOrg.org_uid,
     };
 
     // Stage the record
@@ -163,9 +164,10 @@ export const getAefT2AuthorizationsV2 = async (req, res) => {
 
 export const getAllAefT2AuthorizationsV2 = async (req, res) => {
   try {
-    const { page, limit, orgUid } = req.query;
+    const { page, limit, orgUid, createdByOrgUid } = req.query;
     const pagination = paginationParams(page, limit);
     const resolvedOrgUid = await resolveOrgUid(orgUid);
+    const resolvedCreatedByOrgUid = await resolveOrgUid(createdByOrgUid);
 
     const queryOptions = { distinct: true, order: [['aefT2AuthorizationsDate', 'DESC']], ...pagination };
     if (resolvedOrgUid) {
@@ -176,6 +178,9 @@ export const getAllAefT2AuthorizationsV2 = async (req, res) => {
         where: { orgUid: resolvedOrgUid },
         required: true,
       }];
+    }
+    if (resolvedCreatedByOrgUid) {
+      queryOptions.where = { ...queryOptions.where, createdByOrgUid: resolvedCreatedByOrgUid };
     }
 
     const records = await AefT2AuthorizationsV2.findAndCountAll(queryOptions);
@@ -194,7 +199,7 @@ export const getAllAefT2AuthorizationsV2 = async (req, res) => {
 export const updateAefT2AuthorizationsV2 = async (req, res) => {
   try {
     await assertV2IfReadOnlyMode();
-    await assertV2HomeOrgExists();
+    const homeOrg = await assertV2HomeOrgExists();
     await assertNoPendingCommitsExcludingTransfers();
 
     const { cadTrustAefT2AuthorizationsId } = req.params;
@@ -280,10 +285,13 @@ export const updateAefT2AuthorizationsV2 = async (req, res) => {
       });
     }
 
+    const existingRecord = await AefT2AuthorizationsV2.findByPk(cadTrustAefT2AuthorizationsId);
+
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbUpdateData = {
       cad_trust_aef_t2_authorizations_id: cadTrustAefT2AuthorizationsId,
       ...convertToSnakeCase(_.omit(updateData, ['cadTrustAefT2AuthorizationsId', 'createdAt', 'updatedAt'])),
+      created_by_org_uid: existingRecord?.createdByOrgUid || homeOrg.org_uid,
     };
 
     // Stage the update

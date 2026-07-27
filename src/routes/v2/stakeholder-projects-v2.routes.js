@@ -18,6 +18,7 @@ const router = express.Router();
 const stakeholderProjectsGetSchema = Joi.object({
   ...paginationSchema,
   orgUid: Joi.string().optional(),
+  createdByOrgUid: Joi.string().optional(),
 });
 
 // Stakeholder-Project CRUD routes

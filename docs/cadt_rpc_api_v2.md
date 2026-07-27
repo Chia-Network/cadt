@@ -118,6 +118,18 @@ For tables with a direct `orgUid` column (project, unit, methodology, program, s
 
 For child tables (location, estimation, rating, co_benefit, validation, verification, project_methodology, stakeholder_projects, unit_label, issuance, aef_t2-t5), this filters by the parent project's or unit's `orgUid` through an automatic JOIN.
 
+### Creator Provenance Filtering
+
+Child and relationship tables (validation, verification, issuance, location, co_benefit, estimation, rating, project_methodology, stakeholder_projects, unit_label, aef_t2_authorizations, aef_t3_actions, aef_t4_holdings, aef_t5_authorized_entities) support the `?createdByOrgUid=` query parameter:
+
+- `?createdByOrgUid=<org_uid>` — Filter records originally created by a specific organization
+- `?createdByOrgUid=me` — Filter records created by the home (local) organization
+- Combinable with `?orgUid=` for independent two-axis filtering
+
+The `createdByOrgUid` field is **server-managed on the local instance**: CADT automatically sets it to the home organization's UID when a record is created locally. It cannot be set or modified via the API — including it in a POST or PUT request body will result in a `400` error. When records are synced from remote peers, the value published by the originating peer is accepted as-is.
+
+The field may be `null` for records that existed before the migration was applied, for orphan records whose parent could not be resolved during migration, and for records synced from peers running older CADT versions that do not yet populate this field. Backfilled values from the migration are best-effort: if org A created a child record against org B's project, the backfill attributes it to org B (the parent owner).
+
 ### Ownership Restrictions
 
 V2 `PUT` and `DELETE` requests can only stage mutations for records owned by the home organization. For tables with a direct `orgUid` column, the record's `orgUid` must match the home organization. For child and relationship tables, ownership is resolved through the referenced owner records, such as project, unit, program, methodology, label, stakeholder, and AEF parent records.
@@ -2692,6 +2704,7 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
@@ -2882,6 +2895,7 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
@@ -3058,6 +3072,7 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
@@ -3243,6 +3258,7 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
@@ -4002,6 +4018,7 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
@@ -4166,6 +4183,7 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
@@ -4330,6 +4348,7 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
@@ -4480,6 +4499,7 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
@@ -4817,6 +4837,7 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
@@ -5139,6 +5160,7 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
 
 <a id="unit-label-get-examples"></a>
 ### GET Examples
@@ -5467,6 +5489,7 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
@@ -5678,6 +5701,7 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
@@ -5857,6 +5881,7 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
@@ -6093,6 +6118,7 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 

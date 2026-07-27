@@ -18,6 +18,7 @@ const router = express.Router();
 const projectMethodologyGetSchema = Joi.object({
   ...paginationSchema,
   orgUid: Joi.string().optional(),
+  createdByOrgUid: Joi.string().optional(),
 });
 
 // Project-Methodology CRUD routes

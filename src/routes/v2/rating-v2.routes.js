@@ -18,6 +18,7 @@ const router = express.Router();
 const ratingGetSchema = Joi.object({
   ...paginationSchema,
   orgUid: Joi.string().optional(),
+  createdByOrgUid: Joi.string().optional(),
 });
 
 // Rating CRUD routes

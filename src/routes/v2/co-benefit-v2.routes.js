@@ -18,6 +18,7 @@ const router = express.Router();
 const coBenefitGetSchema = Joi.object({
   ...paginationSchema,
   orgUid: Joi.string().optional(),
+  createdByOrgUid: Joi.string().optional(),
 });
 
 // Co-Benefit CRUD routes

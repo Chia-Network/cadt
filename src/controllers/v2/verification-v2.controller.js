@@ -6,7 +6,7 @@ import { Sequelize } from 'sequelize';
 import { sequelizeV2 } from '../../database/v2/index.js';
 import { processingSyncRegistriesTransactionMutexV2 } from '../../utils/v2-mutex-utils.js';
 
-import { StagingV2, VerificationV2, ProjectV2, ValidationV2, OrganizationsV2 } from '../../models/v2/index.js';
+import { StagingV2, VerificationV2, ProjectV2, ValidationV2 } from '../../models/v2/index.js';
 
 import {
   optionallyPaginatedResponse,
@@ -28,7 +28,7 @@ import { stageVerificationChildDeletes } from '../../utils/v2-cascade-delete.js'
 export const create = async (req, res) => {
   try {
     await assertV2IfReadOnlyMode();
-    await assertV2HomeOrgExists();
+    const homeOrg = await assertV2HomeOrgExists();
     await assertNoPendingCommitsExcludingTransfers();
 
     const newRecord = _.cloneDeep(req.body);
@@ -115,6 +115,7 @@ export const create = async (req, res) => {
       verification_body: newRecord.verificationBody,
       cad_trust_project_id: newRecord.cadTrustProjectId,
       cad_trust_validation_id: newRecord.cadTrustValidationId,
+      created_by_org_uid: homeOrg.org_uid,
     };
 
     // Stage the record
@@ -146,9 +147,10 @@ export const create = async (req, res) => {
 
 export const findAll = async (req, res) => {
   try {
-    const { page, limit, columns, orgUid } = req.query;
+    const { page, limit, columns, orgUid, createdByOrgUid } = req.query;
     const pagination = paginationParams(page, limit);
     const resolvedOrgUid = await resolveOrgUid(orgUid);
+    const resolvedCreatedByOrgUid = await resolveOrgUid(createdByOrgUid);
 
     // Handle association includes
     let queryIncludes = [];
@@ -174,7 +176,13 @@ export const findAll = async (req, res) => {
       });
     }
 
+    const whereClause = {};
+    if (resolvedCreatedByOrgUid) {
+      whereClause.createdByOrgUid = resolvedCreatedByOrgUid;
+    }
+
     const records = await VerificationV2.findAndCountAll({
+      where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
       include: queryIncludes.length > 0 ? queryIncludes : undefined,
       ...pagination,
     });
@@ -316,6 +324,9 @@ export const update = async (req, res) => {
     if (updateData.verificationBody !== undefined) dbUpdateData.verification_body = updateData.verificationBody;
     if (updateData.cadTrustProjectId !== undefined) dbUpdateData.cad_trust_project_id = updateData.cadTrustProjectId;
     if (updateData.cadTrustValidationId !== undefined) dbUpdateData.cad_trust_validation_id = updateData.cadTrustValidationId;
+    if (existingRecord?.createdByOrgUid) {
+      dbUpdateData.created_by_org_uid = existingRecord.createdByOrgUid;
+    }
 
     // Stage the update
     await StagingV2.create({
