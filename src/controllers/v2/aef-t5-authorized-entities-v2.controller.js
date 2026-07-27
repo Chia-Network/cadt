@@ -277,7 +277,7 @@ export const updateAefT5AuthorizedEntitiesV2 = async (req, res) => {
     const dbUpdateData = {
       cad_trust_aef_t5_authorized_entities_id: cadTrustAefT5AuthorizedEntitiesId,
       ...convertToSnakeCase(_.omit(updateData, ['cadTrustAefT5AuthorizedEntitiesId', 'createdAt', 'updatedAt'])),
-      created_by_org_uid: existingRecord?.createdByOrgUid || homeOrg.org_uid,
+      created_by_org_uid: existingRecord ? existingRecord.createdByOrgUid : homeOrg.org_uid,
     };
 
     // Stage the update

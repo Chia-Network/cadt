@@ -291,7 +291,7 @@ export const updateAefT4HoldingsV2 = async (req, res) => {
     const dbUpdateData = {
       cad_trust_aef_t4_holdings_id: cadTrustAefT4HoldingsId,
       ...convertToSnakeCase(_.omit(updateData, ['cadTrustAefT4HoldingsId', 'createdAt', 'updatedAt'])),
-      created_by_org_uid: existingRecord?.createdByOrgUid || homeOrg.org_uid,
+      created_by_org_uid: existingRecord ? existingRecord.createdByOrgUid : homeOrg.org_uid,
     };
 
     // Stage the update
