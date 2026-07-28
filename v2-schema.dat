@@ -119,6 +119,7 @@ validation_body picklist [note: 'picklist from VVB']
 validation_date date
 validation_credit_period_start_date date
 validation_credit_period_end_date date
+created_by_org_uid varchar [note: 'Organization UID that created this record. Set automatically from home organization.']
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
 cad_trust_project_id varchar [not null, note: 'Foreign key to project table']
@@ -131,6 +132,7 @@ verification_id varchar [not null, note: 'registry provided unique id']
 verification_start_date date
 verification_end_date date
 verification_body picklist [note: 'picklist from VVB']
+created_by_org_uid varchar [note: 'Organization UID that created this record. Set automatically from home organization.']
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
 cad_trust_project_id varchar [not null, note: 'Foreign key to project table']
@@ -141,6 +143,7 @@ Table issuance {
 cad_trust_issuance_id varchar [primary key, unique, note: 'generated UUID']
 issuance_id varchar [not null, note: 'registry provide unique id']
 issuance_date date
+created_by_org_uid varchar [note: 'Organization UID that created this record. Set automatically from home organization.']
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
 cad_trust_verification_id varchar [not null, note: 'Foreign key to verification table']
@@ -194,6 +197,7 @@ cad_trust_project_id varchar [not null, note: 'Foreign key to project table']
 cad_trust_methodology_id varchar [not null, note: 'references methodology UUID']
 project_methodology_date date
 project_methodology_description text
+created_by_org_uid varchar [note: 'Organization UID that created this record. Set automatically from home organization.']
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
 }
@@ -205,6 +209,7 @@ location_region varchar
 location_gis text [note: 'GIS data including lat/long']
 location_map_type text [note: 'type of map file ie. geojson etc.']
 location_map_file_link html [note: 'datafile link']
+created_by_org_uid varchar [note: 'Organization UID that created this record. Set automatically from home organization.']
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
 cad_trust_project_id varchar [not null, note: 'Foreign key to project table']
@@ -224,6 +229,7 @@ Table stakeholder_projects{
 cad_trust_stakeholder_project_id varchar [primary key, unique, note: 'generated UUID']
 cad_trust_stakeholder_id varchar [not null, note: 'Foreign key to stakeholder table']
 cad_trust_project_id varchar [not null, note: 'Foreign key to project table']
+created_by_org_uid varchar [note: 'Organization UID that created this record. Set automatically from home organization.']
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
 }
@@ -245,6 +251,7 @@ cad_trust_label_id varchar [not null, note: 'Foreign key to label table']
 cad_trust_unit_id varchar [not null, note: 'Foreign key to unit table']
 label_unit_date date
 label_unit_description text
+created_by_org_uid varchar [note: 'Organization UID that created this record. Set automatically from home organization.']
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
 }
@@ -252,6 +259,7 @@ updated_at timestamp [note: 'generated']
 Table co_benefit {
 cad_trust_co_benefit_id varchar [primary key, unique, note: 'generated UUID']
 co_benefit_id picklist [not null]
+created_by_org_uid varchar [note: 'Organization UID that created this record. Set automatically from home organization.']
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
 cad_trust_project_id varchar [not null, note: 'Foreign key to project table']
@@ -263,6 +271,7 @@ estimation_start_date date [not null]
 esitmation_end_date date [not null]
 estimation_unit_count decimal
 estimation_reference_no varchar
+created_by_org_uid varchar [note: 'Organization UID that created this record. Set automatically from home organization.']
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
 cad_trust_project_id varchar [not null, note: 'Foreign key to project table']
@@ -274,6 +283,7 @@ rating_type picklist [note: 'picklist from type']
 rating_name varchar [not null, note: 'name of the rating']
 rating_value varchar [not null]
 rating_link html
+created_by_org_uid varchar [note: 'Organization UID that created this record. Set automatically from home organization.']
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
 cad_trust_project_id varchar [not null, note: 'Foreign key to project table']
@@ -328,6 +338,7 @@ aef_t2_authorizations_authorization_terms varchar
 aef_t2_authorizations_authorization_documentation html
 aef_t2_authorizations_first_transfer_definition_oimp text
 aef_t2_authorizations_additional_information text
+created_by_org_uid varchar [note: 'Organization UID that created this record. Set automatically from home organization.']
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
 cad_trust_aef_t1_submission_id varchar
@@ -365,6 +376,7 @@ aef_t3_actions_using_authorized_entity_id varchar
 aef_t3_actions_itmo_used_year year
 aef_t3_actions_consistency_check_result varchar
 aef_t3_actions_additional_information varchar
+created_by_org_uid varchar [note: 'Organization UID that created this record. Set automatically from home organization.']
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
 cad_trust_aef_t1_submission_id varchar
@@ -391,6 +403,7 @@ aef_t4_holdings_quantity_t_co2 decimal [not null, note:'inferred']
 aef_t4_holdings_quantity_non_ghg varchar
 aef_t4_holdings_mitigation_type picklist [note: 'inferred, picklist from type']
 aef_t4_holdings_vintage_year year [not null, note:'inferred']
+created_by_org_uid varchar [note: 'Organization UID that created this record. Set automatically from home organization.']
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
 cad_trust_aef_t1_submission_id varchar
@@ -409,6 +422,7 @@ aef_t5_authorized_entities_cooperative_approach_Id varchar [not null]
 aef_t5_authorized_entities_conditions text
 aef_t5_authorized_entities_change_conditions text
 aef_t5_authorized_entities_additional_information text
+created_by_org_uid varchar [note: 'Organization UID that created this record. Set automatically from home organization.']
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
 cad_trust_aef_t1_submission_id varchar

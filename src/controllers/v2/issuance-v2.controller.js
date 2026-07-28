@@ -6,7 +6,7 @@ import { Sequelize } from 'sequelize';
 import { sequelizeV2 } from '../../database/v2/index.js';
 import { processingSyncRegistriesTransactionMutexV2 } from '../../utils/v2-mutex-utils.js';
 
-import { StagingV2, IssuanceV2, VerificationV2, ProjectMethodologyV2, OrganizationsV2, ProjectV2, LocationV2 } from '../../models/v2/index.js';
+import { StagingV2, IssuanceV2, VerificationV2, ProjectMethodologyV2, ProjectV2, LocationV2 } from '../../models/v2/index.js';
 
 import {
   optionallyPaginatedResponse,
@@ -28,7 +28,7 @@ import { stageIssuanceChildDeletes } from '../../utils/v2-cascade-delete.js';
 export const create = async (req, res) => {
   try {
     await assertV2IfReadOnlyMode();
-    await assertV2HomeOrgExists();
+    const homeOrg = await assertV2HomeOrgExists();
     await assertNoPendingCommitsExcludingTransfers();
 
     const newRecord = _.cloneDeep(req.body);
@@ -117,6 +117,7 @@ export const create = async (req, res) => {
       cad_trust_verification_id: newRecord.cadTrustVerificationId,
       cad_trust_project_methodology_id: newRecord.cadTrustProjectMethodologyId,
       cad_trust_location_id: newRecord.cadTrustLocationId,
+      created_by_org_uid: homeOrg.org_uid,
     };
 
     // Stage the record
@@ -148,9 +149,10 @@ export const create = async (req, res) => {
 
 export const findAll = async (req, res) => {
   try {
-    const { page, limit, orgUid } = req.query;
+    const { page, limit, orgUid, createdByOrgUid } = req.query;
     const pagination = paginationParams(page, limit);
     const resolvedOrgUid = await resolveOrgUid(orgUid);
+    const resolvedCreatedByOrgUid = await resolveOrgUid(createdByOrgUid);
 
     const queryOptions = {
       ...pagination,
@@ -169,6 +171,9 @@ export const findAll = async (req, res) => {
         }],
         required: true,
       }];
+    }
+    if (resolvedCreatedByOrgUid) {
+      queryOptions.where = { ...queryOptions.where, createdByOrgUid: resolvedCreatedByOrgUid };
     }
 
     const records = await IssuanceV2.findAndCountAll(queryOptions);
@@ -288,6 +293,9 @@ export const update = async (req, res) => {
     if (updateData.cadTrustVerificationId !== undefined) dbUpdateData.cad_trust_verification_id = updateData.cadTrustVerificationId;
     if (updateData.cadTrustProjectMethodologyId !== undefined) dbUpdateData.cad_trust_project_methodology_id = updateData.cadTrustProjectMethodologyId;
     if (updateData.cadTrustLocationId !== undefined) dbUpdateData.cad_trust_location_id = updateData.cadTrustLocationId;
+    if (existingRecord?.createdByOrgUid) {
+      dbUpdateData.created_by_org_uid = existingRecord.createdByOrgUid;
+    }
 
     // Stage the update
     await StagingV2.create({

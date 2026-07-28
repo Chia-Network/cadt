@@ -14,6 +14,11 @@ export default {
     type: Sequelize.UUID,
     allowNull: false,
   },
+  createdByOrgUid: {
+    type: Sequelize.STRING(64),
+    allowNull: true,
+    field: 'created_by_org_uid',
+  },
   createdAt: {
     type: Sequelize.DATE,
     allowNull: false,

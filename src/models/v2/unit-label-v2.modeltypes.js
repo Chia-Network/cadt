@@ -28,6 +28,11 @@ export default {
     allowNull: true,
     field: 'label_unit_description',
   },
+  createdByOrgUid: {
+    type: Sequelize.STRING(64),
+    allowNull: true,
+    field: 'created_by_org_uid',
+  },
   createdAt: {
     type: Sequelize.DATE,
     allowNull: false,

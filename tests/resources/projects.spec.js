@@ -11,6 +11,7 @@ import { pullPickListValues } from '../../src/utils/data-loaders';
 import { Staging, Project } from '../../src/models/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { prepareDb, seedDb, sequelize } from '../../src/database';
+import TaskManager from '../../src/tasks/index.js';
 const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
 
 describe('Project Resource CRUD', function () {
@@ -22,6 +23,11 @@ describe('Project Resource CRUD', function () {
     await pullPickListValues();
     await prepareDb();
     await seedDb(sequelize);
+    TaskManager.stopAll();
+  });
+
+  after(async function () {
+    await TaskManager.start(true, true);
   });
 
   beforeEach(async function () {

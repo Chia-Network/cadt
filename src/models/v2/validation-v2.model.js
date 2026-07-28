@@ -235,6 +235,11 @@ ValidationV2.init(
       allowNull: false,
       field: 'cad_trust_project_id',
     },
+    createdByOrgUid: {
+      type: Sequelize.STRING(64),
+      allowNull: true,
+      field: 'created_by_org_uid',
+    },
   },
   {
     sequelize: sequelizeV2,

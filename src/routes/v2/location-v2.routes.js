@@ -10,6 +10,7 @@ const router = express.Router();
 const locationGetSchema = Joi.object({
   ...paginationSchema,
   orgUid: Joi.string().optional(),
+  createdByOrgUid: Joi.string().optional(),
 });
 
 // Location CRUD routes

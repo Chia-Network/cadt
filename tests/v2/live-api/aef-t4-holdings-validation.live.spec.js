@@ -181,6 +181,8 @@ describe('AefT4Holdings Live API Validation Tests', function () {
       delete updateData.updatedAt;
       delete updateData.created_at;
       delete updateData.updated_at;
+      delete updateData.createdByOrgUid;
+      delete updateData.created_by_org_uid;
       const response = await makePutRequest(request, '/v2/aef-t4-holdings', id, updateData);
       expect(response.success).to.be.true;
 

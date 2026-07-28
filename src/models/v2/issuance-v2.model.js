@@ -296,6 +296,11 @@ IssuanceV2.init(
       allowNull: true,
       field: 'cad_trust_location_id',
     },
+    createdByOrgUid: {
+      type: Sequelize.STRING(64),
+      allowNull: true,
+      field: 'created_by_org_uid',
+    },
   },
   {
     sequelize: sequelizeV2,

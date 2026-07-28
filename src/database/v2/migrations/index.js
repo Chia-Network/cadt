@@ -58,6 +58,9 @@ import RepairIssuanceProjectMethodologyColumnV2 from './20260629133000-repair-is
 // V2 AEF Field Name Corrections
 import RenameAefCooperativeApproachColumnsV2 from './20260629210000-rename-aef-cooperative-approach-columns-v2.js';
 
+// V2 Creator Provenance Field
+import AddCreatedByOrgUidV2 from './20260727120000-add-created-by-org-uid-v2.js';
+
 export const migrations = [
   {
     migration: CreateStagingV2,
@@ -210,5 +213,9 @@ export const migrations = [
   {
     migration: RenameAefCooperativeApproachColumnsV2,
     name: '20260629210000-rename-aef-cooperative-approach-columns-v2',
+  },
+  {
+    migration: AddCreatedByOrgUidV2,
+    name: '20260727120000-add-created-by-org-uid-v2',
   },
 ];

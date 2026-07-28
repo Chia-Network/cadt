@@ -18,7 +18,7 @@ import { loggerV2 } from '../../config/logger.js';
 export const createCoBenefitV2 = async (req, res) => {
   try {
     await assertV2IfReadOnlyMode();
-    await assertV2HomeOrgExists();
+    const homeOrg = await assertV2HomeOrgExists();
     await assertNoPendingCommitsExcludingTransfers();
 
     const newRecord = _.cloneDeep(req.body);
@@ -87,6 +87,7 @@ export const createCoBenefitV2 = async (req, res) => {
       cad_trust_co_benefit_id: cadTrustCoBenefitId,
       co_benefit_id: newRecord.coBenefitId,
       cad_trust_project_id: newRecord.cadTrustProjectId,
+      created_by_org_uid: homeOrg.org_uid,
     };
 
     // Stage the record
@@ -142,9 +143,10 @@ export const getCoBenefitV2 = async (req, res) => {
 
 export const getAllCoBenefitsV2 = async (req, res) => {
   try {
-    const { page, limit, orgUid } = req.query;
+    const { page, limit, orgUid, createdByOrgUid } = req.query;
     const pagination = paginationParams(page, limit);
     const resolvedOrgUid = await resolveOrgUid(orgUid);
+    const resolvedCreatedByOrgUid = await resolveOrgUid(createdByOrgUid);
 
     const queryOptions = { distinct: true, order: [['createdAt', 'DESC']], ...pagination };
     if (resolvedOrgUid) {
@@ -155,6 +157,9 @@ export const getAllCoBenefitsV2 = async (req, res) => {
         where: { orgUid: resolvedOrgUid },
         required: true,
       }];
+    }
+    if (resolvedCreatedByOrgUid) {
+      queryOptions.where = { ...queryOptions.where, createdByOrgUid: resolvedCreatedByOrgUid };
     }
 
     const records = await CoBenefitV2.findAndCountAll(queryOptions);
@@ -239,6 +244,9 @@ export const updateCoBenefitV2 = async (req, res) => {
 
     if (updateData.coBenefitId !== undefined) dbUpdateData.co_benefit_id = updateData.coBenefitId;
     if (updateData.cadTrustProjectId !== undefined) dbUpdateData.cad_trust_project_id = updateData.cadTrustProjectId;
+    if (existingRecord?.createdByOrgUid) {
+      dbUpdateData.created_by_org_uid = existingRecord.createdByOrgUid;
+    }
 
     // Stage the update
     await StagingV2.create({
