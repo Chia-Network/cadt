@@ -17,8 +17,16 @@ concurrency:
 
 jobs:
   docker-smoke-test:
-    name: Docker smoke test
-    runs-on: ubuntu-latest
+    name: Docker smoke test (${{ matrix.arch }})
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runs-on: ubuntu-latest
+          - arch: arm64
+            runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v7
 
