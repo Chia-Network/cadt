@@ -18,6 +18,7 @@ const router = express.Router();
 const unitLabelGetSchema = Joi.object({
   ...paginationSchema,
   orgUid: Joi.string().optional(),
+  createdByOrgUid: Joi.string().optional(),
 });
 
 // Unit-Label CRUD routes

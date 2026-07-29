@@ -18,6 +18,7 @@ const router = express.Router();
 const aefT2AuthorizationsGetSchema = Joi.object({
   ...paginationSchema,
   orgUid: Joi.string().optional(),
+  createdByOrgUid: Joi.string().optional(),
 });
 
 // AEF-T2-Authorizations CRUD routes

@@ -36,6 +36,11 @@ initMirrorModelV2(() => {
         allowNull: true,
         field: 'project_methodology_description',
       },
+      createdByOrgUid: {
+        type: Sequelize.STRING(64),
+        allowNull: true,
+        field: 'created_by_org_uid',
+      },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,

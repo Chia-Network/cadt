@@ -181,6 +181,8 @@ describe('AefT3Actions Live API Validation Tests', function () {
       delete updateData.updatedAt;
       delete updateData.created_at;
       delete updateData.updated_at;
+      delete updateData.createdByOrgUid;
+      delete updateData.created_by_org_uid;
       const response = await makePutRequest(request, '/v2/aef-t3-actions', id, updateData);
       expect(response.success).to.be.true;
 

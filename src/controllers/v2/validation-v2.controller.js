@@ -4,7 +4,7 @@ import _ from 'lodash';
 import { v4 as uuidv4 } from 'uuid';
 import { Sequelize } from 'sequelize';
 
-import { StagingV2, ValidationV2, ProjectV2, OrganizationsV2 } from '../../models/v2/index.js';
+import { StagingV2, ValidationV2, ProjectV2 } from '../../models/v2/index.js';
 
 import {
   optionallyPaginatedResponse,
@@ -26,7 +26,7 @@ import { checkReferences, buildReferenceConflictBody } from '../../utils/v2-refe
 export const create = async (req, res) => {
   try {
     await assertV2IfReadOnlyMode();
-    await assertV2HomeOrgExists();
+    const homeOrg = await assertV2HomeOrgExists();
     await assertNoPendingCommitsExcludingTransfers();
 
     const newRecord = _.cloneDeep(req.body);
@@ -103,6 +103,7 @@ export const create = async (req, res) => {
       validation_credit_period_start_date: newRecord.validationCreditPeriodStartDate,
       validation_credit_period_end_date: newRecord.validationCreditPeriodEndDate,
       cad_trust_project_id: newRecord.cadTrustProjectId,
+      created_by_org_uid: homeOrg.org_uid,
     };
 
     // Stage the record
@@ -134,9 +135,10 @@ export const create = async (req, res) => {
 
 export const findAll = async (req, res) => {
   try {
-    const { page, limit, columns, orgUid } = req.query;
+    const { page, limit, columns, orgUid, createdByOrgUid } = req.query;
     const pagination = paginationParams(page, limit);
     const resolvedOrgUid = await resolveOrgUid(orgUid);
+    const resolvedCreatedByOrgUid = await resolveOrgUid(createdByOrgUid);
 
     // Handle association includes
     let queryIncludes = [];
@@ -155,7 +157,13 @@ export const findAll = async (req, res) => {
       });
     }
 
+    const whereClause = {};
+    if (resolvedCreatedByOrgUid) {
+      whereClause.createdByOrgUid = resolvedCreatedByOrgUid;
+    }
+
     const records = await ValidationV2.findAndCountAll({
+      where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
       include: queryIncludes.length > 0 ? queryIncludes : undefined,
       ...pagination,
     });
@@ -271,6 +279,9 @@ export const update = async (req, res) => {
     if (updateData.validationCreditPeriodStartDate !== undefined) dbUpdateData.validation_credit_period_start_date = updateData.validationCreditPeriodStartDate;
     if (updateData.validationCreditPeriodEndDate !== undefined) dbUpdateData.validation_credit_period_end_date = updateData.validationCreditPeriodEndDate;
     if (updateData.cadTrustProjectId !== undefined) dbUpdateData.cad_trust_project_id = updateData.cadTrustProjectId;
+    if (existingRecord?.createdByOrgUid) {
+      dbUpdateData.created_by_org_uid = existingRecord.createdByOrgUid;
+    }
 
     // Stage the update
     await StagingV2.create({

@@ -116,6 +116,11 @@ initMirrorModelV2(() => {
       allowNull: true,
       field: 'cad_trust_aef_t2_authorizations_id',
     },
+    createdByOrgUid: {
+      type: Sequelize.STRING(64),
+      allowNull: true,
+      field: 'created_by_org_uid',
+    },
     createdAt: {
       type: Sequelize.DATE,
       allowNull: false,

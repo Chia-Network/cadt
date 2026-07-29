@@ -18,6 +18,7 @@ const router = express.Router();
 const aefT4HoldingsGetSchema = Joi.object({
   ...paginationSchema,
   orgUid: Joi.string().optional(),
+  createdByOrgUid: Joi.string().optional(),
 });
 
 // AEF-T4-Holdings CRUD routes

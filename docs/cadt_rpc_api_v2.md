@@ -118,6 +118,18 @@ For tables with a direct `orgUid` column (project, unit, methodology, program, s
 
 For child tables (location, estimation, rating, co_benefit, validation, verification, project_methodology, stakeholder_projects, unit_label, issuance, aef_t2-t5), this filters by the parent project's or unit's `orgUid` through an automatic JOIN.
 
+### Creator Provenance Filtering
+
+Child and relationship tables (validation, verification, issuance, location, co_benefit, estimation, rating, project_methodology, stakeholder_projects, unit_label, aef_t2_authorizations, aef_t3_actions, aef_t4_holdings, aef_t5_authorized_entities) support the `?createdByOrgUid=` query parameter:
+
+- `?createdByOrgUid=<org_uid>` — Filter records originally created by a specific organization
+- `?createdByOrgUid=me` — Filter records created by the home (local) organization
+- Combinable with `?orgUid=` for independent two-axis filtering
+
+The `createdByOrgUid` field is **server-managed on the local instance**: CADT automatically sets it to the home organization's UID when a record is created locally. It cannot be set or modified via the API — including it in a POST or PUT request body will result in a `400` error. When records are synced from remote peers, the value published by the originating peer is accepted as-is.
+
+The field may be `null` for records that existed before the migration was applied, for orphan records whose parent could not be resolved during migration, and for records synced from peers running older CADT versions that do not yet populate this field. Backfilled values from the migration are best-effort: if org A created a child record against org B's project, the backfill attributes it to org B (the parent owner).
+
 ### Ownership Restrictions
 
 V2 `PUT` and `DELETE` requests can only stage mutations for records owned by the home organization. For tables with a direct `orgUid` column, the record's `orgUid` must match the home organization. For child and relationship tables, ownership is resolved through the referenced owner records, such as project, unit, program, methodology, label, stakeholder, and AEF parent records.
@@ -241,8 +253,65 @@ These files use `NEW-<n>` placeholder IDs and demonstrate the expected column na
 
 **Note**: The sample files contain `{{PLACEHOLDER}}` values for foreign keys that reference entities which must already exist in the target CADT instance (e.g., `{{PROGRAM_ID}}`, `{{ISSUANCE_ID}}`). Replace these with real UUIDs from your CADT instance before importing.
 
+## Data Model Overview
+
+The CADT v2 data model consists of 15 core tables (plus 5 optional AEF tables for Article 6 reporting) organised in a parent-child hierarchy. Understanding this hierarchy is essential before submitting data — records must be created in dependency order (parents before children), with each record staged and then committed via the [staging workflow](#staging).
+
+**Recommended insert order:**
+
+`program` → `methodology` → `stakeholder` → `label` → `project` → `project_methodology` → `stakeholder_projects` → `validation` → `verification` → `location` → `estimation` → `rating` → `co_benefit` → `issuance` → `unit` → `unit_label`
+
+### Table reference
+
+| Table | Endpoint | v2 Status | Parent FK(s) | Description |
+|---|---|---|---|---|
+| `program` | [`/v2/program`](#program) | Existing | — | Crediting program or activity grouping (e.g. Gold Standard, VCS) |
+| `methodology` | [`/v2/methodology`](#methodology) | Existing | — | Carbon accounting methodology. Standalone record with versioning — link to projects via `project_methodology` |
+| `stakeholder` | [`/v2/stakeholder`](#stakeholder) | New 🆕 | — | Organisation or individual with a role on a project (Owner, Developer, Consultant). Linked to projects via `stakeholder_projects` |
+| `label` | [`/v2/label`](#label) | New 🆕 | — | Certification or eligibility label (e.g. CORSIA, CCP, Article 6). Assigned to units via `unit_label` |
+| `project` | [`/v2/project`](#project) | Existing | `cadTrustProgramId` (optional) | Carbon project — the central entity. All project-level child records reference it |
+| `project_methodology` | [`/v2/project-methodology`](#project-methodology) | New 🆕 | `cadTrustProjectId` + `cadTrustMethodologyId` | Join table linking a project to a methodology. **Required before creating issuances** |
+| `stakeholder_projects` | [`/v2/stakeholder-projects`](#stakeholder-projects) | New 🆕 | `cadTrustStakeholderId` + `cadTrustProjectId` | Join table linking stakeholders to projects |
+| `validation` | [`/v2/validation`](#validation) | New 🆕 | `cadTrustProjectId` | Third-party validation event. Separated from verification in v2 |
+| `verification` | [`/v2/verification`](#verification) | New 🆕 | `cadTrustProjectId` | Verification event confirming emission reductions. Separated from validation in v2 |
+| `location` | [`/v2/location`](#location) | Existing | `cadTrustProjectId` | Geographic location of a project. A project can have multiple locations |
+| `estimation` | [`/v2/estimation`](#estimation) | Existing | `cadTrustProjectId` | Projected emission reductions over a defined period |
+| `rating` | [`/v2/rating`](#rating) | Existing | `cadTrustProjectId` | Third-party project rating (CDP, CCQI) |
+| `co_benefit` | [`/v2/co-benefit`](#co-benefit) | Existing | `cadTrustProjectId` | UN SDG co-benefit associated with a project |
+| `issuance` | [`/v2/issuance`](#issuance) | Restructured ⚠️ | `cadTrustVerificationId` + `cadTrustProjectMethodologyId` + `cadTrustLocationId` | Credit issuance batch. Now requires a project-methodology FK (new in v2) |
+| `unit` | [`/v2/unit`](#unit) | Restructured ⚠️ | `cadTrustIssuanceId` | Carbon credit unit block. Leaf-level entity |
+| `unit_label` | [`/v2/unit-label`](#unit-label) | New 🆕 | `cadTrustUnitId` + `cadTrustLabelId` | Join table assigning labels to units |
+
+**AEF tables** ([`aef-t1-submission`](#aef-t1-submission), [`aef-t2-authorizations`](#aef-t2-authorizations), [`aef-t3-actions`](#aef-t3-actions), [`aef-t4-holdings`](#aef-t4-holdings), [`aef-t5-authorized-entities`](#aef-t5-authorized-entities)) support UNFCCC Article 6.2 AEF reporting and are only needed by registries submitting AEF reports. AEF insert order: `aef_t5_authorized_entities` and/or `aef_t1_submission` first, then `aef_t2_authorizations`, then `aef_t3_actions` and `aef_t4_holdings`.
+
+### v1 → v2 migration summary
+
+> **If you are integrating for the first time on v2, skip this section.**
+
+| Change | Impact | Action required |
+|---|---|---|
+| `unitStatus: 'Active'` renamed to `'Held'` | All unit records | Replace `'Active'` with `'Held'` in your data before submitting |
+| Validation and verification split into separate tables | Projects with validation/verification data | Create separate records via `POST /v2/validation` and `POST /v2/verification` |
+| `issuance` now requires `cadTrustProjectMethodologyId` | All issuance records | Create a `project_methodology` record first; use its UUID on the issuance |
+| `project_methodology` join table is new and required | Any project with a methodology | Create project-methodology links before creating issuances |
+| `unit_type` values split by nature/technical | All unit records | Map v1 `Avoidance`/`Reduction`/`Removal` to `<value> - nature` or `<value> - technical` |
+| New field: `unitItmosReferenceId` on unit | Article 6.2 reporting | Populate if you are tracking ITMOs |
+
+### Machine-readable schema
+
+A complete JSON schema file is available at [`docs/cadtrust-schema-v2.0.2.json`](./cadtrust-schema-v2.0.2.json). It contains all field definitions, types, sources, picklist values (version-dated), foreign key relationships, insert order, validation rules, and v1 → v2 migration notes in a format consumable by AI mapping agents and ETL pipelines.
+
+**For AI agents and automated tools:**
+
+1. Load `cadtrust-schema-v2.0.2.json` as the source of truth for field definitions and static picklist values (see `picklist_version_date` for when the static values were exported)
+2. Prefer live picklist values from [`GET /v2/governance/meta/pickList`](#get-picklist-data) when a CADT node is available — the live API is the authoritative source
+3. Only submit fields where `source` is `user_input` — fields with `source: system` or `source: api_generated` are set automatically and must not be included in request bodies
+4. Follow the top-level `insert_order` array (and `aef_tables.insert_order` for AEF records) for dependency-safe record creation
+5. Check the `v2_new` and `v2_renamed` flags for fields that changed between v1 and v2
+
 ## Commands
 
+- [Data Model Overview](#data-model-overview)
 - [System endpoints](#system-endpoints)
   - [Diagnostics snapshot](#diagnostics)
   - [V2 health check](#health-check)
@@ -293,7 +362,7 @@ These files use `NEW-<n>` placeholder IDs and demonstrate the expected column na
     - [Get glossary data](#get-glossary-data)
   - [POST Examples](#governance-post-examples)
     - [Create governance body](#create-governance-body)
-    - [Set organization list](#set-organization-list)
+    - [Set organization list](#set-the-governance-organization-list)
     - [Set picklist data](#set-picklist-data)
     - [Set glossary data](#set-glossary-data)
     - [Subscribe to governance body](#subscribe-to-governance-body)
@@ -1199,8 +1268,8 @@ Response
       "action": "INSERT",
       "committed": false,
       "failed_commit": false,
-      "created_at": "2022-03-11T05:17:55.427Z",
-      "updated_at": "2022-03-11T05:17:55.427Z",
+      "createdAt": "2022-03-11T05:17:55.427Z",
+      "updatedAt": "2022-03-11T05:17:55.427Z",
       "diff": {
         "original": {},
         "change": {
@@ -1427,24 +1496,24 @@ Response
     "meta_key": "glossary",
     "meta_value": "{\"Project Statuses\":[...],\"Unit Statuses\":[...]}",
     "confirmed": true,
-    "created_at": "2022-03-13T03:08:15.156Z",
-    "updated_at": "2022-03-13T03:08:15.156Z"
+    "createdAt": "2022-03-13T03:08:15.156Z",
+    "updatedAt": "2022-03-13T03:08:15.156Z"
   },
   {
     "id": 2,
     "meta_key": "pickList",
     "meta_value": "{\"projectSector\":[...],\"unitType\":[...]}",
     "confirmed": true,
-    "created_at": "2022-03-13T03:08:15.156Z",
-    "updated_at": "2022-03-13T03:08:15.156Z"
+    "createdAt": "2022-03-13T03:08:15.156Z",
+    "updatedAt": "2022-03-13T03:08:15.156Z"
   },
   {
     "id": 3,
     "meta_key": "orgList",
     "meta_value": "[{\"orgUid\":\"723a2f97abd8a45826d97c1bdf6f38b11f6207a9a8cb80b18608505efd5ccc27\"}]",
     "confirmed": true,
-    "created_at": "2022-03-13T03:08:15.156Z",
-    "updated_at": "2022-03-13T03:08:15.156Z"
+    "createdAt": "2022-03-13T03:08:15.156Z",
+    "updatedAt": "2022-03-13T03:08:15.156Z"
   }
 ]
 ```
@@ -1815,6 +1884,8 @@ Response
 
 Functionality: Create, read, update, and delete methodology records
 
+> **Schema note:** Methodologies are standalone records — link them to projects via the [`project-methodology`](#project-methodology) join table rather than embedding methodology data in a project. In v1 the methodology was a free-text field on the project; in v2 it is a separate, versioned record.
+
 Query string options:
 
 | Parameter | Type | Description |
@@ -2001,6 +2072,8 @@ Response (409 — references exist)
 
 Functionality: Create, read, update, and delete program records
 
+> **Schema note:** Programs are standalone records that group related projects. Projects reference a program via the optional `cadTrustProgramId` field. Create the program before any project that references it.
+
 Query string options:
 
 | Parameter | Type | Description |
@@ -2180,6 +2253,8 @@ Response (409 — references exist)
 ## `project`
 
 Functionality: Create, read, update, delete, and manage project records with advanced query features
+
+> **Schema note:** The project is the central entity in the v2 data model. All project-level child records (validation, verification, location, estimation, rating, co-benefit, project-methodology, stakeholder-projects) reference a project via `cadTrustProjectId`. Create the project before any of its children. See the [Data Model Overview](#data-model-overview) for the full hierarchy and insert order.
 
 Query string options:
 
@@ -2420,6 +2495,7 @@ Binary XLSX download stream. Pipe to a file (e.g., `--output projects.xlsx` or `
 
 ---
 
+<a id="project-post-examples"></a>
 ### POST Examples
 
 #### Create project
@@ -2685,6 +2761,8 @@ Response
 
 Functionality: Create, read, update, and delete validation records
 
+> **Schema note:** 🆕 New table in v2. In v1, validation data was embedded on the project. It is now a separate child record linked to the parent project via `cadTrustProjectId`, and is kept separate from [`verification`](#verification).
+
 **Note**: By default, GET requests return only validation data. Associated models (project) are not included unless explicitly requested via query parameters.
 
 Query string options:
@@ -2692,6 +2770,7 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
@@ -2875,6 +2954,8 @@ Response (409 — references exist)
 
 Functionality: Create, read, update, and delete verification records
 
+> **Schema note:** 🆕 New table in v2, separated from [`validation`](#validation). Captures post-crediting-period confirmation that emission reductions occurred. Verification records are referenced by issuances via `cadTrustVerificationId`, so create the verification before its issuances.
+
 **Note**: By default, GET requests return only verification data. Associated models (project, validation) are not included unless explicitly requested via query parameters.
 
 Query string options:
@@ -2882,6 +2963,7 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
@@ -3051,6 +3133,8 @@ Response
 
 Functionality: Create, read, update, and delete location records
 
+> **Schema note:** A project can have multiple location records — use a separate POST call for each. Locations are referenced by issuances via `cadTrustLocationId`. New in v2: `locationMapType` (GIS file format picklist) and `locationMapFileLink` for attaching GIS files (GeoJSON, Shapefile, GeoPackage, etc.).
+
 **Note**: By default, GET requests return only location data. Associated models (project) are not included unless explicitly requested via query parameters.
 
 Query string options:
@@ -3058,6 +3142,7 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
@@ -3236,6 +3321,10 @@ Response (409 — references exist)
 
 Functionality: Create, read, update, and delete issuance records
 
+> **Schema note:** An issuance represents a batch of credits issued under a project-methodology pair. Units are children of an issuance.
+>
+> ⚠️ **v2 change:** `cadTrustProjectMethodologyId` is now required. Create a [`project-methodology`](#project-methodology) record first and use its UUID here — this FK did not exist in v1.
+
 **Note**: By default, GET requests return only issuance data. Associated models (verification, projectMethodology, location) are not included unless explicitly requested via query parameters.
 
 Query string options:
@@ -3243,6 +3332,7 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
@@ -3404,6 +3494,10 @@ Response
 ## `unit`
 
 Functionality: Create, read, update, delete, and manage unit records with advanced query features
+
+> **Schema note:** Units are the leaf-level entity. Each unit belongs to one issuance, so before creating a unit the chain `program` → `methodology` → `project` → `project_methodology` → `verification` → `issuance` must already be staged or committed.
+>
+> ⚠️ **v2 change:** `unitStatus: 'Active'` from v1 is now `'Held'`. Sending `'Active'` will fail validation. New in v2: `unitRetirementDetail`, `unitRetirementBeneficiary`, `unitRetirementBeneficiaryId` (LEI), and `unitItmosReferenceId` for Article 6.2 ITMO tracking.
 
 **Note**: By default, GET requests return only unit data. Associated models (issuance, unitLabels) are not included unless explicitly requested via the `columns` parameter (e.g., `?columns=issuance`).
 
@@ -3665,6 +3759,7 @@ Response
 
 ---
 
+<a id="unit-post-examples"></a>
 ### POST Examples
 
 #### Create unit
@@ -3997,11 +4092,14 @@ Response
 
 Functionality: Create, read, update, and delete estimation records
 
+> **Schema note:** Estimation records capture projected emission reductions for a project over a defined period. A project can have multiple estimation records covering different periods. Create after the parent project exists.
+
 Query string options:
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
@@ -4161,11 +4259,14 @@ Response
 
 Functionality: Create, read, update, and delete rating records
 
+> **Schema note:** Third-party quality ratings assigned to a project (e.g. a CCQI score). A project can have multiple ratings of different types. Create after the parent project exists.
+
 Query string options:
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
@@ -4325,11 +4426,14 @@ Response
 
 Functionality: Create, read, update, and delete co-benefit records
 
+> **Schema note:** Co-benefits map a project to UN Sustainable Development Goals. The `coBenefitId` value must be one of the 17 SDG picklist strings (e.g. `SDG 13 - Climate action`) — not freeform text. A project can have multiple co-benefit records, one per SDG.
+
 Query string options:
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
@@ -4475,11 +4579,14 @@ Response
 
 Functionality: Create, read, update, and delete project-methodology relationships
 
+> **Schema note:** 🆕 New join table in v2. Explicitly links a project to a methodology (many-to-many). **Must exist before creating an issuance** — the issuance `cadTrustProjectMethodologyId` field references this table. Both the project and methodology must already exist (committed or staged).
+
 Query string options:
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
@@ -4644,6 +4751,10 @@ Response (409 — references exist)
 
 Functionality: Create, read, update, and delete stakeholder records
 
+> **Schema note:** 🆕 New in v2. A stakeholder is an organisation or individual with a defined role on a project (`Owner`, `Developer`, `Consultant`). Stakeholders are standalone records linked to projects via the [`stakeholder-projects`](#stakeholder-projects) join table — create the stakeholder before the join records.
+>
+> ⚠️ **Referential integrity:** A stakeholder cannot be deleted while any stakeholder-projects records reference it. Remove the join records first.
+
 Query string options:
 
 | Parameter | Type | Description |
@@ -4703,6 +4814,7 @@ Response
 
 ---
 
+<a id="stakeholder-post-examples"></a>
 ### POST Examples
 
 #### Create stakeholder
@@ -4812,11 +4924,14 @@ Response (409 — references exist)
 
 Functionality: Create, read, update, and delete stakeholder-project relationships
 
+> **Schema note:** 🆕 New join table in v2, linking a stakeholder to a project (many-to-many). Both the stakeholder and the project must already exist (committed or staged) before creating this record.
+
 Query string options:
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
@@ -4960,6 +5075,10 @@ Response
 ## `label`
 
 Functionality: Create, read, update, and delete label records
+
+> **Schema note:** 🆕 New in v2. A certification or eligibility label (e.g. CORSIA, CCP, Article 6 endorsements). Labels are standalone records assigned to units via the [`unit-label`](#unit-label) join table — create the label before any unit-label assignments.
+>
+> ⚠️ **Referential integrity:** A label cannot be deleted while any unit-label records reference it. Remove the join records first.
 
 Query string options:
 
@@ -5134,11 +5253,14 @@ Response (409 — references exist)
 
 Functionality: Create, read, update, and delete unit-label relationships
 
+> **Schema note:** 🆕 New join table in v2, assigning a label to a unit (many-to-many). Both the label and the unit must already exist before creating this record. One unit can hold multiple labels.
+
 Query string options:
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
 
 <a id="unit-label-get-examples"></a>
 ### GET Examples
@@ -5290,6 +5412,10 @@ Response
 ## `aef-t1-submission`
 
 Functionality: Create, read, update, and delete AEF-T1-Submission records
+
+> **Schema note:** The AEF tables (T1–T5) capture UNFCCC Article 6.2 electronic-format reporting data used in Biennial Transparency Reports. Most standard registry integrations will not need them. AEF insert order: `aef_t5_authorized_entities` and/or `aef_t1_submission` first, then `aef_t2_authorizations`, then `aef_t3_actions` and `aef_t4_holdings`.
+>
+> T1 is the root AEF record representing a Party's Article 6 submission to the UNFCCC. Other AEF records optionally link back to it via `cadTrustAefT1SubmissionId` — create it first when building a full AEF record set.
 
 Query string options:
 
@@ -5462,11 +5588,14 @@ Response
 
 Functionality: Create, read, update, and delete AEF-T2-Authorizations records
 
+> **Schema note:** Article 6.2 Table 2 — authorizations granted by a Party for ITMOs. Each record covers one authorization (cooperative approach, authorized party, quantity, sector). T2 is the hub of the AEF tables: T3, T4, and T5 records may reference it. Links optionally to a T1 submission, a unit, a project, and a T5 authorized entity.
+
 Query string options:
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
@@ -5673,11 +5802,14 @@ Response
 
 Functionality: Create, read, update, and delete AEF-T5-Authorized-Entities records
 
+> **Schema note:** Article 6.2 Table 5 — entities authorized to participate in cooperative approaches. Can be created independently of T1 or alongside it. T2 records may reference a T5 entity via `cadTrustAefT5AuthorizedEntitiesId`.
+
 Query string options:
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
@@ -5852,11 +5984,14 @@ Response
 
 Functionality: Create, read, update, and delete AEF-T3-Actions records
 
+> **Schema note:** Article 6.2 Table 3 — ITMO transfer and use actions. Each record captures one action (transferring party, acquiring party, ITMO block range, quantity, vintage). This is the most field-dense AEF table. Links optionally to T1, T2, a unit, and a project.
+
 Query string options:
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
@@ -6088,11 +6223,14 @@ Response
 
 Functionality: Create, read, update, and delete AEF-T4-Holdings records
 
+> **Schema note:** Article 6.2 Table 4 — ITMO holdings at the end of a reporting period. Captures the stock of ITMOs held by a Party after transfers and uses. Structurally similar to T3 but represents holdings rather than actions.
+
 Query string options:
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 

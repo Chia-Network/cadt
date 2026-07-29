@@ -18,6 +18,7 @@ const router = express.Router();
 const aefT3ActionsGetSchema = Joi.object({
   ...paginationSchema,
   orgUid: Joi.string().optional(),
+  createdByOrgUid: Joi.string().optional(),
 });
 
 // AEF-T3-Actions CRUD routes

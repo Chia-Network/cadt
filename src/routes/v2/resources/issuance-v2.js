@@ -10,6 +10,7 @@ const IssuanceV2Router = express.Router();
 const issuanceGetSchema = Joi.object({
   ...paginationSchema,
   orgUid: Joi.string().optional(),
+  createdByOrgUid: Joi.string().optional(),
 });
 
 // CRUD routes for issuance

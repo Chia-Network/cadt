@@ -18,6 +18,7 @@ const router = express.Router();
 const estimationGetSchema = Joi.object({
   ...paginationSchema,
   orgUid: Joi.string().optional(),
+  createdByOrgUid: Joi.string().optional(),
 });
 
 // Estimation CRUD routes

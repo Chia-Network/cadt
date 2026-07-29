@@ -19,4 +19,4 @@ jobs:
     uses: Chia-Network/actions/.github/workflows/docker-build.yaml@main
     with:
       push: ${{ github.event_name != 'pull_request' }}
-      docker-platforms: linux/amd64
+      docker-platforms: linux/amd64,linux/arm64
