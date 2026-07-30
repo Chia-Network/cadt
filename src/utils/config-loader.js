@@ -7,6 +7,7 @@ import { mergeObjects } from './helpers';
 import { defaultConfig } from './defaultConfig.js';
 import { getChiaRoot } from './chia-root.js';
 import { migrateConfigFiles } from './config-migration.js';
+import { coerceNumericAppConfig } from './numeric-config.js';
 
 // Helper function to load config for a specific version
 const loadConfigForVersion = (dataModelVersion) => {
@@ -128,6 +129,11 @@ const loadConfigForVersion = (dataModelVersion) => {
       APP: { ...unifiedConfig.APP },
     };
   }
+
+  // YAML preserves quoting, so a config value written as "3000" stays a string
+  // and turns `DEFAULT_COIN_AMOUNT + DEFAULT_FEE` into concatenation. Coerce
+  // the numeric keys once here so no consumer has to.
+  mergedConfig.APP = coerceNumericAppConfig(mergedConfig.APP);
 
   // Handle CW_PORT environment variable override
   if (process.env.CW_PORT) {

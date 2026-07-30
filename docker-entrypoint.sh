@@ -57,22 +57,30 @@ EOF
     fi
 }
 
-# Create config directories if they don't exist
-# V1 and V2 directories still needed for databases
-mkdir -p /root/.chia/mainnet/cadt/v1
-mkdir -p /root/.chia/mainnet/cadt/v2
-# Unified config directory
-mkdir -p /root/.chia/mainnet/cadt
-
-# Create unified config file if it doesn't exist
-create_config_if_not_exists "$UNIFIED_CONFIG_PATH"
-
 # Function to update unified config with environment variables for APP section
 update_app_config() {
     local env_var=$1
     local yaml_path=$2
 
     update_yaml_if_env_exists "$env_var" ".APP$yaml_path" "$UNIFIED_CONFIG_PATH"
+}
+
+# Same as update_app_config, but writes plain integers as YAML numbers instead
+# of quoted strings so the JS layer can do arithmetic on them (a quoted "300"
+# plus a quoted "300" concatenates to "300300" rather than adding to 600).
+# Scoped to keys that are numeric by contract: digit-only strings elsewhere
+# (API keys, DB names, governance body IDs) must keep their quotes. Anything
+# that is not a plain integer falls through to the generic handler, so boolean,
+# empty and string values behave exactly as before.
+update_numeric_app_config() {
+    local env_var=$1
+    local yaml_path=$2
+
+    if [ -n "${!env_var+x}" ] && [[ "${!env_var}" =~ ^-?[0-9]+$ ]]; then
+        yq eval ".APP$yaml_path |= ${!env_var}" -i "$UNIFIED_CONFIG_PATH"
+    else
+        update_app_config "$env_var" "$yaml_path"
+    fi
 }
 
 # Function to update unified config with environment variables for V1 section
@@ -91,37 +99,53 @@ update_v2_config() {
     update_yaml_if_env_exists "$env_var" ".V2$yaml_path" "$UNIFIED_CONFIG_PATH"
 }
 
+# Tests source this script to exercise the helpers above against a temporary
+# config file; stop before anything touches /root/.chia or execs the server.
+if [ -n "${CADT_ENTRYPOINT_FUNCTIONS_ONLY:-}" ]; then
+    return 0 2>/dev/null || exit 0
+fi
+
+# Create config directories if they don't exist
+# V1 and V2 directories still needed for databases
+mkdir -p /root/.chia/mainnet/cadt/v1
+mkdir -p /root/.chia/mainnet/cadt/v2
+# Unified config directory
+mkdir -p /root/.chia/mainnet/cadt
+
+# Create unified config file if it doesn't exist
+create_config_if_not_exists "$UNIFIED_CONFIG_PATH"
+
 # APP section (shared across V1 and V2)
-update_app_config "CW_PORT" '.CW_PORT'
+update_numeric_app_config "CW_PORT" '.CW_PORT'
 update_app_config "BIND_ADDRESS" '.BIND_ADDRESS'
 update_app_config "DATALAYER_URL" '.DATALAYER_URL'
 update_app_config "WALLET_URL" '.WALLET_URL'
 update_app_config "USE_SIMULATOR" '.USE_SIMULATOR'
 update_app_config "CHIA_NETWORK" '.CHIA_NETWORK'
 update_app_config "USE_DEVELOPMENT_MODE" '.USE_DEVELOPMENT_MODE'
-update_app_config "DEFAULT_FEE" '.DEFAULT_FEE'
-update_app_config "DEFAULT_COIN_AMOUNT" '.DEFAULT_COIN_AMOUNT'
+update_numeric_app_config "DEFAULT_FEE" '.DEFAULT_FEE'
+update_numeric_app_config "DEFAULT_COIN_AMOUNT" '.DEFAULT_COIN_AMOUNT'
 update_app_config "CERTIFICATE_FOLDER_PATH" '.CERTIFICATE_FOLDER_PATH'
 update_app_config "DATALAYER_FILE_SERVER_URL" '.DATALAYER_FILE_SERVER_URL'
 update_app_config "AUTO_SUBSCRIBE_FILESTORE" '.AUTO_SUBSCRIBE_FILESTORE'
 update_app_config "AUTO_MIRROR_EXTERNAL_STORES" '.AUTO_MIRROR_EXTERNAL_STORES'
 update_app_config "LOG_LEVEL" '.LOG_LEVEL'
-update_app_config "TRUST_PROXY" '.TRUST_PROXY'
+update_numeric_app_config "TRUST_PROXY" '.TRUST_PROXY'
 
 # APP.TASKS section (shared)
-update_app_config "GOVERNANCE_SYNC_TASK_INTERVAL" '.TASKS.GOVERNANCE_SYNC_TASK_INTERVAL'
-update_app_config "ORGANIZATION_META_SYNC_TASK_INTERVAL" '.TASKS.ORGANIZATION_META_SYNC_TASK_INTERVAL'
-update_app_config "PICKLIST_SYNC_TASK_INTERVAL" '.TASKS.PICKLIST_SYNC_TASK_INTERVAL'
-update_app_config "MIRROR_CHECK_TASK_INTERVAL" '.TASKS.MIRROR_CHECK_TASK_INTERVAL'
-update_app_config "VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL" '.TASKS.VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL'
-update_app_config "COIN_MANAGEMENT_TASK_INTERVAL" '.TASKS.COIN_MANAGEMENT_TASK_INTERVAL'
+update_numeric_app_config "GOVERNANCE_SYNC_TASK_INTERVAL" '.TASKS.GOVERNANCE_SYNC_TASK_INTERVAL'
+update_numeric_app_config "ORGANIZATION_META_SYNC_TASK_INTERVAL" '.TASKS.ORGANIZATION_META_SYNC_TASK_INTERVAL'
+update_numeric_app_config "PICKLIST_SYNC_TASK_INTERVAL" '.TASKS.PICKLIST_SYNC_TASK_INTERVAL'
+update_numeric_app_config "MIRROR_CHECK_TASK_INTERVAL" '.TASKS.MIRROR_CHECK_TASK_INTERVAL'
+update_numeric_app_config "VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL" '.TASKS.VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL'
+update_numeric_app_config "COIN_MANAGEMENT_TASK_INTERVAL" '.TASKS.COIN_MANAGEMENT_TASK_INTERVAL'
 
 # APP.REQUEST_CONTENT_LIMITS section (shared)
-update_app_config "STAGING_EDIT_DATA_LEN" '.REQUEST_CONTENT_LIMITS.STAGING.EDIT_DATA_LEN'
-update_app_config "UNITS_INCLUDE_COLUMNS_LEN" '.REQUEST_CONTENT_LIMITS.UNITS.INCLUDE_COLUMNS_LEN'
-update_app_config "UNITS_MARKETPLACE_IDENTIFIERS_LEN" '.REQUEST_CONTENT_LIMITS.UNITS.MARKETPLACE_IDENTIFIERS_LEN'
-update_app_config "PROJECTS_INCLUDE_COLUMNS_LEN" '.REQUEST_CONTENT_LIMITS.PROJECTS.INCLUDE_COLUMNS_LEN'
-update_app_config "PROJECTS_PROJECT_IDS_LEN" '.REQUEST_CONTENT_LIMITS.PROJECTS.PROJECT_IDS_LEN'
+update_numeric_app_config "STAGING_EDIT_DATA_LEN" '.REQUEST_CONTENT_LIMITS.STAGING.EDIT_DATA_LEN'
+update_numeric_app_config "UNITS_INCLUDE_COLUMNS_LEN" '.REQUEST_CONTENT_LIMITS.UNITS.INCLUDE_COLUMNS_LEN'
+update_numeric_app_config "UNITS_MARKETPLACE_IDENTIFIERS_LEN" '.REQUEST_CONTENT_LIMITS.UNITS.MARKETPLACE_IDENTIFIERS_LEN'
+update_numeric_app_config "PROJECTS_INCLUDE_COLUMNS_LEN" '.REQUEST_CONTENT_LIMITS.PROJECTS.INCLUDE_COLUMNS_LEN'
+update_numeric_app_config "PROJECTS_PROJECT_IDS_LEN" '.REQUEST_CONTENT_LIMITS.PROJECTS.PROJECT_IDS_LEN'
 
 # V1 section - independent configuration with V1_ prefix
 update_v1_config "V1_ENABLE" '.ENABLE'
