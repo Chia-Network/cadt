@@ -86,6 +86,28 @@ describe('Numeric config coercion', function () {
     });
   });
 
+  describe('NUMERIC_APP_CONFIG_PATHS', function () {
+    it('lists every number-valued key in defaultConfig.APP', function () {
+      const numericLeaves = (node, prefix = '') =>
+        Object.entries(node).flatMap(([key, value]) => {
+          const configPath = prefix ? `${prefix}.${key}` : key;
+          if (value !== null && typeof value === 'object') {
+            return numericLeaves(value, configPath);
+          }
+          return typeof value === 'number' ? [configPath] : [];
+        });
+
+      // TRUST_PROXY is numeric but owned by resolveTrustProxyHops.
+      const expected = numericLeaves(defaultConfig.APP).filter(
+        (configPath) => configPath !== 'TRUST_PROXY',
+      );
+
+      expect([...NUMERIC_APP_CONFIG_PATHS].sort()).to.deep.equal(
+        expected.sort(),
+      );
+    });
+  });
+
   describe('coerceNumericAppConfig', function () {
     it('coerces every documented numeric key', function () {
       const stringified = {};
@@ -278,17 +300,21 @@ describe('Numeric config coercion', function () {
       const numericPaths = [...NUMERIC_APP_CONFIG_PATHS, 'TRUST_PROXY'];
 
       for (const configPath of numericPaths) {
-        const callSite = entrypoint
+        // Every matching line, not just the first, so a stray update_app_config
+        // added later for the same key is still caught.
+        const callSites = entrypoint
           .split('\n')
-          .find((line) => line.includes(`'.${configPath}'`));
+          .filter((line) => line.includes(`'.${configPath}'`));
 
         expect(
-          callSite,
+          callSites,
           `no docker-entrypoint.sh call site for APP.${configPath}`,
-        ).to.exist;
-        expect(callSite, `APP.${configPath}`).to.match(
-          /^update_numeric_app_config /,
-        );
+        ).to.not.be.empty;
+        for (const callSite of callSites) {
+          expect(callSite, `APP.${configPath}`).to.match(
+            /^update_numeric_app_config /,
+          );
+        }
       }
     });
 

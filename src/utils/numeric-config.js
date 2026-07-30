@@ -94,8 +94,11 @@ export const coerceNumericAppConfig = (appConfig, log = console) => {
     return appConfig;
   }
 
-  // Clone so coercion cannot write through the shared nested objects that
-  // config-loader's shallow spreads leave pointing at defaultConfig.
+  // Clone so coercion cannot write through into defaultConfig. When
+  // config-loader falls back to `{ ...defaultConfig }`, that shallow spread
+  // leaves APP.TASKS and APP.REQUEST_CONTENT_LIMITS pointing at the shared
+  // module-level defaults, and mergeObjects keeps the aliases because the keys
+  // already exist in the target.
   const coerced = _.cloneDeep(appConfig);
 
   for (const configPath of NUMERIC_APP_CONFIG_PATHS) {

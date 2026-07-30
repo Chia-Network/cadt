@@ -76,11 +76,15 @@ update_numeric_app_config() {
     local env_var=$1
     local yaml_path=$2
 
-    if [ -n "${!env_var+x}" ] && [[ "${!env_var}" =~ ^-?[0-9]+$ ]]; then
-        yq eval ".APP$yaml_path |= ${!env_var}" -i "$UNIFIED_CONFIG_PATH"
-    else
-        update_app_config "$env_var" "$yaml_path"
+    # yq rejects integers wider than int64, so fall back to the generic writer
+    # on failure too; a quoted value the JS layer coerces beats dropping the
+    # operator's setting on the floor.
+    if [ -n "${!env_var+x}" ] && [[ "${!env_var}" =~ ^-?[0-9]+$ ]] &&
+        yq eval ".APP$yaml_path |= ${!env_var}" -i "$UNIFIED_CONFIG_PATH"; then
+        return 0
     fi
+
+    update_app_config "$env_var" "$yaml_path"
 }
 
 # Function to update unified config with environment variables for V1 section
