@@ -178,6 +178,59 @@ const clearPendingRoots = async (storeId) => {
   }
 };
 
+/**
+ * DataLayer stages a pending root before it creates the wallet transaction that
+ * publishes it, so a failure between those two steps leaves a root DataLayer
+ * will never reconcile: its confirmation check returns early while the store's
+ * on-chain generation stays put, and every later push to the store is rejected.
+ * Dropping the root is only safe once the wallet is known to be settled, since
+ * an unconfirmed transaction may be the one the root is waiting on.
+ *
+ * @returns {Promise<boolean>} true when a pending root was cleared
+ */
+const clearOrphanedPendingRoot = async (storeId) => {
+  try {
+    // The transaction that publishes a root belongs to the DataLayer wallet, so
+    // without its id a settled wallet is indistinguishable from one that was
+    // never asked.
+    const dlWalletId = await wallet.getDLWalletId();
+    if (!dlWalletId) {
+      logger.warn(
+        `DataLayer wallet id is unavailable, so the pending root for store ` +
+          `${storeId} cannot be shown to be orphaned. Leaving it in place.`,
+      );
+      return false;
+    }
+
+    // getTransactionHealth throws when the RPC reports failure, which keeps an
+    // unanswerable question from being read as "nothing is unconfirmed".
+    const walletIds = dlWalletId === '1' ? ['1'] : ['1', dlWalletId];
+    for (const walletId of walletIds) {
+      const { rejected, inMempool, pending } =
+        await wallet.getTransactionHealth(walletId);
+
+      if (rejected.length + inMempool.length + pending.length > 0) {
+        return false;
+      }
+    }
+  } catch (error) {
+    logger.warn(
+      `Could not determine wallet transaction state for store ${storeId}; ` +
+        `leaving its pending root in place. ${error.message}`,
+    );
+    return false;
+  }
+
+  const cleared = await clearPendingRoots(storeId);
+  if (cleared) {
+    logger.warn(
+      `Cleared the pending root for store ${storeId}: no transaction remained ` +
+        `that could confirm it.`,
+    );
+  }
+  return cleared;
+};
+
 const checkWalletBalanceForMirror = async (coinAmount, fee) => {
   try {
     const balanceXCH = await wallet.getWalletBalance();
@@ -709,6 +762,7 @@ const pushChangeListToDataLayer = async (
   { skipTransactionWait = false } = {},
 ) => {
   let attempts = 0;
+  let pendingRootCleared = false;
   const maxAttempts = 5;
 
   while (attempts < maxAttempts) {
@@ -788,11 +842,25 @@ const pushChangeListToDataLayer = async (
           'Already have a pending root waiting for confirmation',
         )
       ) {
-        logger.info(
-          `Pending root for store ${storeId}; waiting for confirmation then retrying (attempt ${attempts + 1}/${maxAttempts})`,
-        );
         attempts++;
+        logger.info(
+          `Pending root for store ${storeId}; waiting for confirmation (attempt ${attempts}/${maxAttempts})`,
+        );
         await wallet.waitForAllTransactionsToConfirm();
+
+        // A first sighting gets the benefit of the doubt, since a concurrent
+        // push to this store may still be between staging its root and creating
+        // the transaction that publishes it. Clearing again after that would
+        // only repeat the same gamble, so a push discards at most one root.
+        if (
+          attempts > 1 &&
+          !pendingRootCleared &&
+          (await clearOrphanedPendingRoot(storeId))
+        ) {
+          pendingRootCleared = true;
+          continue;
+        }
+
         await new Promise((resolve) => setTimeout(resolve, 10000));
         continue;
       }
