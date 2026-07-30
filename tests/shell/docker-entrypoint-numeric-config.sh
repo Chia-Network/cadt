@@ -28,8 +28,7 @@ V1:
     GOVERNANCE_BODY_ID: placeholder
 EOF
 
-# Load the helper functions without running the container startup steps.
-export CADT_ENTRYPOINT_FUNCTIONS_ONLY=1
+# Sourcing loads the helper functions without running the container startup.
 # shellcheck source=/dev/null
 source "$REPO_ROOT/docker-entrypoint.sh"
 

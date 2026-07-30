@@ -238,6 +238,18 @@ describe('Numeric config coercion', function () {
       expect(app.REQUEST_CONTENT_LIMITS.STAGING.EDIT_DATA_LEN).to.equal(50);
     });
 
+    it('keeps the CW_PORT env override numeric', function () {
+      writeConfig({ CW_PORT: '31310' });
+
+      process.env.CW_PORT = '31399';
+      clearConfigCaches();
+      expect(getConfig().APP.CW_PORT).to.equal(31399);
+
+      process.env.CW_PORT = 'not-a-port';
+      clearConfigCaches();
+      expect(getConfig().APP.CW_PORT).to.equal(defaultConfig.APP.CW_PORT);
+    });
+
     it('falls back to documented defaults for unparseable values', function () {
       writeConfig({ DEFAULT_FEE: 'not-a-number', DEFAULT_COIN_AMOUNT: '' });
 
@@ -284,8 +296,11 @@ describe('Numeric config coercion', function () {
       let written;
 
       before(function () {
-        // yq v4 ships in the Docker image but is not a dev dependency.
-        if (spawnSync('yq', ['--version']).error) {
+        // The image installs mikefarah yq v4; the unrelated jq-based python-yq
+        // of the same name has no `eval` subcommand, so skip on anything else
+        // rather than reporting a spurious failure.
+        const yqVersion = spawnSync('yq', ['--version'], { encoding: 'utf8' });
+        if (yqVersion.error || !/mikefarah/i.test(yqVersion.stdout || '')) {
           this.skip();
         }
         written = yaml.load(

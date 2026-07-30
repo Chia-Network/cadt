@@ -99,10 +99,12 @@ update_v2_config() {
     update_yaml_if_env_exists "$env_var" ".V2$yaml_path" "$UNIFIED_CONFIG_PATH"
 }
 
-# Tests source this script to exercise the helpers above against a temporary
-# config file; stop before anything touches /root/.chia or execs the server.
-if [ -n "${CADT_ENTRYPOINT_FUNCTIONS_ONLY:-}" ]; then
-    return 0 2>/dev/null || exit 0
+# Sourcing this script yields only the helper functions above, which is how
+# tests drive them against a temporary config file. Executing it runs the
+# container startup below. Keyed on sourcing rather than an environment
+# variable so a stray variable can never stop a real container from starting.
+if [ "${BASH_SOURCE[0]}" != "$0" ]; then
+    return 0
 fi
 
 # Create config directories if they don't exist

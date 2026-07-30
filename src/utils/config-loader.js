@@ -7,7 +7,10 @@ import { mergeObjects } from './helpers';
 import { defaultConfig } from './defaultConfig.js';
 import { getChiaRoot } from './chia-root.js';
 import { migrateConfigFiles } from './config-migration.js';
-import { coerceNumericAppConfig } from './numeric-config.js';
+import {
+  coerceConfigNumber,
+  coerceNumericAppConfig,
+} from './numeric-config.js';
 
 // Helper function to load config for a specific version
 const loadConfigForVersion = (dataModelVersion) => {
@@ -137,7 +140,11 @@ const loadConfigForVersion = (dataModelVersion) => {
 
   // Handle CW_PORT environment variable override
   if (process.env.CW_PORT) {
-    mergedConfig.APP.CW_PORT = parseInt(process.env.CW_PORT, 10);
+    mergedConfig.APP.CW_PORT = coerceConfigNumber(
+      process.env.CW_PORT,
+      defaultConfig.APP.CW_PORT,
+      'CW_PORT',
+    );
   }
 
   // Handle USE_SIMULATOR environment variable override

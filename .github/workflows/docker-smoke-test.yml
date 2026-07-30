@@ -46,6 +46,8 @@ jobs:
           docker run -d --name cadt-test \
             -e USE_SIMULATOR=true \
             -e BIND_ADDRESS=0.0.0.0 \
+            -e DEFAULT_FEE=13 \
+            -e DEFAULT_COIN_AMOUNT=7 \
             -p 31310:31310 \
             cadt-smoke-test
 
@@ -74,3 +76,17 @@ jobs:
           curl -sf http://localhost:31310/v2/health | jq .
 
           echo "All health checks passed"
+
+          # Numeric env vars must reach config.yaml as YAML numbers. Quoted
+          # values make the app concatenate them instead of adding them.
+          echo "Checking numeric config values are unquoted..."
+          docker exec cadt-test cat /root/.chia/mainnet/cadt/config.yaml
+
+          docker exec cadt-test \
+            grep -qE '^[[:space:]]*DEFAULT_FEE: 13$' \
+            /root/.chia/mainnet/cadt/config.yaml
+          docker exec cadt-test \
+            grep -qE '^[[:space:]]*DEFAULT_COIN_AMOUNT: 7$' \
+            /root/.chia/mainnet/cadt/config.yaml
+
+          echo "Numeric config values are unquoted"
