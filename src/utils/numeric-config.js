@@ -4,48 +4,51 @@ import _ from 'lodash';
 
 import { defaultConfig } from './defaultConfig.js';
 
-// APP config values arrive from YAML, which happily yields a string when the
-// value was quoted. `docker-entrypoint.sh` quoted every env-provided value, and
-// hand-edited config files can do the same. A string then breaks arithmetic:
-// `DEFAULT_COIN_AMOUNT + DEFAULT_FEE` concatenates "300" and "300" into
-// "300300" instead of adding to 600. Joi's `.max()` likewise requires a number.
-//
-// Coercing once here keeps every consumer of getConfig()/getConfigV2() free of
-// per-call-site Number() calls.
+// YAML preserves quoting, so numeric APP keys can arrive as strings. Coercing
+// once here keeps consumers (arithmetic in wallet.js, Joi `.max()` in
+// src/validations) free of per-call-site Number() calls.
+
+const numericLeafPaths = (node, prefix = '') =>
+  Object.entries(node).flatMap(([key, value]) => {
+    const configPath = prefix ? `${prefix}.${key}` : key;
+    if (_.isPlainObject(value)) {
+      return numericLeafPaths(value, configPath);
+    }
+    return typeof value === 'number' ? [configPath] : [];
+  });
 
 /**
- * APP-relative paths whose values must be numbers.
+ * APP-relative paths whose values must be numbers, derived from the numeric
+ * leaves of defaultConfig.APP so a new numeric key is covered automatically.
  *
- * TRUST_PROXY is deliberately absent: `resolveTrustProxyHops`
+ * TRUST_PROXY is deliberately excluded: `resolveTrustProxyHops`
  * (src/utils/trust-proxy.js) owns its coercion and logs warnings for inputs
  * (booleans, "loopback") that this helper would silently replace with 0.
  */
-export const NUMERIC_APP_CONFIG_PATHS = Object.freeze([
-  'CW_PORT',
-  'DEFAULT_FEE',
-  'DEFAULT_COIN_AMOUNT',
-  'TASKS.GOVERNANCE_SYNC_TASK_INTERVAL',
-  'TASKS.ORGANIZATION_META_SYNC_TASK_INTERVAL',
-  'TASKS.PICKLIST_SYNC_TASK_INTERVAL',
-  'TASKS.MIRROR_CHECK_TASK_INTERVAL',
-  'TASKS.VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL',
-  'TASKS.COIN_MANAGEMENT_TASK_INTERVAL',
-  'REQUEST_CONTENT_LIMITS.STAGING.EDIT_DATA_LEN',
-  'REQUEST_CONTENT_LIMITS.UNITS.INCLUDE_COLUMNS_LEN',
-  'REQUEST_CONTENT_LIMITS.UNITS.MARKETPLACE_IDENTIFIERS_LEN',
-  'REQUEST_CONTENT_LIMITS.PROJECTS.INCLUDE_COLUMNS_LEN',
-  'REQUEST_CONTENT_LIMITS.PROJECTS.PROJECT_IDS_LEN',
-]);
+export const NUMERIC_APP_CONFIG_PATHS = Object.freeze(
+  numericLeafPaths(defaultConfig.APP).filter((path) => path !== 'TRUST_PROXY'),
+);
 
-// A complete decimal literal and nothing else, so "1e3", "300 mojos", "0x12"
-// and "" are rejected rather than partially parsed. Number() would accept
-// booleans, arrays and whitespace, hence the explicit type checks below.
-const DECIMAL_LITERAL = /^[+-]?(?:\d+\.?\d*|\.\d+)$/;
+// Every key above is a non-negative integer by contract: a TCP port, a mojo
+// amount, a count of seconds, or a length bound. Matching `resolveTrustProxyHops`,
+// signs, fractions and values past MAX_SAFE_INTEGER are rejected rather than
+// silently accepted or truncated.
+const UNSIGNED_INTEGER_LITERAL = /^\d+$/;
+
+const isNonNegativeSafeInteger = (value) =>
+  Number.isSafeInteger(value) && value >= 0;
+
+// String() rather than JSON.stringify(): the latter renders NaN and Infinity as
+// `null`, which reads as "not configured", and throws on circular values that
+// js-yaml can produce from recursive anchors.
+const describeValue = (value) =>
+  typeof value === 'string' ? JSON.stringify(value) : String(value);
 
 /**
- * Coerce a raw config value to a finite number, falling back to the documented
- * default when the value is missing or not numeric. Never returns NaN: NaN
- * would make every `>=` threshold comparison false without raising an error.
+ * Coerce a raw config value to a non-negative safe integer, falling back to the
+ * documented default when the value is missing or out of contract. Never
+ * returns NaN: NaN would make every `>=` threshold comparison false without
+ * raising an error.
  *
  * @param {unknown} rawValue
  * @param {number} fallback     Value from defaultConfig for this key.
@@ -59,13 +62,16 @@ export const coerceConfigNumber = (
   label,
   log = console,
 ) => {
-  if (typeof rawValue === 'number' && Number.isFinite(rawValue)) {
+  if (typeof rawValue === 'number' && isNonNegativeSafeInteger(rawValue)) {
     return rawValue;
   }
 
-  if (typeof rawValue === 'string' && DECIMAL_LITERAL.test(rawValue.trim())) {
+  if (
+    typeof rawValue === 'string' &&
+    UNSIGNED_INTEGER_LITERAL.test(rawValue.trim())
+  ) {
     const parsed = Number(rawValue.trim());
-    if (Number.isFinite(parsed)) {
+    if (isNonNegativeSafeInteger(parsed)) {
       return parsed;
     }
   }
@@ -73,8 +79,8 @@ export const coerceConfigNumber = (
   // undefined/null mean "not configured", which the default already covers.
   if (rawValue !== undefined && rawValue !== null) {
     log.warn(
-      `[config]: ${label}=${JSON.stringify(rawValue)} is not a number; ` +
-        `falling back to the default of ${fallback}.`,
+      `[config]: ${label}=${describeValue(rawValue)} is not a non-negative ` +
+        `integer; falling back to ${fallback}.`,
     );
   }
 
@@ -83,17 +89,14 @@ export const coerceConfigNumber = (
 
 /**
  * Return a copy of an APP config section with every numeric key coerced to a
- * number. Non-numeric keys are passed through untouched.
+ * number. Non-numeric keys are passed through untouched; numeric keys absent
+ * from the input are materialized from defaultConfig.
  *
  * @param {object} appConfig
  * @param {{warn: (msg: string) => void}} [log]
  * @returns {object}
  */
 export const coerceNumericAppConfig = (appConfig, log = console) => {
-  if (!appConfig || typeof appConfig !== 'object') {
-    return appConfig;
-  }
-
   // Clone so coercion cannot write through into defaultConfig. When
   // config-loader falls back to `{ ...defaultConfig }`, that shallow spread
   // leaves APP.TASKS and APP.REQUEST_CONTENT_LIMITS pointing at the shared

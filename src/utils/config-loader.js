@@ -133,17 +133,17 @@ const loadConfigForVersion = (dataModelVersion) => {
     };
   }
 
-  // YAML preserves quoting, so a config value written as "3000" stays a string
-  // and turns `DEFAULT_COIN_AMOUNT + DEFAULT_FEE` into concatenation. Coerce
-  // the numeric keys once here so no consumer has to.
+  // Numeric APP keys can arrive from YAML as strings; coerce once for all consumers.
   mergedConfig.APP = coerceNumericAppConfig(mergedConfig.APP);
 
-  // Handle CW_PORT environment variable override
+  // Handle CW_PORT environment variable override. An unusable env value falls
+  // back to the port already resolved from config.yaml rather than discarding
+  // the operator's file setting.
   if (process.env.CW_PORT) {
     mergedConfig.APP.CW_PORT = coerceConfigNumber(
       process.env.CW_PORT,
-      defaultConfig.APP.CW_PORT,
-      'CW_PORT',
+      mergedConfig.APP.CW_PORT,
+      'CW_PORT (env)',
     );
   }
 

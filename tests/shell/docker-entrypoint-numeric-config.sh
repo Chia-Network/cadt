@@ -17,11 +17,17 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 
 cat > "$TMP_DIR/config.yaml" << 'EOF'
 APP:
+  CW_PORT: 31310
   DEFAULT_FEE: 3000
   DEFAULT_COIN_AMOUNT: 300
   CHIA_NETWORK: mainnet
   USE_SIMULATOR: false
   CERTIFICATE_FOLDER_PATH: /some/path
+  TASKS:
+    MIRROR_CHECK_TASK_INTERVAL: 900
+    # Deliberately not the shipped default, so "left at its existing value" is
+    # distinguishable from "reset to the default".
+    PICKLIST_SYNC_TASK_INTERVAL: 121
 V1:
   CADT_API_KEY: placeholder
   GOVERNANCE:
@@ -45,9 +51,18 @@ export CERTIFICATE_FOLDER_PATH=
 # Digit-only values on non-numeric keys must keep their quotes.
 export V1_CADT_API_KEY=12345678
 export V1_GOVERNANCE_BODY_ID=99999999
+# Values the numeric writer cannot emit as YAML numbers: yq rejects integers
+# wider than int64, and a negative fails the unsigned-integer guard. Both must
+# fall through to the quoted writer rather than being dropped.
+export MIRROR_CHECK_TASK_INTERVAL=99999999999999999999
+export CW_PORT=-5
 
 update_numeric_app_config "DEFAULT_FEE" '.DEFAULT_FEE'
 update_numeric_app_config "DEFAULT_COIN_AMOUNT" '.DEFAULT_COIN_AMOUNT'
+update_numeric_app_config "MIRROR_CHECK_TASK_INTERVAL" '.TASKS.MIRROR_CHECK_TASK_INTERVAL'
+update_numeric_app_config "CW_PORT" '.CW_PORT'
+# Unset numeric keys must be left at their existing value.
+update_numeric_app_config "PICKLIST_SYNC_TASK_INTERVAL" '.TASKS.PICKLIST_SYNC_TASK_INTERVAL'
 update_app_config "CHIA_NETWORK" '.CHIA_NETWORK'
 update_app_config "USE_SIMULATOR" '.USE_SIMULATOR'
 update_app_config "CERTIFICATE_FOLDER_PATH" '.CERTIFICATE_FOLDER_PATH'

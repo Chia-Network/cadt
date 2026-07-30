@@ -65,21 +65,17 @@ update_app_config() {
     update_yaml_if_env_exists "$env_var" ".APP$yaml_path" "$UNIFIED_CONFIG_PATH"
 }
 
-# Same as update_app_config, but writes plain integers as YAML numbers instead
-# of quoted strings so the JS layer can do arithmetic on them (a quoted "300"
-# plus a quoted "300" concatenates to "300300" rather than adding to 600).
-# Scoped to keys that are numeric by contract: digit-only strings elsewhere
-# (API keys, DB names, governance body IDs) must keep their quotes. Anything
-# that is not a plain integer falls through to the generic handler, so boolean,
-# empty and string values behave exactly as before.
+# Writes unsigned integers as YAML numbers so the JS layer gets numbers, not
+# strings. Only for keys numeric by contract: digit-only values elsewhere (API
+# keys, DB names, governance body IDs) must keep their quotes. Anything else
+# falls through to update_app_config unchanged.
 update_numeric_app_config() {
     local env_var=$1
     local yaml_path=$2
 
-    # yq rejects integers wider than int64, so fall back to the generic writer
-    # on failure too; a quoted value the JS layer coerces beats dropping the
-    # operator's setting on the floor.
-    if [ -n "${!env_var+x}" ] && [[ "${!env_var}" =~ ^-?[0-9]+$ ]] &&
+    # yq rejects integers wider than int64. A quoted value the JS layer coerces
+    # beats dropping the setting, so a failed write falls through too.
+    if [ -n "${!env_var+x}" ] && [[ "${!env_var}" =~ ^[0-9]+$ ]] &&
         yq eval ".APP$yaml_path |= ${!env_var}" -i "$UNIFIED_CONFIG_PATH"; then
         return 0
     fi
@@ -103,11 +99,11 @@ update_v2_config() {
     update_yaml_if_env_exists "$env_var" ".V2$yaml_path" "$UNIFIED_CONFIG_PATH"
 }
 
-# Sourcing this script yields only the helper functions above, which is how
-# tests drive them against a temporary config file. Executing it runs the
-# container startup below. Keyed on sourcing rather than an environment
-# variable so a stray variable can never stop a real container from starting.
-if [ "${BASH_SOURCE[0]}" != "$0" ]; then
+# Sourcing yields only the helper functions above, which is how tests drive them
+# against a temporary config file; executing runs container startup below. The
+# bash shebang guarantees BASH_SOURCE is populated whenever this is executed, so
+# an empty one means a non-bash shell sourced us and startup must not run.
+if [ "${BASH_SOURCE[0]:-}" != "$0" ]; then
     return 0
 fi
 
@@ -136,7 +132,7 @@ update_app_config "DATALAYER_FILE_SERVER_URL" '.DATALAYER_FILE_SERVER_URL'
 update_app_config "AUTO_SUBSCRIBE_FILESTORE" '.AUTO_SUBSCRIBE_FILESTORE'
 update_app_config "AUTO_MIRROR_EXTERNAL_STORES" '.AUTO_MIRROR_EXTERNAL_STORES'
 update_app_config "LOG_LEVEL" '.LOG_LEVEL'
-update_numeric_app_config "TRUST_PROXY" '.TRUST_PROXY'
+update_app_config "TRUST_PROXY" '.TRUST_PROXY'
 
 # APP.TASKS section (shared)
 update_numeric_app_config "GOVERNANCE_SYNC_TASK_INTERVAL" '.TASKS.GOVERNANCE_SYNC_TASK_INTERVAL'

@@ -1,6 +1,15 @@
 import { expect } from 'chai';
 import sinon from 'sinon';
-import coinManagementJob from '../../../src/tasks/coin-management.js';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import * as yaml from 'js-yaml';
+import coinManagementJob, {
+  getCoinSize,
+  resolveCoinSize,
+} from '../../../src/tasks/coin-management.js';
+import { getChiaConfig } from '../../../src/datalayer/fullNode.js';
+import { getChiaRoot } from '../../../src/utils/chia-root.js';
 import wallet from '../../../src/datalayer/wallet.js';
 
 /**
@@ -109,29 +118,154 @@ describe('Coin Management Task Tests', function () {
     });
   });
 
-  describe('Coin Splitting Calculations', function () {
-    // Constants matching coin-management.js (using simulator/default config values)
-    const DEFAULT_COIN_AMOUNT = 300;
-    const SPLIT_FEE = 3000;
-    const MIN_USABLE_COIN_SIZE = DEFAULT_COIN_AMOUNT + SPLIT_FEE; // 3300
-    const DUST_FILTER_FLOOR = 1_000_000;
-    const COIN_SIZE = Math.max(MIN_USABLE_COIN_SIZE, DUST_FILTER_FLOOR); // 1,000,000
-    const MIN_COIN_SIZE = COIN_SIZE;
-    const TARGET_COIN_COUNT = 15;
+  describe('Coin Size Resolution', function () {
+    const MIN_USABLE_COIN_SIZE = 3300; // DEFAULT_COIN_AMOUNT 300 + DEFAULT_FEE 3000
+    const CHIA_DEFAULT_SPAM_AMOUNT = 1_000_000;
+    const silentLog = { warn: () => {} };
 
-    it('should set COIN_SIZE to max of MIN_USABLE_COIN_SIZE and DUST_FILTER_FLOOR', function () {
-      expect(COIN_SIZE).to.equal(Math.max(MIN_USABLE_COIN_SIZE, DUST_FILTER_FLOOR));
-      expect(COIN_SIZE).to.equal(1_000_000);
+    const resolve = (rawSpamAmount) =>
+      resolveCoinSize(rawSpamAmount, MIN_USABLE_COIN_SIZE, silentLog);
+
+    it('creates coins strictly above the dust filter floor, never equal to it', function () {
+      // A coin exactly at xch_spam_amount is not reliably spendable, so the
+      // floor must be cleared outright.
+      expect(resolve(CHIA_DEFAULT_SPAM_AMOUNT)).to.equal(1_000_001);
+      expect(resolve(CHIA_DEFAULT_SPAM_AMOUNT)).to.be.greaterThan(
+        CHIA_DEFAULT_SPAM_AMOUNT,
+      );
     });
 
-    it('should ensure COIN_SIZE meets MIN_COIN_SIZE', function () {
-      expect(COIN_SIZE).to.be.greaterThanOrEqual(MIN_COIN_SIZE);
+    it('takes the floor from the chia config rather than a hardcoded value', function () {
+      expect(resolve(5_000_000)).to.equal(5_000_001);
+      expect(resolve(250)).to.be.greaterThan(250);
+    });
+
+    it('creates the smallest coin that clears the floor', function () {
+      // Not merely "some coin above the floor": a wallet should not be carved
+      // into more value per coin than an operation needs.
+      for (const spamAmount of [1_000_000, 5_000_000, 42_000_000]) {
+        expect(resolve(spamAmount), String(spamAmount)).to.equal(
+          spamAmount + 1,
+        );
+      }
+    });
+
+    it('uses the operational minimum when it already clears the floor', function () {
+      expect(resolve(100)).to.equal(MIN_USABLE_COIN_SIZE);
+      expect(resolve(100)).to.be.greaterThan(100);
+    });
+
+    it("falls back to chia's default when the config value is missing or unusable", function () {
+      for (const unusable of [undefined, null, 'abc', -1, 1.5, true, {}]) {
+        expect(resolve(unusable), String(unusable)).to.equal(1_000_001);
+      }
+    });
+
+    it('accepts a quoted spam amount, as YAML can yield a string', function () {
+      expect(resolve('5000000')).to.equal(5_000_001);
+    });
+  });
+
+  // resolveCoinSize is pure; these cover the production path that actually
+  // reaches chia's config file and decides how real coins are denominated.
+  describe('Coin Size From Chia Config', function () {
+    let testChiaRoot;
+    let savedChiaRoot;
+
+    // getCoinSize's own memo is left alone so a test can observe whether a
+    // previous read was cached.
+    const clearChiaConfigCaches = () => {
+      getChiaRoot.cache?.clear();
+      getChiaConfig.cache?.clear();
+    };
+
+    const writeChiaConfig = (config) => {
+      const configDir = path.join(testChiaRoot, 'config');
+      fs.mkdirSync(configDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(configDir, 'config.yaml'),
+        yaml.dump(config),
+        'utf8',
+      );
+      clearChiaConfigCaches();
+    };
+
+    beforeEach(function () {
+      testChiaRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'cadt-coin-size-'));
+      savedChiaRoot = process.env.CHIA_ROOT;
+      process.env.CHIA_ROOT = testChiaRoot;
+      clearChiaConfigCaches();
+      getCoinSize.cache?.clear();
+    });
+
+    afterEach(function () {
+      fs.rmSync(testChiaRoot, { recursive: true, force: true });
+      // CHIA_ROOT is process-global and read by every module that resolves a
+      // chia path, so restore rather than delete.
+      if (savedChiaRoot === undefined) {
+        delete process.env.CHIA_ROOT;
+      } else {
+        process.env.CHIA_ROOT = savedChiaRoot;
+      }
+      clearChiaConfigCaches();
+      getCoinSize.cache?.clear();
+    });
+
+    it('sizes coins from wallet.xch_spam_amount in chia config', function () {
+      writeChiaConfig({ wallet: { xch_spam_amount: 5_000_000 } });
+
+      expect(getCoinSize()).to.equal(5_000_001);
+    });
+
+    it("assumes chia's default when there is no local chia config", function () {
+      // The supported container deployments mount only the ssl and cadt
+      // directories, so this is the common case rather than an error.
+      expect(getCoinSize()).to.equal(1_000_001);
+    });
+
+    it("assumes chia's default when the config omits the wallet section", function () {
+      writeChiaConfig({ full_node: { rpc_port: 8555 } });
+
+      expect(getCoinSize()).to.equal(1_000_001);
+    });
+
+    it('picks up a config that only becomes readable later', function () {
+      expect(getCoinSize()).to.equal(1_000_001);
+
+      writeChiaConfig({ wallet: { xch_spam_amount: 5_000_000 } });
+
+      expect(getCoinSize()).to.equal(5_000_001);
+    });
+
+    it('reads the config once', function () {
+      writeChiaConfig({ wallet: { xch_spam_amount: 5_000_000 } });
+      expect(getCoinSize()).to.equal(5_000_001);
+
+      writeChiaConfig({ wallet: { xch_spam_amount: 9_000_000 } });
+
+      expect(getCoinSize()).to.equal(5_000_001);
+    });
+  });
+
+  describe('Coin Splitting Calculations', function () {
+    const MIN_USABLE_COIN_SIZE = 3300;
+    const SPLIT_FEE = 3000;
+    // The production value for a node running chia's default spam threshold.
+    const COIN_SIZE = resolveCoinSize(1_000_000, MIN_USABLE_COIN_SIZE, {
+      warn: () => {},
+    });
+    const TARGET_COIN_COUNT = 15;
+
+    it("sizes coins just above chia's default spam threshold", function () {
+      expect(COIN_SIZE).to.equal(1_000_001);
     });
 
     it('should calculate max possible coins correctly', function () {
       const largestCoinAmount = 20_000_000;
-      const maxPossibleCoins = Math.floor((largestCoinAmount - SPLIT_FEE) / COIN_SIZE);
-      // (20_000_000 - 3000) / 1_000_000 = 19.997 → 19
+      const maxPossibleCoins = Math.floor(
+        (largestCoinAmount - SPLIT_FEE) / COIN_SIZE,
+      );
+      // (20_000_000 - 3000) / 1_000_001 = 19.996 → 19
       expect(maxPossibleCoins).to.equal(19);
     });
 
@@ -155,47 +289,49 @@ describe('Coin Management Task Tests', function () {
 
     it('should handle case where coin is too small to split', function () {
       const largestCoinAmount = 3000;
-      const maxPossibleCoins = Math.floor((largestCoinAmount - SPLIT_FEE) / COIN_SIZE);
-      // (3000 - 3000) / 1_000_000 = 0
+      const maxPossibleCoins = Math.floor(
+        (largestCoinAmount - SPLIT_FEE) / COIN_SIZE,
+      );
       expect(maxPossibleCoins).to.equal(0);
     });
 
     it('should calculate required amount for coins needed', function () {
       const currentCoinCount = 1;
       const coinsNeeded = TARGET_COIN_COUNT - currentCoinCount; // 14
-      const requiredAmount = (coinsNeeded * COIN_SIZE) + SPLIT_FEE;
-      // (14 * 1_000_000) + 3000 = 14_003_000
-      expect(requiredAmount).to.equal(14_003_000);
+      const requiredAmount = coinsNeeded * COIN_SIZE + SPLIT_FEE;
+      // (14 * 1_000_001) + 3000 = 14_003_014
+      expect(requiredAmount).to.equal(14_003_014);
     });
 
-    it('should detect when remainder would be below MIN_COIN_SIZE', function () {
+    it('should detect when remainder would be below the coin size', function () {
       const largestCoinAmount = 2_500_000;
       const coinsToCreate = 2;
-      const totalSplitAmount = (coinsToCreate * COIN_SIZE) + SPLIT_FEE;
+      const totalSplitAmount = coinsToCreate * COIN_SIZE + SPLIT_FEE;
       const remainderAmount = largestCoinAmount - totalSplitAmount;
-      // 2_500_000 - (2_000_000 + 3000) = 497_000
-      expect(remainderAmount).to.equal(497_000);
-      expect(remainderAmount).to.be.lessThan(MIN_COIN_SIZE);
+      // 2_500_000 - (2_000_002 + 3000) = 496_998
+      expect(remainderAmount).to.equal(496_998);
+      expect(remainderAmount).to.be.lessThan(COIN_SIZE);
     });
 
     it('should allow split when remainder is zero', function () {
-      const largestCoinAmount = (2 * COIN_SIZE) + SPLIT_FEE; // 2_003_000
+      const largestCoinAmount = 2 * COIN_SIZE + SPLIT_FEE;
       const coinsToCreate = 2;
-      const totalSplitAmount = (coinsToCreate * COIN_SIZE) + SPLIT_FEE;
+      const totalSplitAmount = coinsToCreate * COIN_SIZE + SPLIT_FEE;
       const remainderAmount = largestCoinAmount - totalSplitAmount;
       expect(remainderAmount).to.equal(0);
-      const shouldReduceCoins = remainderAmount > 0 && remainderAmount < MIN_COIN_SIZE;
+      const shouldReduceCoins =
+        remainderAmount > 0 && remainderAmount < COIN_SIZE;
       expect(shouldReduceCoins).to.be.false;
     });
 
-    it('should allow split when remainder exceeds MIN_COIN_SIZE', function () {
+    it('should allow split when remainder exceeds the coin size', function () {
       const largestCoinAmount = 500_000_000; // 0.5 XCH
       const coinsToCreate = 3;
-      const totalSplitAmount = (coinsToCreate * COIN_SIZE) + SPLIT_FEE;
+      const totalSplitAmount = coinsToCreate * COIN_SIZE + SPLIT_FEE;
       const remainderAmount = largestCoinAmount - totalSplitAmount;
-      // 500_000_000 - (3_000_000 + 3000) = 496_997_000
-      expect(remainderAmount).to.equal(496_997_000);
-      expect(remainderAmount).to.be.greaterThan(MIN_COIN_SIZE);
+      // 500_000_000 - (3_000_003 + 3000) = 496_996_997
+      expect(remainderAmount).to.equal(496_996_997);
+      expect(remainderAmount).to.be.greaterThan(COIN_SIZE);
     });
   });
 
