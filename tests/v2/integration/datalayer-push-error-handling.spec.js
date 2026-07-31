@@ -157,6 +157,12 @@ describe('pushChangeListToDataLayer - error handling', function () {
     oldestUnconfirmedAge: 5,
   });
 
+  const walletWithRejectedTx = () => ({
+    ...settledWallet(),
+    rejected: [{ name: 'tx-rejected', rejectionReason: 'all peers failed' }],
+    oldestUnconfirmedAge: 90,
+  });
+
   /**
    * Stubs batch_update to report a pending root until `succeedOnCall`, and
    * clear_pending_roots to report `clearSucceeds`. Returns the two scoped stubs
@@ -233,6 +239,59 @@ describe('pushChangeListToDataLayer - error handling', function () {
 
     expect(result).to.be.true;
     expect(clearPending.callCount).to.equal(0);
+  });
+
+  it('should clear a pending root when the only unconfirmed tx was rejected', async function () {
+    this.timeout(60000);
+
+    sinon.stub(wallet, 'getDLWalletId').resolves('2');
+    sinon.stub(wallet, 'getTransactionHealth').resolves(walletWithRejectedTx());
+
+    const { clearPending } = stubPendingRootThenSuccess();
+
+    const result = await pushChangeListToDataLayer(testStoreId, testChangelist);
+
+    // A rejected transaction can never confirm the root, so it is not a reason
+    // to keep it.
+    expect(result).to.be.true;
+    expect(clearPending.callCount).to.equal(1);
+  });
+
+  it('should not let a sibling retry consume the first-sighting grace', async function () {
+    this.timeout(60000);
+
+    sinon.stub(wallet, 'getDLWalletId').resolves('2');
+    sinon.stub(wallet, 'getTransactionHealth').resolves(settledWallet());
+
+    // "Key already present" advances the shared attempt counter and clears
+    // pending roots on its own, so the grace period has to survive it.
+    const batchUpdate = superagentPostStub.withArgs(
+      sinon.match(/batch_update/),
+    );
+    batchUpdate.onCall(0).returns(
+      createSuperagentMock({
+        success: false,
+        error: 'Key already present',
+      }),
+    );
+    batchUpdate.onCall(1).returns(
+      createSuperagentMock({
+        success: false,
+        error: 'Already have a pending root waiting for confirmation',
+      }),
+    );
+    batchUpdate.onCall(2).returns(createSuperagentMock({ success: true }));
+
+    const clearPending = superagentPostStub
+      .withArgs(sinon.match(/clear_pending_roots/))
+      .returns(createSuperagentMock({ success: true }));
+
+    const result = await pushChangeListToDataLayer(testStoreId, testChangelist);
+
+    expect(result).to.be.true;
+    // Only the "Key already present" branch cleared; the pending root was on
+    // its first sighting and must have been left alone.
+    expect(clearPending.callCount).to.equal(1);
   });
 
   it('should leave a pending root alone when only the DataLayer wallet is unsettled', async function () {

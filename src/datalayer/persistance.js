@@ -204,12 +204,17 @@ const clearOrphanedPendingRoot = async (storeId) => {
 
     // getTransactionHealth throws when the RPC reports failure, which keeps an
     // unanswerable question from being read as "nothing is unconfirmed".
+    // A DataLayer update can also spend from the standard wallet to pay its fee,
+    // so both wallets have to be settled.
     const walletIds = dlWalletId === '1' ? ['1'] : ['1', dlWalletId];
     for (const walletId of walletIds) {
-      const { rejected, inMempool, pending } =
+      const { inMempool, pending } =
         await wallet.getTransactionHealth(walletId);
 
-      if (rejected.length + inMempool.length + pending.length > 0) {
+      // Only a transaction that can still confirm keeps the root alive. A
+      // rejected one never will, and is itself a reason the root was stranded,
+      // so it must not block recovery.
+      if (inMempool.length + pending.length > 0) {
         return false;
       }
     }
@@ -762,6 +767,7 @@ const pushChangeListToDataLayer = async (
   { skipTransactionWait = false } = {},
 ) => {
   let attempts = 0;
+  let pendingRootSightings = 0;
   let pendingRootCleared = false;
   const maxAttempts = 5;
 
@@ -843,6 +849,7 @@ const pushChangeListToDataLayer = async (
         )
       ) {
         attempts++;
+        pendingRootSightings++;
         logger.info(
           `Pending root for store ${storeId}; waiting for confirmation (attempt ${attempts}/${maxAttempts})`,
         );
@@ -850,10 +857,13 @@ const pushChangeListToDataLayer = async (
 
         // A first sighting gets the benefit of the doubt, since a concurrent
         // push to this store may still be between staging its root and creating
-        // the transaction that publishes it. Clearing again after that would
-        // only repeat the same gamble, so a push discards at most one root.
+        // the transaction that publishes it. Count sightings of this error
+        // rather than reading `attempts`, which sibling branches also advance
+        // and which therefore says nothing about how often this store reported
+        // a pending root. Clearing again after that would only repeat the same
+        // gamble, so a push discards at most one root.
         if (
-          attempts > 1 &&
+          pendingRootSightings > 1 &&
           !pendingRootCleared &&
           (await clearOrphanedPendingRoot(storeId))
         ) {
