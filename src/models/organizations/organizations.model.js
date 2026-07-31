@@ -57,10 +57,10 @@ import {
   hasInProgressCreation,
   createIncrementalStateWriter,
 } from '../../utils/organization-creation-state.js';
+import { createStoreWithRetryBudget } from '../../utils/store-creation-retry.js';
 import { mirrorOrgStores } from '../../tasks/mirror-check.js';
 import { updateOrgLockStatus } from '../../utils/org-operation-lock.js';
 
-const { isTransientWalletError } = wallet;
 
 class Organization extends Model {
   static async getHomeOrg(includeAddress = true) {
@@ -225,7 +225,10 @@ class Organization extends Model {
       }
 
       if (!USE_SIMULATOR) {
-        const coinCheck = await wallet.waitForSpendableCoins(4);
+        // One coin is enough to start: with fewer coins than stores, the
+        // parallel store creations serialize themselves, each retrying until
+        // the previous spend's change confirms and frees a coin.
+        const coinCheck = await wallet.waitForSpendableCoins(1);
         logger.info(`[v1]: Proceeding with org creation, ${coinCheck.coinCount} coins available`);
       }
 
@@ -281,8 +284,10 @@ class Organization extends Model {
 
     const neededCoins = getStoresToCreate(state).length;
     if (!USE_SIMULATOR && neededCoins > 0) {
-      const coinCheck = await wallet.waitForSpendableCoins(neededCoins);
-      logger.info(`[v1]: Resuming org creation, ${coinCheck.coinCount} coins available (need ${neededCoins})`);
+      // One coin is enough to resume; scarce coins serialize the remaining
+      // store creations (see _createStoresInParallel).
+      const coinCheck = await wallet.waitForSpendableCoins(1);
+      logger.info(`[v1]: Resuming org creation, ${coinCheck.coinCount} coins available (${neededCoins} stores to create)`);
     }
 
     return await Organization._executeOrganizationCreation(state, lockToken);
@@ -499,9 +504,6 @@ class Organization extends Model {
       return state;
     }
 
-    const maxRetries = 10;
-    const retryDelayMs = 30000;
-
     // Persist each successful store creation immediately so the
     // /v1/organizations/creation-status endpoint reflects partial progress.
     // Without this, all 4 stores stay marked pending until the slowest
@@ -510,45 +512,17 @@ class Organization extends Model {
     const stateWriter = createIncrementalStateWriter(state, Meta);
 
     // Create all stores in parallel, each with independent retry logic.
-    // The persist call is wrapped in its own try so that a transient
-    // saveCreationState failure (DB busy, sequelize hiccup) does NOT
-    // mask a successful on-chain store creation as a creation failure;
-    // any missing persist will be reconciled in a final save below.
-    const createPromises = storesToCreate.map(async (storeType) => {
-      for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        try {
-          logState(stateWriter.getCurrent(), `Creating ${storeType} store (attempt ${attempt}/${maxRetries})`);
-          const storeId = await datalayer.createDataLayerStoreWithRetry();
-          logState(stateWriter.getCurrent(), `Created ${storeType} store: ${storeId}`);
-          try {
-            await stateWriter.persistStoreCreated(storeType, storeId);
-          } catch (persistError) {
-            logState(
-              stateWriter.getCurrent(),
-              `Created ${storeType} store ${storeId} but failed to persist incremental progress: ` +
-                `${persistError.message}. Store id retained in result; final save will reconcile.`,
-              'warn',
-            );
-          }
-          return { storeType, storeId, success: true };
-        } catch (error) {
-          if (isTransientWalletError(error) && attempt < maxRetries) {
-            logState(
-              stateWriter.getCurrent(),
-              `Transient error creating ${storeType} store ` +
-                `(attempt ${attempt}/${maxRetries}): ${error.message}. ` +
-                `Retrying in ${retryDelayMs / 1000}s...`,
-              'warn',
-            );
-            await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
-            continue;
-          }
-          logState(stateWriter.getCurrent(), `Failed to create ${storeType} store: ${error.message}`, 'error');
-          return { storeType, storeId: null, success: false, error: error.message };
-        }
-      }
-      return { storeType, storeId: null, success: false, error: 'Retry loop exhausted without result' };
-    });
+    // Coin shortages serialize the creations instead of failing them
+    // (see createStoreWithRetryBudget).
+    const createPromises = storesToCreate.map((storeType) =>
+      createStoreWithRetryBudget(storeType, {
+        createStore: () => datalayer.createDataLayerStoreWithRetry(),
+        persistStoreCreated: (storeId) =>
+          stateWriter.persistStoreCreated(storeType, storeId),
+        log: (message, level) =>
+          logState(stateWriter.getCurrent(), message, level),
+      }),
+    );
 
     const results = await Promise.all(createPromises);
 

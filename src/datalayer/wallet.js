@@ -924,15 +924,29 @@ const clearRejectedTransactions = async (walletId, txIds, context) => {
   return { cleared: true, reason: `Cleared ${health.rejected.length} rejected transaction(s)` };
 };
 
+// Errors the wallet raises when coin selection cannot fund a spend right now,
+// typically because coins are tied up in unconfirmed transactions. These clear
+// on their own as transactions confirm, so callers may retry on a time budget
+// (see chia's coin_selection.py and data_layer_wallet.py for the sources).
+const COIN_SHORTAGE_ERRORS = [
+  'No spendable coins',
+  "Can't select amount higher than our spendable balance",
+  'greater than max spendable balance in a block',
+  'Not enough coins to create new data layer singleton',
+];
+
+const isCoinShortageError = (error) =>
+  COIN_SHORTAGE_ERRORS.some((msg) => error.message?.includes(msg));
+
 const TRANSIENT_WALLET_ERRORS = [
   'Wallet needs to be fully synced',
   'DataLayerWallet not available',
   'DataLayer Wallet already exists',
-  'No spendable coins',
   'UNIQUE constraint failed',
 ];
 
 const isTransientWalletError = (error) =>
+  isCoinShortageError(error) ||
   TRANSIENT_WALLET_ERRORS.some((msg) => error.message?.includes(msg));
 
 const __test_resetDLWalletCache = () => {
@@ -957,6 +971,7 @@ export default {
   getCoinRecords,
   splitCoins,
   isTransientWalletError,
+  isCoinShortageError,
   getTransactionHealth,
   getDLWalletId,
   clearRejectedTransactions,

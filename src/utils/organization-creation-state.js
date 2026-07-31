@@ -60,6 +60,15 @@ export const ORG_CREATION_CONFIG = {
   // bound changes.
   DATA_PUSH_WALLET_SYNC_WAIT_MS: 2 * 60 * 1000, // 2 minutes
   MAX_DATA_PUSH_SYNC_RETRIES: 3,
+
+  // Store-creation retry budgets. Coin shortages get a time budget: with
+  // fewer spendable coins than stores, the parallel creations serialize one
+  // block confirmation apart, so the budget must cover several confirmations
+  // rather than a fixed attempt count. Other transient wallet errors keep the
+  // attempt-based budget.
+  STORE_CREATE_RETRY_DELAY_MS: 30 * 1000, // 30 seconds
+  STORE_CREATE_MAX_ATTEMPTS: 10,
+  COIN_SHORTAGE_RETRY_DEADLINE_MS: 15 * 60 * 1000, // 15 minutes
 };
 
 /**
