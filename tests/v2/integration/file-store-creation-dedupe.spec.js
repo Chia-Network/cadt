@@ -91,7 +91,7 @@ describe('File store creation dedup', function () {
       await expectRetryLater(() => FilestoreV2.deleteFileStoreItem('sha-1'));
 
       expect(pendingFileStoreCreations.has(testOrgUid)).to.equal(true);
-      expect(waitForSpendableCoins.callCount).to.equal(1);
+      await waitFor(() => waitForSpendableCoins.callCount === 1);
 
       coinGate.resolve({ success: true, coinCount: 1 });
       await waitFor(() => pendingFileStoreCreations.size === 0);
@@ -172,6 +172,64 @@ describe('File store creation dedup', function () {
       expect(org.file_store_subscribed).to.equal('retry-store-id');
     });
 
+    it('adopts an id persisted after the caller read its org snapshot instead of minting another store', async function () {
+      // Simulate a caller holding a pre-creation snapshot while the id has
+      // already landed in the database.
+      await OrganizationsV2.update(
+        { file_store_subscribed: 'already-persisted-id' },
+        { where: { org_uid: testOrgUid } },
+      );
+      sandbox.stub(OrganizationsV2, 'getHomeOrg').resolves({
+        org_uid: testOrgUid,
+        file_store_subscribed: null,
+      });
+
+      const waitForSpendableCoins = sandbox
+        .stub(datalayer, 'waitForSpendableCoins')
+        .resolves({ success: true, coinCount: 1 });
+      const createStore = sandbox
+        .stub(datalayer, 'createDataLayerStoreWithRetry')
+        .resolves('should-not-exist');
+      sandbox.stub(datalayer, 'syncDataLayer').resolves();
+
+      await expectRetryLater(() => FilestoreV2.getFileStoreItem('sha-1'));
+      await waitFor(() => pendingFileStoreCreations.size === 0);
+
+      expect(waitForSpendableCoins.callCount).to.equal(0);
+      expect(createStore.callCount).to.equal(0);
+      const org = await OrganizationsV2.findOne({
+        where: { org_uid: testOrgUid },
+        raw: true,
+      });
+      expect(org.file_store_subscribed).to.equal('already-persisted-id');
+    });
+
+    it('adopts a store id recorded by the v1 model for an upgraded org', async function () {
+      sandbox
+        .stub(Organization, 'findOne')
+        .resolves({ fileStoreId: 'v1-created-store' });
+
+      const createStore = sandbox
+        .stub(datalayer, 'createDataLayerStoreWithRetry')
+        .resolves('should-not-exist');
+      sandbox
+        .stub(datalayer, 'waitForSpendableCoins')
+        .resolves({ success: true, coinCount: 1 });
+      sandbox.stub(datalayer, 'syncDataLayer').resolves();
+
+      await expectRetryLater(() =>
+        FilestoreV2.addFileToFileStore('sha-1', 'a.txt', 'dGVzdA=='),
+      );
+      await waitFor(() => pendingFileStoreCreations.size === 0);
+
+      expect(createStore.callCount).to.equal(0);
+      const org = await OrganizationsV2.findOne({
+        where: { org_uid: testOrgUid },
+        raw: true,
+      });
+      expect(org.file_store_subscribed).to.equal('v1-created-store');
+    });
+
     it('does not start a creation when another holder already has the org pending', async function () {
       const waitForSpendableCoins = sandbox
         .stub(datalayer, 'waitForSpendableCoins')
@@ -201,6 +259,7 @@ describe('File store creation dedup', function () {
       sandbox
         .stub(Organization, 'getHomeOrg')
         .resolves({ orgUid: v1OrgUid, fileStoreId: null });
+      sandbox.stub(Organization, 'findOne').resolves(null);
       const orgUpdate = sandbox.stub(Organization, 'update').resolves([1]);
 
       const coinGate = deferred();
@@ -243,10 +302,43 @@ describe('File store creation dedup', function () {
       ).to.equal(true);
     });
 
+    it('adopts a store id recorded by the v2 model for an upgraded org', async function () {
+      sandbox
+        .stub(Organization, 'getHomeOrg')
+        .resolves({ orgUid: testOrgUid, fileStoreId: null });
+      sandbox.stub(Organization, 'findOne').resolves(null);
+      const orgUpdate = sandbox.stub(Organization, 'update').resolves([1]);
+
+      await OrganizationsV2.update(
+        { file_store_subscribed: 'v2-created-store' },
+        { where: { org_uid: testOrgUid } },
+      );
+
+      const createStore = sandbox
+        .stub(datalayer, 'createDataLayerStoreWithRetry')
+        .resolves('should-not-exist');
+      sandbox
+        .stub(datalayer, 'waitForSpendableCoins')
+        .resolves({ success: true, coinCount: 1 });
+      sandbox.stub(datalayer, 'syncDataLayer').resolves();
+
+      await expectRetryLater(() => FileStore.getFileStoreItem('sha-1'));
+      await waitFor(() => pendingFileStoreCreations.size === 0);
+
+      expect(createStore.callCount).to.equal(0);
+      expect(
+        orgUpdate.calledWithExactly(
+          { fileStoreId: 'v2-created-store' },
+          { where: { orgUid: testOrgUid } },
+        ),
+      ).to.equal(true);
+    });
+
     it('logs a creation failure and clears the pending entry', async function () {
       sandbox
         .stub(Organization, 'getHomeOrg')
         .resolves({ orgUid: v1OrgUid, fileStoreId: null });
+      sandbox.stub(Organization, 'findOne').resolves(null);
       const orgUpdate = sandbox.stub(Organization, 'update').resolves([1]);
 
       sandbox

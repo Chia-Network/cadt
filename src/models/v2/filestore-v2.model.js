@@ -37,6 +37,40 @@ const getStoreDataPromise = async (storeId) => {
 import ModelTypes from './filestore-v2.modeltypes.js';
 
 /**
+ * Find a file store id already persisted for this org, checking this model's
+ * table first and then the v1 model's. An upgraded org keeps the same file
+ * store on both sides (see OrganizationsV2.upgradeFromV1), so an id recorded
+ * by either model means the store already exists and must not be re-minted.
+ * @param {string} orgUid
+ * @returns {Promise<string|null>}
+ */
+const findExistingFileStoreId = async (orgUid) => {
+  const organization = await OrganizationsV2.findOne({
+    where: { org_uid: orgUid },
+    attributes: ['file_store_subscribed'],
+    raw: true,
+  });
+  if (organization?.file_store_subscribed) {
+    return organization.file_store_subscribed;
+  }
+
+  try {
+    const { Organization } = await import(
+      '../organizations/organizations.model.js'
+    );
+    const v1Organization = await Organization.findOne({
+      where: { orgUid },
+      attributes: ['fileStoreId'],
+      raw: true,
+    });
+    return v1Organization?.fileStoreId || null;
+  } catch {
+    // v1 tables may not be populated in a v2-only deployment.
+    return null;
+  }
+};
+
+/**
  * Start file store creation for an org unless one is already running.
  * Returns immediately; callers are expected to throw a retry-later error.
  * @param {Object} myOrganization - Home organization row
@@ -51,11 +85,23 @@ const startFileStoreCreation = (myOrganization) => {
   pendingFileStoreCreations.add(orgUid);
 
   const create = async () => {
+    // The caller's org snapshot may predate a creation that has since
+    // finished, and the v1 model may have recorded the store for an
+    // upgraded org; adopt any persisted id instead of minting another.
+    const existingId = await findExistingFileStoreId(orgUid);
+    if (existingId) {
+      await OrganizationsV2.update(
+        { file_store_subscribed: existingId },
+        { where: { org_uid: orgUid } },
+      );
+      return;
+    }
+
     await datalayer.waitForSpendableCoins(1);
     const newFileStoreId = await datalayer.createDataLayerStoreWithRetry();
     // Record the store before syncing. The store is already paid for on
     // chain, so losing the id to a sync failure would mint another one on
-    // the next request; a sync can be retried against the persisted id.
+    // the next request; subsequent requests use the persisted id.
     await OrganizationsV2.update(
       { file_store_subscribed: newFileStoreId },
       { where: { org_uid: orgUid } },
