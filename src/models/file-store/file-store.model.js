@@ -10,10 +10,58 @@ import { sequelize } from '../../database';
 import { Organization } from '../';
 
 import datalayer from '../../datalayer';
+import pendingFileStoreCreations from '../../datalayer/pending-file-store-creations.js';
 import { encodeHex } from '../../utils/datalayer-utils';
 import { logger } from '../../config/logger.js';
 
 import ModelTypes from './file-store.modeltypes.js';
+
+/**
+ * Start file store creation for an org unless one is already running.
+ * Returns immediately; callers are expected to throw a retry-later error.
+ * @param {Object} myOrganization - Home organization row
+ */
+const startFileStoreCreation = (myOrganization) => {
+  const { orgUid } = myOrganization;
+
+  if (pendingFileStoreCreations.has(orgUid)) {
+    return;
+  }
+
+  pendingFileStoreCreations.add(orgUid);
+
+  const create = async () => {
+    await datalayer.waitForSpendableCoins(1);
+    const newFileStoreId = await datalayer.createDataLayerStoreWithRetry();
+    // Record the store before syncing. The store is already paid for on
+    // chain, so losing the id to a sync failure would mint another one on
+    // the next request; a sync can be retried against the persisted id.
+    await Organization.update(
+      { fileStoreId: newFileStoreId },
+      { where: { orgUid } },
+    );
+    try {
+      await datalayer.syncDataLayer(orgUid, { fileStoreId: newFileStoreId });
+    } catch (error) {
+      // The store id is persisted and usable by subsequent requests; only
+      // the org-store metadata push failed.
+      logger.error(
+        `File store ${newFileStoreId} for org ${orgUid} was created and recorded, ` +
+          `but registering it on the org store failed: ${error.message}`,
+      );
+    }
+  };
+
+  create()
+    .catch((error) => {
+      logger.error(
+        `Failed to create file store for org ${orgUid}: ${error.message}`,
+      );
+    })
+    .finally(() => {
+      pendingFileStoreCreations.delete(orgUid);
+    });
+};
 
 class FileStore extends Model {
   static async subscribeToFileStore(orgUid) {
@@ -68,18 +116,7 @@ class FileStore extends Model {
     const fileStoreId = myOrganization.fileStoreId;
 
     if (myOrganization && !fileStoreId) {
-      datalayer.waitForSpendableCoins(1).then(() =>
-        datalayer.createDataLayerStoreWithRetry()
-      ).then((newFileStoreId) => {
-        datalayer.syncDataLayer(myOrganization.orgUid, { fileStoreId: newFileStoreId });
-        Organization.update(
-          { fileStoreId: newFileStoreId },
-          { where: { orgUid: myOrganization.orgUid } },
-        );
-      }).catch((error) => {
-        logger.error(`Failed to create file store: ${error.message}`);
-      });
-
+      startFileStoreCreation(myOrganization);
       throw new Error('New File store being created, please try again later.');
     }
 
@@ -112,17 +149,7 @@ class FileStore extends Model {
     const fileStoreId = myOrganization?.fileStoreId;
 
     if (myOrganization && !fileStoreId) {
-      datalayer.waitForSpendableCoins(1).then(() =>
-        datalayer.createDataLayerStoreWithRetry()
-      ).then((newFileStoreId) => {
-        datalayer.syncDataLayer(myOrganization.orgUid, { fileStoreId: newFileStoreId });
-        Organization.update(
-          { fileStoreId: newFileStoreId },
-          { where: { orgUid: myOrganization.orgUid } },
-        );
-      }).catch((error) => {
-        logger.error(`Failed to create file store: ${error.message}`);
-      });
+      startFileStoreCreation(myOrganization);
       throw new Error('New File store being created, please try again later.');
     }
 
@@ -161,17 +188,7 @@ class FileStore extends Model {
     const fileStoreId = myOrganization.fileStoreId;
 
     if (!fileStoreId) {
-      datalayer.waitForSpendableCoins(1).then(() =>
-        datalayer.createDataLayerStoreWithRetry()
-      ).then((newFileStoreId) => {
-        datalayer.syncDataLayer(myOrganization.orgUid, { fileStoreId: newFileStoreId });
-        Organization.update(
-          { fileStoreId: newFileStoreId },
-          { where: { orgUid: myOrganization.orgUid } },
-        );
-      }).catch((error) => {
-        logger.error(`Failed to create file store: ${error.message}`);
-      });
+      startFileStoreCreation(myOrganization);
       throw new Error('New File store being created, please try again later.');
     }
 
@@ -190,12 +207,10 @@ class FileStore extends Model {
 
   static async getFileStoreItem(SHA256) {
     const myOrganization = await Organization.getHomeOrg();
-    let fileStoreId = myOrganization.fileStoreId;
+    const fileStoreId = myOrganization.fileStoreId;
 
     if (!fileStoreId) {
-      await datalayer.waitForSpendableCoins(1);
-      fileStoreId = await datalayer.createDataLayerStoreWithRetry();
-      datalayer.syncDataLayer(myOrganization.orgUid, { fileStoreId });
+      startFileStoreCreation(myOrganization);
       throw new Error('New File store being created, please try again later.');
     }
 
