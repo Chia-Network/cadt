@@ -555,6 +555,36 @@ describe('Coin Management Task Tests', function () {
       );
       expect(maxInFlight).to.equal(1);
     });
+
+    it('joins callers into the in-flight cycle instead of queueing a backlog', async function () {
+      let calls = 0;
+      sandbox.stub(wallet, 'getCoinRecords').callsFake(async () => {
+        calls += 1;
+        await new Promise((res) => setTimeout(res, 25));
+        return {
+          success: true,
+          coin_records: Array.from({ length: 10 }, (unused, index) =>
+            usableCoin(`0x${index}`),
+          ),
+        };
+      });
+
+      const first = runCoinManagement();
+      const second = runCoinManagement();
+      const third = runCoinManagement();
+
+      // Callers arriving mid-cycle share the running cycle's promise; a slow
+      // cycle therefore cannot accumulate queued repeats behind itself.
+      expect(second).to.equal(first);
+      expect(third).to.equal(first);
+
+      await first;
+      expect(calls).to.equal(1);
+
+      // Once the cycle settles, the next call starts a fresh one.
+      await runCoinManagement();
+      expect(calls).to.equal(2);
+    });
   });
 
   describe('Mirror Gate', function () {

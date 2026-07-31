@@ -1,4 +1,4 @@
-import { SimpleIntervalJob, Task } from 'toad-scheduler';
+import { SimpleIntervalJob, AsyncTask } from 'toad-scheduler';
 import {
   assertDataLayerAvailable,
   assertWalletIsSynced,
@@ -288,6 +288,25 @@ const executeSplit = async (coinId, numberOfCoins) => {
 // never settles escalates from routine info logs to a warning.
 let pendingDeferralsSince = null;
 
+// Set after a cannot-split warning. A chronically underfunded wallet hits the
+// same shortfall every cycle, so repeat the warning hourly instead of every
+// five minutes; the condition clears when the coin count recovers.
+let lastShortfallWarnAt = null;
+const SHORTFALL_WARN_INTERVAL_MS = 60 * 60 * 1000;
+
+const logShortfall = (message) => {
+  const now = Date.now();
+  if (
+    lastShortfallWarnAt === null ||
+    now - lastShortfallWarnAt >= SHORTFALL_WARN_INTERVAL_MS
+  ) {
+    lastShortfallWarnAt = now;
+    logger.warn(message);
+  } else {
+    logger.debug(message);
+  }
+};
+
 /**
  * One coin management cycle. The healthy-wallet path is intentionally a single
  * RPC (get_coin_records over the live UTXO set); every other check runs only
@@ -320,6 +339,7 @@ const runCycle = async () => {
 
   if (usableCount >= LOW_WATER_MARK) {
     pendingDeferralsSince = null;
+    lastShortfallWarnAt = null;
     logger.debug(
       `[COIN_MANAGEMENT] ${usableCount} usable coins (${MIN_USABLE_COIN_SIZE}+ mojos each), at or above the low-water mark of ${LOW_WATER_MARK}. No action needed.`,
     );
@@ -347,20 +367,20 @@ const runCycle = async () => {
 
     switch (plan.reason) {
       case 'no-unspent-coins':
-        logger.warn('[COIN_MANAGEMENT] No unspent coins available in wallet');
+        logShortfall('[COIN_MANAGEMENT] No unspent coins available in wallet');
         break;
       case 'no-coin-id':
         logger.error('[COIN_MANAGEMENT] Could not determine coin ID for the largest coin.');
         logger.debug(`[COIN_MANAGEMENT] Largest coin record: ${JSON.stringify(plan.coin)}`);
         break;
       case 'largest-coin-too-small':
-        logger.warn(
+        logShortfall(
           `[COIN_MANAGEMENT] Largest coin (${formatMojos(plan.largestAmount, currencySymbol)}) is too small to split. ` +
             `Need at least ${formatMojos(getCoinSize() + SPLIT_FEE, currencySymbol)} to create one ${getCoinSize()} mojo coin.`,
         );
         break;
       case 'remainder-too-small':
-        logger.warn(
+        logShortfall(
           `[COIN_MANAGEMENT] Cannot split ${formatMojos(plan.largestAmount, currencySymbol)} without leaving a ` +
             `remainder below ${getCoinSize()} mojos. Aborting split.`,
         );
@@ -417,31 +437,39 @@ const runCycle = async () => {
   return executeSplit(plan.coinId, plan.numberOfCoins);
 };
 
-// Serializes cycles across the scheduler, the startup run, and tests. Errors
-// are contained inside each link, so the chain itself never rejects.
-let runChain = Promise.resolve();
+// The in-flight cycle, if any. Callers arriving while one is running join it
+// instead of queueing behind it, so a wallet RPC that hangs across several
+// scheduler ticks cannot build a backlog of stale cycles. Errors are
+// contained inside the run, so the returned promise never rejects.
+let activeRun = null;
 
 /**
- * Run one coin management cycle, serialized behind any cycle already running.
+ * Run one coin management cycle, joining any cycle already in flight.
  * @returns {Promise<{split: boolean, reason?: string, usableCount?: number}>}
  */
 const runCoinManagement = () => {
-  const run = runChain.then(async () => {
+  if (activeRun) {
+    return activeRun;
+  }
+
+  activeRun = (async () => {
     try {
       return await runCycle();
     } catch (error) {
       logger.error(`[COIN_MANAGEMENT] Error during coin management: ${error.message}`);
       logger.debug('[COIN_MANAGEMENT] Full error:', error);
       return { split: false, reason: 'error' };
+    } finally {
+      activeRun = null;
     }
-  });
-  runChain = run;
-  return run;
+  })();
+
+  return activeRun;
 };
 
-const task = new Task('coin-management', async () => {
-  await runCoinManagement();
-});
+// AsyncTask (not Task) so the scheduler awaits the cycle and preventOverrun
+// can actually see an in-flight run; joining above is the backstop.
+const task = new AsyncTask('coin-management', () => runCoinManagement());
 
 const job = new SimpleIntervalJob(
   {

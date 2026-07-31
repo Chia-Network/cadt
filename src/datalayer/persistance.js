@@ -215,7 +215,14 @@ const checkWalletBalanceForMirror = async (coinAmount, fee) => {
       // reduces the spendable balance and resolves itself on confirmation.
       const hasUnconfirmed = await wallet
         .hasAnyUnconfirmedTransactions()
-        .catch(() => false);
+        .catch((error) => {
+          // Failing open means a shortfall is reported as genuinely
+          // insufficient funds below, so leave a trace of the failed check.
+          logger.warn(
+            `Could not check for unconfirmed transactions while evaluating mirror funding: ${error.message}`,
+          );
+          return false;
+        });
       if (hasUnconfirmed) {
         logger.warn(
           `Wallet balance temporarily reduced by unconfirmed transaction(s) ` +
