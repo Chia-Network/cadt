@@ -128,8 +128,10 @@ describe('Store creation retry budget', function () {
     });
 
     it('fails once the coin-shortage deadline is exhausted', async function () {
-      ORG_CREATION_CONFIG.COIN_SHORTAGE_RETRY_DEADLINE_MS = 60;
-      ORG_CREATION_CONFIG.STORE_CREATE_RETRY_DELAY_MS = 25;
+      // Wide deadline/delay ratio so event-loop lag on a loaded runner
+      // cannot flake the lower bound.
+      ORG_CREATION_CONFIG.COIN_SHORTAGE_RETRY_DEADLINE_MS = 200;
+      ORG_CREATION_CONFIG.STORE_CREATE_RETRY_DELAY_MS = 50;
 
       let calls = 0;
       const createStore = async () => {
@@ -148,7 +150,7 @@ describe('Store creation retry budget', function () {
       // Slow confirmation past the deadline stops retrying instead of
       // spinning forever.
       expect(calls).to.be.at.least(2);
-      expect(calls).to.be.at.most(4);
+      expect(calls).to.be.at.most(5);
     });
   });
 
@@ -211,6 +213,81 @@ describe('Store creation retry budget', function () {
       expect(result.success).to.equal(false);
       expect(result.error).to.equal('boom');
       expect(calls).to.equal(1);
+    });
+  });
+
+  describe('spendable coin sufficiency', function () {
+    const { evaluateSpendableCoins, MIN_USABLE_COIN_SIZE } = wallet;
+    const coin = (amount, spentHeight = 0) => ({
+      amount,
+      spent_height: spentHeight,
+    });
+
+    it('accepts a single large coin that can fund the whole batch', function () {
+      const result = evaluateSpendableCoins(
+        [coin(10 * MIN_USABLE_COIN_SIZE)],
+        1,
+        MIN_USABLE_COIN_SIZE,
+        4 * MIN_USABLE_COIN_SIZE,
+      );
+
+      expect(result.sufficient).to.equal(true);
+      expect(result.usableCoins).to.have.length(1);
+    });
+
+    it('rejects a single coin that passes the per-coin gate but cannot fund the batch', function () {
+      const result = evaluateSpendableCoins(
+        [coin(MIN_USABLE_COIN_SIZE + 100)],
+        1,
+        MIN_USABLE_COIN_SIZE,
+        4 * MIN_USABLE_COIN_SIZE,
+      );
+
+      expect(result.sufficient).to.equal(false);
+      expect(result.usableCoins).to.have.length(1);
+      expect(result.totalBalance).to.equal(MIN_USABLE_COIN_SIZE + 100);
+    });
+
+    it('accepts several small coins whose combined balance funds the batch', function () {
+      const coins = Array.from({ length: 4 }, () =>
+        coin(MIN_USABLE_COIN_SIZE),
+      );
+      const result = evaluateSpendableCoins(
+        coins,
+        1,
+        MIN_USABLE_COIN_SIZE,
+        4 * MIN_USABLE_COIN_SIZE,
+      );
+
+      expect(result.sufficient).to.equal(true);
+      expect(result.totalBalance).to.equal(4 * MIN_USABLE_COIN_SIZE);
+    });
+
+    it('ignores spent and undersized coins for both gates', function () {
+      const result = evaluateSpendableCoins(
+        [
+          coin(10 * MIN_USABLE_COIN_SIZE, 12345), // spent
+          coin(MIN_USABLE_COIN_SIZE - 1), // below per-coin minimum
+          coin(MIN_USABLE_COIN_SIZE),
+        ],
+        1,
+        MIN_USABLE_COIN_SIZE,
+        0,
+      );
+
+      expect(result.sufficient).to.equal(true);
+      expect(result.usableCoins).to.have.length(1);
+      expect(result.totalBalance).to.equal(MIN_USABLE_COIN_SIZE);
+    });
+
+    it('defaults to no total requirement', function () {
+      const result = evaluateSpendableCoins(
+        [coin(MIN_USABLE_COIN_SIZE)],
+        1,
+        MIN_USABLE_COIN_SIZE,
+      );
+
+      expect(result.sufficient).to.equal(true);
     });
   });
 

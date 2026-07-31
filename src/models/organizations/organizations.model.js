@@ -61,7 +61,6 @@ import { createStoreWithRetryBudget } from '../../utils/store-creation-retry.js'
 import { mirrorOrgStores } from '../../tasks/mirror-check.js';
 import { updateOrgLockStatus } from '../../utils/org-operation-lock.js';
 
-
 class Organization extends Model {
   static async getHomeOrg(includeAddress = true) {
     const { READ_ONLY } = getConfig();
@@ -227,8 +226,16 @@ class Organization extends Model {
       if (!USE_SIMULATOR) {
         // One coin is enough to start: with fewer coins than stores, the
         // parallel store creations serialize themselves, each retrying until
-        // the previous spend's change confirms and frees a coin.
-        const coinCheck = await wallet.waitForSpendableCoins(1);
+        // the previous spend's change confirms and frees a coin. The combined
+        // balance must still cover every store, or creation would spend part
+        // of the batch and then strand the org with orphaned stores.
+        const coinCheck = await wallet.waitForSpendableCoins(
+          1,
+          undefined,
+          undefined,
+          undefined,
+          getStoresToCreate(state).length * wallet.MIN_USABLE_COIN_SIZE,
+        );
         logger.info(`[v1]: Proceeding with org creation, ${coinCheck.coinCount} coins available`);
       }
 
@@ -285,8 +292,15 @@ class Organization extends Model {
     const neededCoins = getStoresToCreate(state).length;
     if (!USE_SIMULATOR && neededCoins > 0) {
       // One coin is enough to resume; scarce coins serialize the remaining
-      // store creations (see _createStoresInParallel).
-      const coinCheck = await wallet.waitForSpendableCoins(1);
+      // store creations (see _createStoresInParallel). The combined balance
+      // must still cover every remaining store.
+      const coinCheck = await wallet.waitForSpendableCoins(
+        1,
+        undefined,
+        undefined,
+        undefined,
+        neededCoins * wallet.MIN_USABLE_COIN_SIZE,
+      );
       logger.info(`[v1]: Resuming org creation, ${coinCheck.coinCount} coins available (${neededCoins} stores to create)`);
     }
 

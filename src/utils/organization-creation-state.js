@@ -66,6 +66,12 @@ export const ORG_CREATION_CONFIG = {
   // block confirmation apart, so the budget must cover several confirmations
   // rather than a fixed attempt count. Other transient wallet errors keep the
   // attempt-based budget.
+  //
+  // The deadline is checked between attempts, so an attempt that blocks on
+  // confirmation waits can overrun it; the deadline bounds when new attempts
+  // start, not total wall time. It also counts against the same
+  // STORE_CONFIRMATION_TIMEOUT_MS window as the data pushes above, so keep
+  // it well under that bound.
   STORE_CREATE_RETRY_DELAY_MS: 30 * 1000, // 30 seconds
   STORE_CREATE_MAX_ATTEMPTS: 10,
   COIN_SHORTAGE_RETRY_DEADLINE_MS: 15 * 60 * 1000, // 15 minutes

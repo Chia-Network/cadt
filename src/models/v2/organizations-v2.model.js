@@ -83,8 +83,6 @@ import ModelTypes from './organizations-v2.modeltypes.js';
 import { mirrorOrgStoresV2 } from '../../tasks/mirror-check-v2.js';
 import { updateOrgLockStatus } from '../../utils/org-operation-lock.js';
 
-const { isTransientWalletError } = wallet;
-
 class OrganizationsV2 extends Model {
   static async create(values, options) {
     await mirrorWriteV2(async () => {
@@ -269,8 +267,16 @@ class OrganizationsV2 extends Model {
 
       // One coin is enough to start: with fewer coins than stores, the
       // parallel store creations serialize themselves, each retrying until
-      // the previous spend's change confirms and frees a coin.
-      const coinCheck = await wallet.waitForSpendableCoins(1);
+      // the previous spend's change confirms and frees a coin. The combined
+      // balance must still cover every store, or creation would spend part
+      // of the batch and then strand the org with orphaned stores.
+      const coinCheck = await wallet.waitForSpendableCoins(
+        1,
+        undefined,
+        undefined,
+        undefined,
+        getStoresToCreate(state).length * wallet.MIN_USABLE_COIN_SIZE,
+      );
       loggerV2.info(`[v2]: Proceeding with org creation, ${coinCheck.coinCount} coins available`);
 
       // Execute the creation process
@@ -327,8 +333,15 @@ class OrganizationsV2 extends Model {
     const neededCoins = getStoresToCreate(state).length;
     if (neededCoins > 0) {
       // One coin is enough to resume; scarce coins serialize the remaining
-      // store creations (see _createStoresInParallel).
-      const coinCheck = await wallet.waitForSpendableCoins(1);
+      // store creations (see _createStoresInParallel). The combined balance
+      // must still cover every remaining store.
+      const coinCheck = await wallet.waitForSpendableCoins(
+        1,
+        undefined,
+        undefined,
+        undefined,
+        neededCoins * wallet.MIN_USABLE_COIN_SIZE,
+      );
       loggerV2.info(`[v2]: Resuming org creation, ${coinCheck.coinCount} coins available (${neededCoins} stores to create)`);
     }
 
@@ -953,27 +966,21 @@ class OrganizationsV2 extends Model {
       if (USE_SIMULATOR) {
         newV2RegistryStoreId = 'v2-registry-' + Date.now();
       } else {
-        const maxStoreCreateRetries = 10;
-        const storeCreateRetryDelayMs = 30000;
-
-        for (let attempt = 1; attempt <= maxStoreCreateRetries; attempt++) {
-          try {
+        // Same retry policy as org creation: coin shortages get a time
+        // budget, other transient wallet errors an attempt budget.
+        const result = await createStoreWithRetryBudget('V2 registry', {
+          createStore: async () => {
             await wallet.waitForSpendableCoins(1);
-            newV2RegistryStoreId = await datalayer.createDataLayerStoreWithRetry();
-            break;
-          } catch (error) {
-            if (isTransientWalletError(error) && attempt < maxStoreCreateRetries) {
-              loggerV2.warn(
-                `[v2]: Wallet not ready during V2 registry store creation ` +
-                `(attempt ${attempt}/${maxStoreCreateRetries}): ${error.message}. ` +
-                `Retrying in ${storeCreateRetryDelayMs / 1000}s...`,
-              );
-              await new Promise((resolve) => setTimeout(resolve, storeCreateRetryDelayMs));
-              continue;
-            }
-            throw error;
-          }
+            return await datalayer.createDataLayerStoreWithRetry();
+          },
+          persistStoreCreated: async () => {},
+          log: (message, level = 'info') =>
+            loggerV2[level](`[v2]: ${message}`),
+        });
+        if (!result.success) {
+          throw new Error(result.error);
         }
+        newV2RegistryStoreId = result.storeId;
       }
 
       // CRITICAL: Use existing dataModelVersionStoreId singleton (do NOT create new one)
