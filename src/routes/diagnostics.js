@@ -364,9 +364,9 @@ const collectNonDefaultTaskIntervals = (actualTasks, defaultTasks = defaultConfi
     const defaultValue = defaultTasks?.[key];
     const actualValue = actualTasks?.[key];
     if (actualValue === undefined) continue;
-    // docker-entrypoint.sh writes env-provided intervals back as quoted YAML
-    // strings, so a config value can equal the numeric default semantically
-    // ("120" vs 120). Compare numerically when both parse as finite numbers,
+    // Config intervals are coerced to numbers by the config loader, but this
+    // helper is also called directly with raw values, where "120" and 120 mean
+    // the same thing. Compare numerically when both parse as finite numbers,
     // falling back to strict equality otherwise.
     const defaultNum = Number(defaultValue);
     const actualNum = Number(actualValue);

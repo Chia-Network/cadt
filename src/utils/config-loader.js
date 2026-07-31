@@ -7,6 +7,10 @@ import { mergeObjects } from './helpers';
 import { defaultConfig } from './defaultConfig.js';
 import { getChiaRoot } from './chia-root.js';
 import { migrateConfigFiles } from './config-migration.js';
+import {
+  coerceConfigNumber,
+  coerceNumericAppConfig,
+} from './numeric-config.js';
 
 // Helper function to load config for a specific version
 const loadConfigForVersion = (dataModelVersion) => {
@@ -129,9 +133,18 @@ const loadConfigForVersion = (dataModelVersion) => {
     };
   }
 
-  // Handle CW_PORT environment variable override
+  // Numeric APP keys can arrive from YAML as strings; coerce once for all consumers.
+  mergedConfig.APP = coerceNumericAppConfig(mergedConfig.APP);
+
+  // Handle CW_PORT environment variable override. An unusable env value falls
+  // back to the port already resolved from config.yaml rather than discarding
+  // the operator's file setting.
   if (process.env.CW_PORT) {
-    mergedConfig.APP.CW_PORT = parseInt(process.env.CW_PORT, 10);
+    mergedConfig.APP.CW_PORT = coerceConfigNumber(
+      process.env.CW_PORT,
+      mergedConfig.APP.CW_PORT,
+      'CW_PORT (env)',
+    );
   }
 
   // Handle USE_SIMULATOR environment variable override

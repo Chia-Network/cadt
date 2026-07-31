@@ -3,8 +3,11 @@ import {
   assertDataLayerAvailable,
   assertWalletIsSynced,
 } from '../utils/data-assertions';
+import _ from 'lodash';
 import { logger } from '../config/logger.js';
 import { getConfig } from '../utils/config-loader';
+import { coerceConfigNumber } from '../utils/numeric-config.js';
+import { getChiaConfig } from '../datalayer/fullNode.js';
 import wallet from '../datalayer/wallet.js';
 
 const CONFIG = getConfig();
@@ -15,12 +18,76 @@ const TARGET_COIN_COUNT = 15;      // Number of coins to maintain
 const SPLIT_FEE = APP_CONFIG.DEFAULT_FEE || 3000; // Fee from config, fallback to 3000 mojos
 const DEFAULT_COIN_AMOUNT = APP_CONFIG.DEFAULT_COIN_AMOUNT || 300; // Coin amount for DataLayer operations from config
 const MIN_USABLE_COIN_SIZE = DEFAULT_COIN_AMOUNT + SPLIT_FEE; // A coin must cover both the operation amount and the fee to be usable
-// Chia's default xch_spam_amount is 1,000,000 mojos. Coins below this threshold
-// may be filtered out by the wallet's spam filter once enough small UTXOs exist.
-// Not available via RPC, so we use a floor above the default to be safe.
-const DUST_FILTER_FLOOR = 1_000_000;
-const COIN_SIZE = Math.max(MIN_USABLE_COIN_SIZE, DUST_FILTER_FLOOR);
-const MIN_COIN_SIZE = COIN_SIZE;
+// Chia's own default when wallet.xch_spam_amount is absent from its config.
+const CHIA_DEFAULT_XCH_SPAM_AMOUNT = 1_000_000;
+
+/**
+ * Size of the coins we create, in mojos.
+ *
+ * Chia's wallet hides coins below `wallet.xch_spam_amount` once enough small
+ * UTXOs accumulate, so every coin we create must clear that threshold outright
+ * rather than merely equal it. When the operational minimum is smaller than the
+ * threshold we create the smallest coin that still clears it, so a wallet is
+ * not carved into more value per coin than an operation needs.
+ *
+ * @param {unknown} rawSpamAmount   wallet.xch_spam_amount from Chia's config.
+ * @param {number} [minUsableCoinSize]
+ * @param {{warn: (msg: string) => void}} [log]
+ * @returns {number}
+ */
+export const resolveCoinSize = (
+  rawSpamAmount,
+  minUsableCoinSize = MIN_USABLE_COIN_SIZE,
+  log = logger,
+) => {
+  const dustFilterFloor = coerceConfigNumber(
+    rawSpamAmount,
+    CHIA_DEFAULT_XCH_SPAM_AMOUNT,
+    'chia config wallet.xch_spam_amount',
+    log,
+  );
+
+  return Math.max(minUsableCoinSize, dustFilterFloor + 1);
+};
+
+// Reads lazily, and only when a split is actually being considered: reading at
+// import time would make every consumer of this module depend on a readable
+// Chia config. Memoize caches returns but not throws, so an unreadable config
+// is retried on the next run instead of pinning the coin size for the life of
+// the process.
+const readCoinSize = _.memoize(() => {
+  const rawSpamAmount = _.get(getChiaConfig(), 'wallet.xch_spam_amount');
+  const coinSize = resolveCoinSize(rawSpamAmount);
+
+  logger.info(
+    `[COIN_MANAGEMENT] Creating coins of ${coinSize} mojos (configured wallet.xch_spam_amount: ${rawSpamAmount ?? 'unset'})`,
+  );
+
+  return coinSize;
+});
+
+export const getCoinSize = () => {
+  try {
+    return readCoinSize();
+  } catch (error) {
+    const message =
+      `[COIN_MANAGEMENT] Could not read chia config for wallet.xch_spam_amount ` +
+      `(${error.message}); assuming the chia default of ${CHIA_DEFAULT_XCH_SPAM_AMOUNT} mojos.`;
+    // A CADT host with no local chia node is supported, so an absent config is
+    // routine; one that exists but cannot be read is worth an operator's time.
+    if (error.code === 'ENOENT') {
+      logger.debug(message);
+    } else {
+      logger.warn(message);
+    }
+
+    return resolveCoinSize(undefined);
+  }
+};
+
+// The same handle every other memoized reader in the codebase exposes, so tests
+// can drop a cached read after repointing CHIA_ROOT.
+getCoinSize.cache = readCoinSize.cache;
 
 // Exported flag so other tasks (mirror check, etc.) can avoid operating
 // while a coin split has temporarily reduced the wallet's spendable balance.
@@ -118,14 +185,15 @@ const waitForSplitConfirmation = async (expectedNewCoins, originalCoinId) => {
  * flag so other tasks know the wallet balance is temporarily reduced.
  */
 const executeSplit = async (coinId, numberOfCoins) => {
-  logger.info(`[COIN_MANAGEMENT] Splitting coin ${coinId} into ${numberOfCoins} new coins of ${COIN_SIZE} mojos each (fee: ${SPLIT_FEE} mojos)`);
+  const coinSize = getCoinSize();
+  logger.info(`[COIN_MANAGEMENT] Splitting coin ${coinId} into ${numberOfCoins} new coins of ${coinSize} mojos each (fee: ${SPLIT_FEE} mojos)`);
 
   splitInProgress = true;
   try {
-    const splitResult = await wallet.splitCoins(coinId, numberOfCoins, COIN_SIZE, SPLIT_FEE);
+    const splitResult = await wallet.splitCoins(coinId, numberOfCoins, coinSize, SPLIT_FEE);
 
     if (splitResult.success) {
-      logger.info(`[COIN_MANAGEMENT] Successfully initiated coin split. Waiting for ${numberOfCoins} new coins of ${COIN_SIZE} mojos to confirm...`);
+      logger.info(`[COIN_MANAGEMENT] Successfully initiated coin split. Waiting for ${numberOfCoins} new coins of ${coinSize} mojos to confirm...`);
       const confirmed = await waitForSplitConfirmation(numberOfCoins, coinId);
       if (!confirmed) {
         logger.warn('[COIN_MANAGEMENT] Split transaction may still be pending. Coins will be available once confirmed.');
@@ -220,38 +288,40 @@ const runCoinManagement = async () => {
     logger.info(`[COIN_MANAGEMENT] Wallet synced=${syncStatus.synced} (syncing=${syncStatus.syncing}). Proceeding with coin split.`);
 
     // Calculate how many coins we need and can create
+    const coinSize = getCoinSize();
     const coinsNeeded = TARGET_COIN_COUNT - coinCount;
-    const requiredAmount = (coinsNeeded * COIN_SIZE) + SPLIT_FEE;
+    const requiredAmount = (coinsNeeded * coinSize) + SPLIT_FEE;
 
     // Check if we have enough mojos in the largest coin
     if (largestCoinAmount < requiredAmount) {
       const currencySymbol = await getCurrencySymbol();
-      const maxPossibleCoins = Math.floor((largestCoinAmount - SPLIT_FEE) / COIN_SIZE);
+      const maxPossibleCoins = Math.floor((largestCoinAmount - SPLIT_FEE) / coinSize);
 
       if (maxPossibleCoins < 1) {
         logger.warn(
           `[COIN_MANAGEMENT] WARNING: Largest coin (${formatMojos(largestCoinAmount, currencySymbol)}) is too small to split. ` +
-          `Need at least ${formatMojos(COIN_SIZE + SPLIT_FEE, currencySymbol)} to create one ${COIN_SIZE} mojo coin.`
+          `Need at least ${formatMojos(coinSize + SPLIT_FEE, currencySymbol)} to create one ${coinSize} mojo coin.`
         );
         return;
       }
 
-      // Verify the remainder (change) coin won't be below MIN_COIN_SIZE
-      const totalSplitAmount = (maxPossibleCoins * COIN_SIZE) + SPLIT_FEE;
+      // Verify the remainder (change) coin won't be below the coin size, which
+      // would leave dust the wallet may hide.
+      const totalSplitAmount = (maxPossibleCoins * coinSize) + SPLIT_FEE;
       const remainderAmount = largestCoinAmount - totalSplitAmount;
       let adjustedCoins = maxPossibleCoins;
-      if (remainderAmount > 0 && remainderAmount < MIN_COIN_SIZE) {
+      if (remainderAmount > 0 && remainderAmount < coinSize) {
         adjustedCoins = maxPossibleCoins - 1;
         if (adjustedCoins < 1) {
           logger.warn(
-            `[COIN_MANAGEMENT] WARNING: Cannot split without creating a remainder coin below ${MIN_COIN_SIZE} mojos ` +
+            `[COIN_MANAGEMENT] WARNING: Cannot split without creating a remainder coin below ${coinSize} mojos ` +
             `(remainder would be ${remainderAmount} mojos). Aborting split.`
           );
           return;
         }
         logger.warn(
           `[COIN_MANAGEMENT] Reducing split from ${maxPossibleCoins} to ${adjustedCoins} coins to avoid ` +
-          `creating a remainder below ${MIN_COIN_SIZE} mojos.`
+          `creating a remainder below ${coinSize} mojos.`
         );
       }
 
@@ -265,22 +335,22 @@ const runCoinManagement = async () => {
       return;
     }
 
-    // We have enough - check that the remainder won't be below MIN_COIN_SIZE
-    const totalSplitAmount = (coinsNeeded * COIN_SIZE) + SPLIT_FEE;
+    // We have enough - check that the remainder won't be below the coin size
+    const totalSplitAmount = (coinsNeeded * coinSize) + SPLIT_FEE;
     const remainderAmount = largestCoinAmount - totalSplitAmount;
     let actualCoinsToCreate = coinsNeeded;
 
-    if (remainderAmount > 0 && remainderAmount < MIN_COIN_SIZE) {
+    if (remainderAmount > 0 && remainderAmount < coinSize) {
       actualCoinsToCreate = coinsNeeded - 1;
       if (actualCoinsToCreate < 1) {
         logger.warn(
-          `[COIN_MANAGEMENT] WARNING: Cannot split without creating a remainder coin below ${MIN_COIN_SIZE} mojos. Aborting split.`
+          `[COIN_MANAGEMENT] WARNING: Cannot split without creating a remainder coin below ${coinSize} mojos. Aborting split.`
         );
         return;
       }
       logger.warn(
         `[COIN_MANAGEMENT] Reducing split from ${coinsNeeded} to ${actualCoinsToCreate} coins to avoid ` +
-        `creating a remainder below ${MIN_COIN_SIZE} mojos.`
+        `creating a remainder below ${coinSize} mojos.`
       );
     }
 

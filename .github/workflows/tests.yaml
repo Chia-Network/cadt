@@ -63,6 +63,19 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v7
 
+      # mikefarah yq, matching the Dockerfile. Debian's `yq` package is the
+      # unrelated jq-based python-yq, which has no `eval` subcommand, so the
+      # docker-entrypoint.sh tests would skip themselves against it. Pinned to
+      # the same major the image builds from, so CI cannot start validating the
+      # entrypoint against a yq that production never runs.
+      - name: Install yq
+        run: |
+          curl -fsSL \
+            https://github.com/mikefarah/yq/releases/download/v4.53.3/yq_linux_amd64 \
+            -o /usr/local/bin/yq
+          chmod +x /usr/local/bin/yq
+          yq --version
+
       - name: Ignore Husky
         run: npm pkg delete scripts.prepare
 

@@ -627,7 +627,7 @@ describe('diagnostics collectNonDefaultTaskIntervals', function () {
   });
 
   it('treats numeric-string intervals equal to the default as default', function () {
-    // docker-entrypoint.sh writes env-provided intervals as quoted YAML strings.
+    // The helper is also called directly with raw, uncoerced values.
     const actual = {
       ...defaultTasks,
       GOVERNANCE_SYNC_TASK_INTERVAL: '120',
