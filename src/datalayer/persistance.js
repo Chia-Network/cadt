@@ -9,7 +9,6 @@ import { OrganizationsV2 } from '../models/v2/index.js';
 import { logger } from '../config/logger.js';
 import { getChiaRoot } from '../utils/chia-root.js';
 import { getMirrorUrl, decodeHex } from '../utils/datalayer-utils';
-import { isSplitInProgress } from '../tasks/coin-management.js';
 
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
@@ -211,11 +210,17 @@ const checkWalletBalanceForMirror = async (coinAmount, fee) => {
       );
       return { sufficient: true, fee: 0, balanceXCH: balanceXCH };
     } else {
-      if (isSplitInProgress()) {
+      // The wallet is the source of truth for in-flight spends: any
+      // unconfirmed transaction (coin split, store creation, ...) temporarily
+      // reduces the spendable balance and resolves itself on confirmation.
+      const hasUnconfirmed = await wallet
+        .hasAnyUnconfirmedTransactions()
+        .catch(() => false);
+      if (hasUnconfirmed) {
         logger.warn(
-          `Wallet balance temporarily reduced by coin split in progress ` +
+          `Wallet balance temporarily reduced by unconfirmed transaction(s) ` +
             `(have ${balanceMojos} mojos, need ${coinAmount} mojos). ` +
-            `Skipping mirror creation - will retry after split confirms.`,
+            `Skipping mirror creation - will retry after they confirm.`,
         );
       } else {
         logger.error(

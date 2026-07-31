@@ -239,7 +239,7 @@ In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), CADT will add
     * **PICKLIST_SYNC_TASK_INTERVAL**: Syncs picklist from the governance node. Default 120 seconds (2 minutes).
     * **MIRROR_CHECK_TASK_INTERVAL**: Checks if our DataLayer is advertising our `DATALAYER_FILE_SERVER_URL` as a mirror for all subscriptions when `AUTO_MIRROR_EXTERNAL_STORES` is true. Default 900 seconds (15 minutes).
     * **VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL**: Validates the organization table periodically. Default 1800 seconds (30 minutes).
-    * **COIN_MANAGEMENT_TASK_INTERVAL**: Splits wallet coins when usable coin count is low. Default 21600 seconds (6 hours).
+    * **COIN_MANAGEMENT_TASK_INTERVAL**: How often to check whether wallet coins need splitting. The check is a single lightweight wallet RPC; when the usable coin count falls below a low-water mark (6), the largest coin is split to refill the pool to 15 coins. Default 300 seconds (5 minutes).
   * **REQUEST_CONTENT_LIMITS**: Section for configuring request size limits to prevent denial-of-service attacks. These limits control the maximum array lengths in API requests.
     * **STAGING**:
       * **EDIT_DATA_LEN**: Maximum number of items in staging edit operations. Default 200.

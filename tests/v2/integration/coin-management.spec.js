@@ -7,29 +7,30 @@ import * as yaml from 'js-yaml';
 import coinManagementJob, {
   getCoinSize,
   resolveCoinSize,
+  planCoinSplit,
+  runCoinManagement,
+  TARGET_COIN_COUNT,
+  LOW_WATER_MARK,
+  MIN_USABLE_COIN_SIZE,
 } from '../../../src/tasks/coin-management.js';
 import { getChiaConfig } from '../../../src/datalayer/fullNode.js';
 import { getChiaRoot } from '../../../src/utils/chia-root.js';
+import { getConfig } from '../../../src/utils/config-loader.js';
 import wallet from '../../../src/datalayer/wallet.js';
+import datalayer from '../../../src/datalayer/index.js';
+import { checkWalletBalanceForMirror } from '../../../src/datalayer/persistance.js';
 
 /**
  * Coin Management Task Tests
  *
- * Tests for coin-management background task that ensures the wallet
- * has at least 15 coins for optimal CADT operation.
- * Each coin is sized at DEFAULT_COIN_AMOUNT + DEFAULT_FEE so it can
- * independently fund one full DataLayer operation (amount + fee).
+ * Tests for the coin-management background task: a single periodic loop that
+ * checks the usable coin count with one wallet RPC and, when the count falls
+ * below LOW_WATER_MARK, splits the largest coin to refill toward
+ * TARGET_COIN_COUNT. Splits are submit-and-forget; the wallet's own pending
+ * transaction state defers subsequent cycles until the split confirms.
  */
 describe('Coin Management Task Tests', function () {
   this.timeout(30000);
-
-  let walletStub;
-
-  afterEach(function () {
-    if (walletStub) {
-      walletStub.restore();
-    }
-  });
 
   describe('Task Import and Structure', function () {
     it('should import task successfully', function () {
@@ -37,94 +38,20 @@ describe('Coin Management Task Tests', function () {
       expect(coinManagementJob.id).to.equal('coin-management');
     });
 
-    it('should have correct task ID', function () {
-      expect(coinManagementJob.id).to.equal('coin-management');
-    });
-
-    it('should be configured to run immediately', function () {
-      // The job should have runImmediately set to true
-      expect(coinManagementJob).to.exist;
-    });
-  });
-
-  describe('Wallet RPC Functions', function () {
-    it('should have getCoinRecords function available', function () {
-      expect(wallet.getCoinRecords).to.be.a('function');
-    });
-
-    it('should have splitCoins function available', function () {
-      expect(wallet.splitCoins).to.be.a('function');
-    });
-
-    it('should have getWalletBalanceMojos function available', function () {
-      expect(wallet.getWalletBalanceMojos).to.be.a('function');
-    });
-
-    it('should have getActiveNetwork function available', function () {
-      expect(wallet.getActiveNetwork).to.be.a('function');
-    });
-
-    it('should have getWalletBlockchainSyncStatus function available', function () {
-      expect(wallet.getWalletBlockchainSyncStatus).to.be.a('function');
-    });
-
-    it('should return sync status in simulator mode', async function () {
-      // In simulator mode, getWalletBlockchainSyncStatus should return a synced status
-      const result = await wallet.getWalletBlockchainSyncStatus();
-      expect(result).to.have.property('success');
-      // In simulator mode, wallet sync check is bypassed so success may be false
-      // This just tests the function exists and returns expected structure
-    });
-  });
-
-  describe('Simulator Mode Behavior', function () {
-    it('should return mock coin records in simulator mode', async function () {
-      // In simulator mode, getCoinRecords returns mock data
-      const result = await wallet.getCoinRecords();
-      expect(result).to.have.property('success');
-      expect(result).to.have.property('coin_records');
-      expect(result.coin_records).to.be.an('array');
-    });
-
-    it('should return mock balance in simulator mode', async function () {
-      const balance = await wallet.getWalletBalanceMojos();
-      expect(balance).to.be.a('number');
-      expect(balance).to.be.greaterThan(0);
-    });
-
-    it('should return success for splitCoins in simulator mode', async function () {
-      const result = await wallet.splitCoins('0xmockcoinid', 5, 100000000, 3000);
-      expect(result).to.have.property('success', true);
-    });
-  });
-
-  describe('Coin Count Logic', function () {
-    it('should identify when coin count is below target', function () {
-      const TARGET_COIN_COUNT = 15;
-      const currentCoinCount = 5;
-      expect(currentCoinCount < TARGET_COIN_COUNT).to.be.true;
-    });
-
-    it('should identify when coin count meets target', function () {
-      const TARGET_COIN_COUNT = 15;
-      const currentCoinCount = 15;
-      expect(currentCoinCount >= TARGET_COIN_COUNT).to.be.true;
-    });
-
-    it('should identify when coin count exceeds target', function () {
-      const TARGET_COIN_COUNT = 15;
-      const currentCoinCount = 20;
-      expect(currentCoinCount >= TARGET_COIN_COUNT).to.be.true;
+    it('exposes the standing pool thresholds', function () {
+      expect(TARGET_COIN_COUNT).to.equal(15);
+      expect(LOW_WATER_MARK).to.equal(6);
+      expect(LOW_WATER_MARK).to.be.lessThan(TARGET_COIN_COUNT);
     });
   });
 
   describe('Coin Size Resolution', function () {
-    const MIN_USABLE_COIN_SIZE = 3300; // DEFAULT_COIN_AMOUNT 300 + DEFAULT_FEE 3000
+    const MIN_SIZE = 3300; // DEFAULT_COIN_AMOUNT 300 + DEFAULT_FEE 3000
     const CHIA_DEFAULT_SPAM_AMOUNT = 1_000_000;
     const silentLog = { warn: () => {} };
 
     const resolve = (rawSpamAmount) =>
-      resolveCoinSize(rawSpamAmount, MIN_USABLE_COIN_SIZE, silentLog);
+      resolveCoinSize(rawSpamAmount, MIN_SIZE, silentLog);
 
     it('creates coins strictly above the dust filter floor, never equal to it', function () {
       // A coin exactly at xch_spam_amount is not reliably spendable, so the
@@ -151,7 +78,7 @@ describe('Coin Management Task Tests', function () {
     });
 
     it('uses the operational minimum when it already clears the floor', function () {
-      expect(resolve(100)).to.equal(MIN_USABLE_COIN_SIZE);
+      expect(resolve(100)).to.equal(MIN_SIZE);
       expect(resolve(100)).to.be.greaterThan(100);
     });
 
@@ -247,193 +174,451 @@ describe('Coin Management Task Tests', function () {
     });
   });
 
-  describe('Coin Splitting Calculations', function () {
-    const MIN_USABLE_COIN_SIZE = 3300;
+  describe('planCoinSplit', function () {
+    const COIN_SIZE = 1_000_001;
     const SPLIT_FEE = 3000;
-    // The production value for a node running chia's default spam threshold.
-    const COIN_SIZE = resolveCoinSize(1_000_000, MIN_USABLE_COIN_SIZE, {
-      warn: () => {},
-    });
-    const TARGET_COIN_COUNT = 15;
 
-    it("sizes coins just above chia's default spam threshold", function () {
-      expect(COIN_SIZE).to.equal(1_000_001);
+    const usableCoin = (id, amount = COIN_SIZE) => ({
+      id,
+      amount,
+      spent_height: 0,
     });
 
-    it('should calculate max possible coins correctly', function () {
-      const largestCoinAmount = 20_000_000;
-      const maxPossibleCoins = Math.floor(
-        (largestCoinAmount - SPLIT_FEE) / COIN_SIZE,
+    const plan = (overrides = {}) =>
+      planCoinSplit({
+        coinSize: COIN_SIZE,
+        splitFee: SPLIT_FEE,
+        ...overrides,
+      });
+
+    it('does nothing at or above the low-water mark (hysteresis)', function () {
+      const unspentCoins = [usableCoin('0x1', 100_000_000)];
+
+      for (const usableCount of [LOW_WATER_MARK, LOW_WATER_MARK + 1, TARGET_COIN_COUNT]) {
+        const result = plan({ usableCount, unspentCoins });
+        expect(result.action, String(usableCount)).to.equal('none');
+        expect(result.reason, String(usableCount)).to.equal('above-threshold');
+      }
+    });
+
+    it('refills to the target, not merely back to the threshold', function () {
+      const result = plan({
+        usableCount: LOW_WATER_MARK - 1,
+        unspentCoins: [usableCoin('0xbig', 1_000_000_000)],
+      });
+
+      expect(result.action).to.equal('split');
+      expect(result.coinId).to.equal('0xbig');
+      expect(result.numberOfCoins).to.equal(
+        TARGET_COIN_COUNT - (LOW_WATER_MARK - 1),
       );
-      // (20_000_000 - 3000) / 1_000_001 = 19.996 → 19
-      expect(maxPossibleCoins).to.equal(19);
+      expect(result.cappedBy).to.equal(null);
     });
 
-    it('should determine coins to create based on need and availability', function () {
-      const currentCoinCount = 3;
-      const coinsNeeded = TARGET_COIN_COUNT - currentCoinCount; // 12
-      const maxPossibleCoins = 15;
+    it('splits the largest unspent coin', function () {
+      const result = plan({
+        usableCount: 0,
+        unspentCoins: [
+          usableCoin('0xsmall', 5_000_000),
+          usableCoin('0xbig', 1_000_000_000),
+          usableCoin('0xmid', 20_000_000),
+        ],
+      });
 
-      const coinsToCreate = Math.min(coinsNeeded, maxPossibleCoins);
-      expect(coinsToCreate).to.equal(12);
+      expect(result.action).to.equal('split');
+      expect(result.coinId).to.equal('0xbig');
     });
 
-    it('should limit coins to max possible when balance is low', function () {
-      const currentCoinCount = 3;
-      const coinsNeeded = TARGET_COIN_COUNT - currentCoinCount; // 12
-      const maxPossibleCoins = 2;
-
-      const coinsToCreate = Math.min(coinsNeeded, maxPossibleCoins);
-      expect(coinsToCreate).to.equal(2);
+    it('reports an empty wallet', function () {
+      const result = plan({ usableCount: 0, unspentCoins: [] });
+      expect(result).to.deep.equal({
+        action: 'none',
+        reason: 'no-unspent-coins',
+      });
     });
 
-    it('should handle case where coin is too small to split', function () {
-      const largestCoinAmount = 3000;
-      const maxPossibleCoins = Math.floor(
-        (largestCoinAmount - SPLIT_FEE) / COIN_SIZE,
+    it('caps the split to what the largest coin can afford', function () {
+      // Can afford 3 coins plus fee; needs 15.
+      const largest = 3 * COIN_SIZE + SPLIT_FEE;
+      const result = plan({
+        usableCount: 0,
+        unspentCoins: [usableCoin('0xbig', largest)],
+      });
+
+      expect(result.action).to.equal('split');
+      expect(result.numberOfCoins).to.equal(3);
+      expect(result.coinsNeeded).to.equal(TARGET_COIN_COUNT);
+      expect(result.cappedBy).to.equal('affordability');
+    });
+
+    it('declines when the largest coin cannot fund even one new coin', function () {
+      const result = plan({
+        usableCount: 1,
+        unspentCoins: [usableCoin('0xtiny', COIN_SIZE)],
+      });
+
+      expect(result.action).to.equal('none');
+      expect(result.reason).to.equal('largest-coin-too-small');
+    });
+
+    it('gives up one coin rather than leave sub-dust change', function () {
+      // Affords 2 coins but the remainder would be dust the wallet may hide.
+      const largest = 2 * COIN_SIZE + SPLIT_FEE + 500;
+      const result = plan({
+        usableCount: 0,
+        unspentCoins: [usableCoin('0xbig', largest)],
+      });
+
+      expect(result.action).to.equal('split');
+      expect(result.numberOfCoins).to.equal(1);
+      expect(result.cappedBy).to.equal('change-coin');
+    });
+
+    it('declines a split that burns the fee for no net gain', function () {
+      // Exactly one coin plus fee: consuming a usable coin to mint one coin
+      // and no change leaves the count where it started.
+      const result = plan({
+        usableCount: 1,
+        unspentCoins: [usableCoin('0xbig', COIN_SIZE + SPLIT_FEE)],
+      });
+
+      expect(result.action).to.equal('none');
+      expect(result.reason).to.equal('no-net-gain');
+    });
+
+    it('honors a caller-provided threshold and target', function () {
+      const result = plan({
+        usableCount: 10,
+        unspentCoins: [usableCoin('0xbig', 1_000_000_000)],
+        threshold: 20,
+        target: 20,
+      });
+
+      expect(result.action).to.equal('split');
+      expect(result.numberOfCoins).to.equal(10);
+    });
+  });
+
+  describe('Coin Management Cycle', function () {
+    let sandbox;
+    let appConfig;
+    let savedUseSimulator;
+    let testChiaRoot;
+    let savedChiaRoot;
+
+    const COIN_SIZE = 1_000_001;
+    const SPLIT_FEE = 3000;
+
+    const clearChiaConfigCaches = () => {
+      getChiaRoot.cache?.clear();
+      getChiaConfig.cache?.clear();
+    };
+
+    const settledHealth = { inMempool: [], pending: [], rejected: [] };
+
+    const stubWallet = ({
+      coins,
+      health = settledHealth,
+      splitResult = { success: true },
+    }) => {
+      const stubs = {
+        getCoinRecords: sandbox
+          .stub(wallet, 'getCoinRecords')
+          .resolves({ success: true, coin_records: coins }),
+        getTransactionHealth: sandbox
+          .stub(wallet, 'getTransactionHealth')
+          .resolves(health),
+        getDLWalletId: sandbox.stub(wallet, 'getDLWalletId').resolves(null),
+        clearRejectedTransactions: sandbox
+          .stub(wallet, 'clearRejectedTransactions')
+          .resolves({ cleared: true, reason: '' }),
+        splitCoins: sandbox.stub(wallet, 'splitCoins').resolves(splitResult),
+        getActiveNetwork: sandbox
+          .stub(wallet, 'getActiveNetwork')
+          .resolves({ network_name: 'testnet11' }),
+        dataLayerAvailable: sandbox
+          .stub(datalayer, 'dataLayerAvailable')
+          .resolves(true),
+      };
+      return stubs;
+    };
+
+    const usableCoin = (id, amount = COIN_SIZE) => ({
+      id,
+      amount,
+      spent_height: 0,
+    });
+
+    before(function () {
+      appConfig = getConfig().APP;
+    });
+
+    beforeEach(function () {
+      sandbox = sinon.createSandbox();
+
+      // The cycle consults config at run time, so flipping the shared config
+      // object exercises the non-simulator path.
+      savedUseSimulator = appConfig.USE_SIMULATOR;
+      appConfig.USE_SIMULATOR = false;
+
+      // Pin the chia config so getCoinSize is deterministic.
+      testChiaRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'cadt-coin-cycle-'));
+      savedChiaRoot = process.env.CHIA_ROOT;
+      process.env.CHIA_ROOT = testChiaRoot;
+      clearChiaConfigCaches();
+      getCoinSize.cache?.clear();
+    });
+
+    afterEach(function () {
+      sandbox.restore();
+      appConfig.USE_SIMULATOR = savedUseSimulator;
+      fs.rmSync(testChiaRoot, { recursive: true, force: true });
+      if (savedChiaRoot === undefined) {
+        delete process.env.CHIA_ROOT;
+      } else {
+        process.env.CHIA_ROOT = savedChiaRoot;
+      }
+      clearChiaConfigCaches();
+      getCoinSize.cache?.clear();
+    });
+
+    it('skips entirely in simulator mode', async function () {
+      appConfig.USE_SIMULATOR = true;
+      const stubs = stubWallet({ coins: [] });
+
+      const result = await runCoinManagement();
+
+      expect(result).to.deep.equal({ split: false, reason: 'simulator' });
+      expect(stubs.getCoinRecords.callCount).to.equal(0);
+    });
+
+    it('makes exactly one RPC when the wallet is healthy', async function () {
+      const coins = Array.from({ length: LOW_WATER_MARK }, (unused, index) =>
+        usableCoin(`0x${index}`),
       );
-      expect(maxPossibleCoins).to.equal(0);
+      const stubs = stubWallet({ coins });
+
+      const result = await runCoinManagement();
+
+      expect(result.split).to.equal(false);
+      expect(result.reason).to.equal('above-threshold');
+      expect(result.usableCount).to.equal(LOW_WATER_MARK);
+      expect(
+        stubs.getCoinRecords.calledOnceWithExactly({ unspentOnly: true }),
+      ).to.equal(true);
+      // The healthy path must stay a single RPC: no sync asserts, no
+      // transaction queries, no split.
+      expect(stubs.dataLayerAvailable.callCount).to.equal(0);
+      expect(stubs.getTransactionHealth.callCount).to.equal(0);
+      expect(stubs.splitCoins.callCount).to.equal(0);
     });
 
-    it('should calculate required amount for coins needed', function () {
-      const currentCoinCount = 1;
-      const coinsNeeded = TARGET_COIN_COUNT - currentCoinCount; // 14
-      const requiredAmount = coinsNeeded * COIN_SIZE + SPLIT_FEE;
-      // (14 * 1_000_001) + 3000 = 14_003_014
-      expect(requiredAmount).to.equal(14_003_014);
-    });
-
-    it('should detect when remainder would be below the coin size', function () {
-      const largestCoinAmount = 2_500_000;
-      const coinsToCreate = 2;
-      const totalSplitAmount = coinsToCreate * COIN_SIZE + SPLIT_FEE;
-      const remainderAmount = largestCoinAmount - totalSplitAmount;
-      // 2_500_000 - (2_000_002 + 3000) = 496_998
-      expect(remainderAmount).to.equal(496_998);
-      expect(remainderAmount).to.be.lessThan(COIN_SIZE);
-    });
-
-    it('should allow split when remainder is zero', function () {
-      const largestCoinAmount = 2 * COIN_SIZE + SPLIT_FEE;
-      const coinsToCreate = 2;
-      const totalSplitAmount = coinsToCreate * COIN_SIZE + SPLIT_FEE;
-      const remainderAmount = largestCoinAmount - totalSplitAmount;
-      expect(remainderAmount).to.equal(0);
-      const shouldReduceCoins =
-        remainderAmount > 0 && remainderAmount < COIN_SIZE;
-      expect(shouldReduceCoins).to.be.false;
-    });
-
-    it('should allow split when remainder exceeds the coin size', function () {
-      const largestCoinAmount = 500_000_000; // 0.5 XCH
-      const coinsToCreate = 3;
-      const totalSplitAmount = coinsToCreate * COIN_SIZE + SPLIT_FEE;
-      const remainderAmount = largestCoinAmount - totalSplitAmount;
-      // 500_000_000 - (3_000_003 + 3000) = 496_996_997
-      expect(remainderAmount).to.equal(496_996_997);
-      expect(remainderAmount).to.be.greaterThan(COIN_SIZE);
-    });
-  });
-
-  describe('Currency Symbol Detection', function () {
-    it('should return XCH for mainnet', function () {
-      const networkName = 'mainnet';
-      const symbol = networkName.includes('mainnet') ? 'XCH' : 'TXCH';
-      expect(symbol).to.equal('XCH');
-    });
-
-    it('should return TXCH for testnet', function () {
-      const networkName = 'testnet10';
-      const symbol = networkName.includes('mainnet') ? 'XCH' : 'TXCH';
-      expect(symbol).to.equal('TXCH');
-    });
-  });
-
-  describe('Mojo Formatting', function () {
-    it('should format mojos to XCH correctly', function () {
-      const mojos = 1000000000000; // 1 XCH
-      const xch = mojos / 1000000000000;
-      expect(xch).to.equal(1);
-    });
-
-    it('should format COIN_SIZE amount correctly', function () {
-      const mojos = 3300; // COIN_SIZE in simulator config (DEFAULT_COIN_AMOUNT + DEFAULT_FEE)
-      const xch = mojos / 1000000000000;
-      expect(xch).to.equal(0.0000000033);
-    });
-  });
-
-  describe('Unspent Coin Filtering', function () {
-    it('should filter out spent coins', function () {
-      const allCoins = [
-        { id: '0x1', amount: 1000, spent_height: 0 },
-        { id: '0x2', amount: 2000, spent_height: 100 }, // Spent
-        { id: '0x3', amount: 3000, spent_height: 0 },
-        { id: '0x4', amount: 4000, spent_height: 200 }, // Spent
+    it('splits the largest coin to refill toward the target and returns without waiting', async function () {
+      const coins = [
+        usableCoin('0xa', 2_000_000),
+        usableCoin('0xb', 2_000_000),
+        usableCoin('0xlargest', 100_000_000),
       ];
+      const stubs = stubWallet({ coins });
 
-      const unspentCoins = allCoins.filter((coin) => coin.spent_height === 0);
-      expect(unspentCoins).to.have.length(2);
-      expect(unspentCoins.map((c) => c.id)).to.deep.equal(['0x1', '0x3']);
+      const result = await runCoinManagement();
+
+      expect(result.split).to.equal(true);
+      // usable = 3, so refill needs 12 more.
+      expect(
+        stubs.splitCoins.calledOnceWithExactly(
+          '0xlargest',
+          TARGET_COIN_COUNT - 3,
+          COIN_SIZE,
+          SPLIT_FEE,
+        ),
+      ).to.equal(true);
+      // Submit-and-forget: no confirmation polling after the split.
+      expect(stubs.getCoinRecords.callCount).to.equal(1);
+    });
+
+    it('defers the split while transactions are pending', async function () {
+      const coins = [usableCoin('0xlargest', 100_000_000)];
+      const stubs = stubWallet({
+        coins,
+        health: {
+          inMempool: [{ name: '0xtx' }],
+          pending: [],
+          rejected: [],
+        },
+      });
+
+      const result = await runCoinManagement();
+
+      expect(result).to.deep.equal({
+        split: false,
+        reason: 'pending-transactions',
+        usableCount: 1,
+      });
+      expect(stubs.splitCoins.callCount).to.equal(0);
+    });
+
+    it('clears rejected transactions and proceeds with the split', async function () {
+      const coins = [usableCoin('0xlargest', 100_000_000)];
+      const stubs = stubWallet({
+        coins,
+        health: {
+          inMempool: [],
+          pending: [],
+          rejected: [{ name: '0xrejected' }],
+        },
+      });
+
+      const result = await runCoinManagement();
+
+      expect(
+        stubs.clearRejectedTransactions.calledOnceWith('1', ['0xrejected']),
+      ).to.equal(true);
+      expect(result.split).to.equal(true);
+      expect(stubs.splitCoins.callCount).to.equal(1);
+    });
+
+    it('defers when rejected transactions cannot be cleared', async function () {
+      const coins = [usableCoin('0xlargest', 100_000_000)];
+      const stubs = stubWallet({
+        coins,
+        health: {
+          inMempool: [],
+          pending: [],
+          rejected: [{ name: '0xrejected' }],
+        },
+      });
+      stubs.clearRejectedTransactions.resolves({
+        cleared: false,
+        reason: 'refused',
+      });
+
+      const result = await runCoinManagement();
+
+      expect(result.reason).to.equal('pending-transactions');
+      expect(stubs.splitCoins.callCount).to.equal(0);
+    });
+
+    it('reports a failed split submission', async function () {
+      const coins = [usableCoin('0xlargest', 100_000_000)];
+      stubWallet({ coins, splitResult: { success: false, error: 'boom' } });
+
+      const result = await runCoinManagement();
+
+      expect(result).to.deep.equal({ split: false, reason: 'split-failed' });
+    });
+
+    it('checks the DataLayer wallet for pending transactions too', async function () {
+      const coins = [usableCoin('0xlargest', 100_000_000)];
+      const stubs = stubWallet({ coins });
+      stubs.getDLWalletId.resolves('3');
+
+      await runCoinManagement();
+
+      expect(stubs.getTransactionHealth.calledWith('1')).to.equal(true);
+      expect(stubs.getTransactionHealth.calledWith('3')).to.equal(true);
+    });
+
+    it('contains cycle errors instead of rejecting', async function () {
+      sandbox.stub(wallet, 'getCoinRecords').rejects(new Error('rpc down'));
+
+      const result = await runCoinManagement();
+
+      expect(result).to.deep.equal({ split: false, reason: 'error' });
+    });
+
+    it('serializes concurrent runs behind a mutex', async function () {
+      let inFlight = 0;
+      let maxInFlight = 0;
+
+      sandbox.stub(wallet, 'getCoinRecords').callsFake(async () => {
+        inFlight += 1;
+        maxInFlight = Math.max(maxInFlight, inFlight);
+        await new Promise((res) => setTimeout(res, 25));
+        inFlight -= 1;
+        return {
+          success: true,
+          coin_records: Array.from({ length: 10 }, (unused, index) =>
+            usableCoin(`0x${index}`),
+          ),
+        };
+      });
+
+      const results = await Promise.all([
+        runCoinManagement(),
+        runCoinManagement(),
+        runCoinManagement(),
+      ]);
+
+      expect(results.every((result) => result.reason === 'above-threshold')).to.equal(
+        true,
+      );
+      expect(maxInFlight).to.equal(1);
     });
   });
 
-  describe('Largest Coin Selection', function () {
-    it('should find the largest coin for splitting', function () {
-      const unspentCoins = [
-        { id: '0x1', amount: 1000 },
-        { id: '0x2', amount: 5000 },
-        { id: '0x3', amount: 3000 },
-      ];
+  describe('Mirror Gate', function () {
+    let sandbox;
 
-      const sortedCoins = [...unspentCoins].sort((a, b) => b.amount - a.amount);
-      const largestCoin = sortedCoins[0];
+    beforeEach(function () {
+      sandbox = sinon.createSandbox();
+    });
 
-      expect(largestCoin.id).to.equal('0x2');
-      expect(largestCoin.amount).to.equal(5000);
+    afterEach(function () {
+      sandbox.restore();
+    });
+
+    it('allows mirror creation when the balance covers coin plus fee', async function () {
+      sandbox.stub(wallet, 'getWalletBalance').resolves(1); // 1 XCH
+      const unconfirmed = sandbox.stub(wallet, 'hasAnyUnconfirmedTransactions');
+
+      const result = await checkWalletBalanceForMirror(2_000_000, 3000);
+
+      expect(result.sufficient).to.equal(true);
+      expect(result.fee).to.equal(3000);
+      expect(unconfirmed.callCount).to.equal(0);
+    });
+
+    it('reports insufficient funds while unconfirmed transactions are settling', async function () {
+      // 1_000_000 mojos on hand, 2_000_000 needed.
+      sandbox.stub(wallet, 'getWalletBalance').resolves(0.000001);
+      const unconfirmed = sandbox
+        .stub(wallet, 'hasAnyUnconfirmedTransactions')
+        .resolves(true);
+
+      const result = await checkWalletBalanceForMirror(2_000_000, 3000);
+
+      expect(result.sufficient).to.equal(false);
+      expect(unconfirmed.callCount).to.equal(1);
+    });
+
+    it('reports insufficient funds when the wallet is simply short', async function () {
+      sandbox.stub(wallet, 'getWalletBalance').resolves(0.000001);
+      sandbox.stub(wallet, 'hasAnyUnconfirmedTransactions').resolves(false);
+
+      const result = await checkWalletBalanceForMirror(2_000_000, 3000);
+
+      expect(result.sufficient).to.equal(false);
     });
   });
 
-  describe('Remaining Transactions Calculation', function () {
-    it('should calculate remaining transactions correctly', function () {
-      const coinSize = 600000000; // Production COIN_SIZE (DEFAULT_COIN_AMOUNT + DEFAULT_FEE)
-      const currentBalance = 9000000000000; // 9 XCH in mojos
+  describe('Coin Records Request Shape', function () {
+    it('queries only unspent coins when asked', function () {
+      expect(wallet.buildCoinRecordsRequest({ unspentOnly: true })).to.deep.equal({
+        wallet_id: 1,
+        spent_range: { start: 0, stop: 0 },
+      });
+    });
 
-      const remainingTransactions = Math.floor(currentBalance / coinSize);
-      // 9000000000000 / 600000000 = 15000
-      expect(remainingTransactions).to.equal(15000);
+    it('queries the full history by default', function () {
+      expect(wallet.buildCoinRecordsRequest()).to.deep.equal({ wallet_id: 1 });
     });
   });
 
-  describe('Usable Coin Filtering', function () {
-    const DEFAULT_COIN_AMOUNT = 300;    // DEFAULT_COIN_AMOUNT from config
-    const DEFAULT_FEE = 3000;           // DEFAULT_FEE from config
-    const MIN_USABLE_COIN_SIZE = DEFAULT_COIN_AMOUNT + DEFAULT_FEE; // 3300
-
-    it('should filter coins by minimum usable size (DEFAULT_COIN_AMOUNT + DEFAULT_FEE)', function () {
-      const allUnspentCoins = [
-        { id: '0x1', amount: 1000, spent_height: 0 },    // Too small
-        { id: '0x2', amount: 3300, spent_height: 0 },    // Exactly MIN_USABLE_COIN_SIZE
-        { id: '0x3', amount: 100000000, spent_height: 0 },  // Well above threshold
-        { id: '0x4', amount: 3299, spent_height: 0 },    // Just below MIN_USABLE_COIN_SIZE
-        { id: '0x5', amount: 5000, spent_height: 0 },    // Above threshold
-      ];
-
-      const usableCoins = allUnspentCoins.filter((coin) => coin.amount >= MIN_USABLE_COIN_SIZE);
-      expect(usableCoins).to.have.length(3);
-      expect(usableCoins.map((c) => c.id)).to.deep.equal(['0x2', '0x3', '0x5']);
-    });
-
-    it('should identify original coin after split by ID', function () {
-      const originalCoinId = '0xoriginal123';
-      const unspentCoins = [
-        { id: '0xnewcoin1', amount: 100000000, spent_height: 0 },
-        { id: '0xnewcoin2', amount: 100000000, spent_height: 0 },
-        { id: '0xchangecoin', amount: 1000000000, spent_height: 0 },
-      ];
-
-      const originalCoinStillUnspent = unspentCoins.some((coin) => coin.id === originalCoinId);
-      expect(originalCoinStillUnspent).to.be.false;
+  describe('Usable Coin Definition', function () {
+    it('requires a coin to cover one operation plus its fee', function () {
+      // DEFAULT_COIN_AMOUNT 300 + DEFAULT_FEE 3000 under the test config.
+      expect(MIN_USABLE_COIN_SIZE).to.equal(3300);
     });
   });
 });
