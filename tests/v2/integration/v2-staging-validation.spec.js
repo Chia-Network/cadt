@@ -1,0 +1,273 @@
+import { expect } from 'chai';
+import supertest from 'supertest';
+import { v4 as uuidv4 } from 'uuid';
+import app from '../../../src/server.js';
+import { prepareV2Db } from '../../../src/database/v2/index.js';
+import {
+  ProjectV2,
+  ProgramV2,
+  StagingV2,
+} from '../../../src/models/v2/index.js';
+import TaskManager from '../../../src/tasks/index.js';
+import { validateStagedRecord } from '../../../src/utils/v2-staging-validation.js';
+import { encodeHex } from '../../../src/utils/datalayer-utils.js';
+import {
+  resetV2StagingTable,
+  resetV2DataTables,
+  createV2TestHomeOrg,
+} from '../utils/v2-test-helpers.js';
+import {
+  initializePicklists,
+  getRandomPicklistValue,
+  getInvalidPicklistValue,
+} from '../utils/v2-picklist-test-helpers.js';
+
+const buildValidProjectRecord = (overrides = {}) => ({
+  projectRegistryName: 'Validation Test Registry',
+  projectId: `VAL-${uuidv4().slice(0, 8)}`,
+  projectName: 'Validation Test Project',
+  projectLink: 'https://example.com/project',
+  projectSector: [getRandomPicklistValue('projectSector')],
+  projectType: [getRandomPicklistValue('projectType')],
+  projectStatus: getRandomPicklistValue('projectStatus'),
+  projectStatusDate: '2024-01-01',
+  projectUnitMetric: getRandomPicklistValue('projectUnitMetric'),
+  ...overrides,
+});
+
+describe('V2 Staging Validation', function () {
+  this.timeout(30000);
+
+  before(async function () {
+    await prepareV2Db();
+    TaskManager.stopAll();
+    await createV2TestHomeOrg();
+    await initializePicklists();
+  });
+
+  beforeEach(async function () {
+    await resetV2StagingTable();
+    await resetV2DataTables();
+  });
+
+  describe('validateStagedRecord', function () {
+    it('returns no errors for a complete valid record', async function () {
+      const errors = await validateStagedRecord(
+        ProjectV2,
+        buildValidProjectRecord(),
+      );
+      expect(errors).to.deep.equal([]);
+    });
+
+    it('reports every missing required field', async function () {
+      const errors = await validateStagedRecord(ProjectV2, {
+        projectName: 'Only A Name',
+      });
+
+      const joined = errors.join('; ');
+      expect(joined).to.include('projectRegistryName');
+      expect(joined).to.include('projectId');
+      expect(joined).to.include('projectLink');
+      expect(joined).to.include('projectSector');
+      expect(joined).to.include('projectStatus');
+    });
+
+    it('rejects picklist values the REST API would reject', async function () {
+      const errors = await validateStagedRecord(
+        ProjectV2,
+        buildValidProjectRecord({
+          projectStatus: getInvalidPicklistValue('projectStatus'),
+        }),
+      );
+      expect(errors.join('; ')).to.include('does not include a valid option');
+    });
+
+    it('rejects a foreign key that resolves to nothing', async function () {
+      const errors = await validateStagedRecord(
+        ProjectV2,
+        buildValidProjectRecord({ cadTrustProgramId: uuidv4() }),
+      );
+      expect(errors.join('; ')).to.include('cadTrustProgramId');
+    });
+
+    it('accepts a foreign key that exists in the database', async function () {
+      const program = await ProgramV2.create({
+        programName: 'FK Target Program',
+        programRegistry: 'Test',
+        programRegistryActivityId: 'FK-TARGET',
+      });
+
+      const errors = await validateStagedRecord(
+        ProjectV2,
+        buildValidProjectRecord({
+          cadTrustProgramId: program.cadTrustProgramId,
+        }),
+      );
+      expect(errors).to.deep.equal([]);
+    });
+
+    it('accepts a foreign key staged in the same import batch', async function () {
+      const batchProgramId = uuidv4();
+      const errors = await validateStagedRecord(
+        ProjectV2,
+        buildValidProjectRecord({ cadTrustProgramId: batchProgramId }),
+        { batchPks: { program: new Set([batchProgramId]) } },
+      );
+      expect(errors).to.deep.equal([]);
+    });
+
+    it('skips FK checks when checkForeignKeys is false', async function () {
+      const errors = await validateStagedRecord(
+        ProjectV2,
+        buildValidProjectRecord({ cadTrustProgramId: uuidv4() }),
+        { checkForeignKeys: false },
+      );
+      expect(errors).to.deep.equal([]);
+    });
+
+    it('errors when a model has no registered schema', async function () {
+      const errors = await validateStagedRecord(
+        class UnknownModel {},
+        {},
+        { checkForeignKeys: false },
+      );
+      expect(errors.join('; ')).to.include('No validation schema registered');
+    });
+  });
+
+  describe('StagingV2.assertChangeListNotNullCompleteness', function () {
+    // Build a complete DB-field-named record covering every NOT NULL column.
+    const buildCompleteDbRecord = (ModelClass) => {
+      const record = {};
+      for (const [attrName, meta] of Object.entries(ModelClass.rawAttributes)) {
+        if (meta.allowNull === false) {
+          record[meta.field || attrName] = 'x';
+        }
+      }
+      return record;
+    };
+
+    const insertChange = (table, uuid, record) => ({
+      action: 'insert',
+      key: encodeHex(`${table}|${uuid}`),
+      value: encodeHex(JSON.stringify(record)),
+    });
+
+    it('passes a changelist whose inserts cover all NOT NULL fields', function () {
+      const changeList = [
+        insertChange('project', uuidv4(), buildCompleteDbRecord(ProjectV2)),
+      ];
+      expect(() =>
+        StagingV2.assertChangeListNotNullCompleteness(changeList),
+      ).to.not.throw();
+    });
+
+    it('rejects an insert missing a NOT NULL field', function () {
+      const record = buildCompleteDbRecord(ProjectV2);
+      delete record.project_name;
+
+      const changeList = [insertChange('project', uuidv4(), record)];
+      expect(() =>
+        StagingV2.assertChangeListNotNullCompleteness(changeList),
+      ).to.throw(/project_name/);
+    });
+
+    it('accepts an empty-string NOT NULL field (satisfies allowNull on re-ingest)', function () {
+      const record = buildCompleteDbRecord(ProjectV2);
+      record.project_registry_name = '';
+
+      const changeList = [insertChange('project', uuidv4(), record)];
+      expect(() =>
+        StagingV2.assertChangeListNotNullCompleteness(changeList),
+      ).to.not.throw();
+    });
+
+    it('ignores insert changes without a value', function () {
+      const changeList = [
+        { action: 'insert', key: encodeHex(`project|${uuidv4()}`) },
+      ];
+      expect(() =>
+        StagingV2.assertChangeListNotNullCompleteness(changeList),
+      ).to.not.throw();
+    });
+
+    it('ignores delete actions', function () {
+      const changeList = [
+        { action: 'delete', key: encodeHex(`project|${uuidv4()}`) },
+      ];
+      expect(() =>
+        StagingV2.assertChangeListNotNullCompleteness(changeList),
+      ).to.not.throw();
+    });
+
+    it('ignores metadata keys without a table separator', function () {
+      const changeList = [
+        {
+          action: 'insert',
+          key: encodeHex('comment'),
+          value: encodeHex(JSON.stringify({ comment: 'a commit comment' })),
+        },
+      ];
+      expect(() =>
+        StagingV2.assertChangeListNotNullCompleteness(changeList),
+      ).to.not.throw();
+    });
+
+    it('ignores tables it does not manage', function () {
+      const changeList = [
+        {
+          action: 'insert',
+          key: encodeHex(`sometable|${uuidv4()}`),
+          value: encodeHex(JSON.stringify({ anything: true })),
+        },
+      ];
+      expect(() =>
+        StagingV2.assertChangeListNotNullCompleteness(changeList),
+      ).to.not.throw();
+    });
+
+    it('rejects change values that are not valid JSON', function () {
+      const changeList = [
+        {
+          action: 'insert',
+          key: encodeHex(`project|${uuidv4()}`),
+          value: encodeHex('not-json'),
+        },
+      ];
+      expect(() =>
+        StagingV2.assertChangeListNotNullCompleteness(changeList),
+      ).to.throw(/not valid JSON/);
+    });
+  });
+
+  describe('commit-time gate wiring', function () {
+    it('refuses to commit a staged record missing a NOT NULL field', async function () {
+      // Bypass write-path validation to prove the gate itself protects the
+      // commit: a record without program_name must never reach the chain.
+      const programId = uuidv4();
+      await StagingV2.upsert({
+        uuid: programId,
+        action: 'INSERT',
+        table: 'program',
+        data: JSON.stringify([
+          {
+            cad_trust_program_id: programId,
+            program_registry: 'Gate Test Registry',
+            program_registry_activity_id: 'GATE-001',
+          },
+        ]),
+      });
+
+      const response = await supertest(app)
+        .post('/v2/staging/commit')
+        .send({ comment: 'gate test', author: 'Test User' });
+
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.equal(false);
+      expect(response.body.error).to.match(/program_name/);
+
+      const staged = await StagingV2.findOne({ where: { uuid: programId } });
+      expect(staged.committed).to.equal(false);
+    });
+  });
+});

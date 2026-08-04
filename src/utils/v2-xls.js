@@ -7,6 +7,7 @@ import { sequelizeV2 } from '../database/v2/index.js';
 import StagingV2 from '../models/v2/staging-v2.model.js';
 import OrganizationsV2 from '../models/v2/organizations-v2.model.js';
 import { createXlsFromSequelizeResults, transformMetaUid } from './xls.js';
+import { validateStagedRecord } from './v2-staging-validation.js';
 import { loggerV2 } from '../config/logger.js';
 
 /**
@@ -84,6 +85,21 @@ function naiveSingular(word) {
   return word;
 }
 
+// Spreadsheet cells carry native types, so numeric-looking values (e.g. a
+// rating of 4.2) arrive as numbers even when the column is a string in the
+// model and the API schema. Coerce those to strings so imports match what
+// the REST API receives as JSON.
+const STRINGISH_TYPE_KEYS = new Set(['STRING', 'TEXT', 'CHAR', 'CITEXT', 'UUID']);
+
+function coerceCellForModel(modelClass, column, value) {
+  if (typeof value !== 'number') return value;
+  const meta = modelClass.rawAttributes[column];
+  if (meta && STRINGISH_TYPE_KEYS.has(meta.type?.key)) {
+    return String(value);
+  }
+  return value;
+}
+
 /**
  * Parse an XLSX buffer into structured data for a V2 model.
  *
@@ -121,13 +137,19 @@ export function parseV2Xlsx(fileBuffer, model) {
     const match = sheetLookup[name];
     if (!match) continue;
 
+    const sheetModel = match.type === 'main' ? schema.model : match.child.model;
+
     const headerRow = data[0];
     const rows = data.slice(1).map((row) => {
       const obj = {};
       headerRow.forEach((col, i) => {
-        if (i >= row.length) return; // skip missing trailing cells
-        const val = row[i];
-        obj[col] = val === 'null' ? null : val;
+        // Missing/empty cells become explicit nulls so trailing columns are
+        // never silently dropped and validation sees the absent value.
+        const val = i >= row.length ? null : row[i];
+        obj[col] =
+          val === 'null' || val === undefined
+            ? null
+            : coerceCellForModel(sheetModel, col, val);
       });
       return obj;
     });
@@ -463,6 +485,22 @@ export async function stageConsolidatedCsvRecord(
   transaction,
   { pendingRows } = {},
 ) {
+  // Staged records become on-chain DataLayer values verbatim, and a record
+  // missing a NOT NULL column halts sync for every subscriber, so the exact
+  // record being staged must be complete. This is deliberately NOT NULL-only:
+  // the CSV batch contract allows sparse rows merged onto existing records
+  // (including legacy records that predate the current Joi schemas), and
+  // batchUpload callers already run FK and ownership checks per row.
+  const missingNotNull = validateRequiredFields(
+    toAttributeNames(cleanedRecord, modelClass),
+    modelClass,
+  );
+  if (missingNotNull.length > 0) {
+    throw new Error(
+      `Record is missing required NOT NULL field(s): ${missingNotNull.join(', ')}`,
+    );
+  }
+
   // Callers pass an Array (possibly empty) when they already know the
   // pending INSERT/UPDATE rows. Anything else — undefined/null — means
   // "unknown, please scan". Guarding on Array.isArray avoids accidentally
@@ -528,8 +566,14 @@ export async function stageConsolidatedCsvRecord(
  * Parent rows and child rows each get their own staging entry, matching the
  * V2 architecture where every model has its own staging / changelist flow.
  *
+ * Every row must pass validateStagedRecord (the same Joi + FK + NOT NULL
+ * rules the REST API applies) before anything is staged — staged records
+ * become on-chain DataLayer values verbatim, and an incomplete record halts
+ * sync for every subscriber. See src/utils/v2-staging-validation.js.
+ *
  * @param {{ main: Object[], children: Object.<string, Object[]> }} parsedData
  * @param {import('sequelize').Model} model - Sequelize V2 model class
+ * @throws {Error} Aggregate row-level validation error; nothing is staged.
  */
 export async function stageV2XlsRecords(parsedData, model) {
   const schema = buildXlsSchema(model);
@@ -539,37 +583,86 @@ export async function stageV2XlsRecords(parsedData, model) {
 
   // The normal V2 API controllers inject org_uid from the home organization
   // into every staged record. The XLSX path must do the same so the data
-  // pushed to datalayer includes org_uid — otherwise sync-registries-v2
-  // fails with SequelizeUniqueConstraintError when upserting the record
-  // back (org_uid has allowNull: false on parent models).
+  // pushed to datalayer includes org_uid (allowNull: false on parent models).
   const homeOrg = await OrganizationsV2.getHomeOrg(false);
   if (!homeOrg) {
     throw new Error('Cannot stage XLSX records: no home organization found');
   }
   const orgUid = homeOrg.org_uid;
 
-  await sequelizeV2.transaction(async (transaction) => {
-    // Stage parent rows
-    for (const row of parsedData.main) {
+  // Phase 1: prepare all rows (merge with existing records, assign PKs)
+  // without writing anything.
+  const entries = [];
+
+  for (let i = 0; i < parsedData.main.length; i++) {
+    const row = parsedData.main[i];
+    if (isEmptyRow(row)) continue;
+
+    parseArrayFields(row);
+
+    // Let the model apply domain-specific transforms (e.g. derive unitSerialId)
+    if (typeof model.prepareXlsRow === 'function') {
+      model.prepareXlsRow(row);
+    }
+
+    const pkValue = row[schema.mainPK];
+    let existingRecord = null;
+    if (pkValue) {
+      existingRecord = await model.findByPk(pkValue);
+    }
+
+    const uuid = pkValue || uuidv4();
+
+    // Merge with existing record if updating
+    let stagedRecord;
+    if (existingRecord) {
+      stagedRecord = {
+        ...existingRecord.dataValues,
+        ...row,
+      };
+    } else {
+      stagedRecord = { ...row };
+      if (!stagedRecord[schema.mainPK]) {
+        stagedRecord[schema.mainPK] = uuid;
+      }
+    }
+
+    // Remove child array keys from parent staging data
+    for (const child of schema.children) {
+      delete stagedRecord[child.sheetName];
+    }
+
+    entries.push({
+      modelClass: model,
+      tableName: model.getTableName(),
+      sheetName: schema.mainSheetName,
+      rowNumber: i + 2, // 1-indexed + header row
+      uuid,
+      action: existingRecord ? 'UPDATE' : 'INSERT',
+      stagedRecord,
+      injectOrgUid: Boolean(model.rawAttributes.orgUid),
+      pk: stagedRecord[schema.mainPK],
+    });
+  }
+
+  for (const child of schema.children) {
+    const rows = parsedData.children[child.sheetName];
+    if (!rows || rows.length === 0) continue;
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
       if (isEmptyRow(row)) continue;
 
       parseArrayFields(row);
 
-      // Let the model apply domain-specific transforms (e.g. derive unitSerialId)
-      if (typeof model.prepareXlsRow === 'function') {
-        model.prepareXlsRow(row);
-      }
-
-      const pkValue = row[schema.mainPK];
+      const pkValue = row[child.primaryKey];
       let existingRecord = null;
       if (pkValue) {
-        existingRecord = await model.findByPk(pkValue);
+        existingRecord = await child.model.findByPk(pkValue);
       }
 
-      const exists = Boolean(existingRecord);
       const uuid = pkValue || uuidv4();
 
-      // Merge with existing record if updating
       let stagedRecord;
       if (existingRecord) {
         stagedRecord = {
@@ -578,77 +671,85 @@ export async function stageV2XlsRecords(parsedData, model) {
         };
       } else {
         stagedRecord = { ...row };
-        if (!stagedRecord[schema.mainPK]) {
-          stagedRecord[schema.mainPK] = uuid;
+        if (!stagedRecord[child.primaryKey]) {
+          stagedRecord[child.primaryKey] = uuid;
         }
       }
 
-      // Remove child array keys from parent staging data
-      for (const child of schema.children) {
-        delete stagedRecord[child.sheetName];
-      }
+      entries.push({
+        modelClass: child.model,
+        tableName: child.tableName,
+        sheetName: child.sheetName,
+        rowNumber: i + 2,
+        uuid,
+        action: existingRecord ? 'UPDATE' : 'INSERT',
+        stagedRecord,
+        injectOrgUid: false,
+        pk: stagedRecord[child.primaryKey],
+      });
+    }
+  }
 
-      const dbRecord = toDbFieldNames(stagedRecord, model);
+  // Phase 2: validate every row before staging anything. FKs may reference
+  // records staged in this same batch, so collect the batch PKs first.
+  const batchPks = {};
+  for (const entry of entries) {
+    if (!batchPks[entry.tableName]) {
+      batchPks[entry.tableName] = new Set();
+    }
+    batchPks[entry.tableName].add(entry.pk);
+  }
 
-      if (model.rawAttributes.orgUid) {
+  const validationErrors = [];
+  for (const entry of entries) {
+    // Validate a normalized copy: merged values from existing DB rows may
+    // hold JSON-array strings (e.g. projectSector) that the schema expects
+    // as arrays. Staged data itself is left untouched.
+    const validationRow = { ...entry.stagedRecord };
+    parseArrayFields(validationRow);
+
+    const rowErrors = await validateStagedRecord(
+      entry.modelClass,
+      validationRow,
+      { batchPks },
+    );
+    for (const message of rowErrors) {
+      validationErrors.push(
+        `[${entry.sheetName} row ${entry.rowNumber}] ${message}`,
+      );
+    }
+  }
+
+  if (validationErrors.length > 0) {
+    const MAX_REPORTED_ERRORS = 50;
+    const reported = validationErrors.slice(0, MAX_REPORTED_ERRORS);
+    const suffix =
+      validationErrors.length > MAX_REPORTED_ERRORS
+        ? `; …and ${validationErrors.length - MAX_REPORTED_ERRORS} more`
+        : '';
+    throw new Error(
+      `Import validation failed — nothing was staged. ${reported.join('; ')}${suffix}`,
+    );
+  }
+
+  // Phase 3: stage all rows
+  await sequelizeV2.transaction(async (transaction) => {
+    for (const entry of entries) {
+      const dbRecord = toDbFieldNames(entry.stagedRecord, entry.modelClass);
+
+      if (entry.injectOrgUid) {
         dbRecord.org_uid = orgUid;
       }
 
       await StagingV2.upsert(
         {
-          uuid,
-          action: exists ? 'UPDATE' : 'INSERT',
-          table: model.getTableName(),
+          uuid: entry.uuid,
+          action: entry.action,
+          table: entry.tableName,
           data: JSON.stringify([dbRecord]),
         },
         { transaction },
       );
-    }
-
-    // Stage child rows independently
-    for (const child of schema.children) {
-      const rows = parsedData.children[child.sheetName];
-      if (!rows || rows.length === 0) continue;
-
-      for (const row of rows) {
-        if (isEmptyRow(row)) continue;
-
-        parseArrayFields(row);
-
-        const pkValue = row[child.primaryKey];
-        let existingRecord = null;
-        if (pkValue) {
-          existingRecord = await child.model.findByPk(pkValue);
-        }
-
-        const exists = Boolean(existingRecord);
-        const uuid = pkValue || uuidv4();
-
-        let stagedRecord;
-        if (existingRecord) {
-          stagedRecord = {
-            ...existingRecord.dataValues,
-            ...row,
-          };
-        } else {
-          stagedRecord = { ...row };
-          if (!stagedRecord[child.primaryKey]) {
-            stagedRecord[child.primaryKey] = uuid;
-          }
-        }
-
-        const dbRecord = toDbFieldNames(stagedRecord, child.model);
-
-        await StagingV2.upsert(
-          {
-            uuid,
-            action: exists ? 'UPDATE' : 'INSERT',
-            table: child.tableName,
-            data: JSON.stringify([dbRecord]),
-          },
-          { transaction },
-        );
-      }
     }
   });
 }

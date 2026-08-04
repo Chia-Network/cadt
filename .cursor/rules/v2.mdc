@@ -39,6 +39,22 @@ alwaysApply: false
 - **`project` and `unit`** require `page`/`limit` UNLESS `xls=true` is also passed (XLS export mode skips pagination).
 - **Endpoints that do NOT require pagination**: `organizations`, `governance`, `offer`, `filestore`, and `health/*` endpoints return all results without `page`/`limit`.
 
+## Staging and On-Chain Data Validation (CRITICAL)
+- Every record staged to `StagingV2` — regardless of entry path (REST API,
+  XLSX import, CSV batch import, split/transfer flows, or any future path) —
+  must pass the same validation as the REST API: Joi schema, FK existence,
+  and NOT NULL completeness. Use `validateStagedRecord` in
+  `src/utils/v2-staging-validation.js`; do not hand-roll per-path checks.
+- Rationale: staged records become on-chain DataLayer values verbatim, and
+  every subscriber re-ingests them into models with `allowNull: false`
+  columns. A single incomplete record permanently halts sync for all
+  subscribers of the registry.
+- `StagingV2.assertChangeListNotNullCompleteness` is a last-line-of-defense
+  commit gate (NOT NULL only). It must never be the only validation on a
+  write path.
+- Any new write path must call the shared validator and add a parity test
+  proving the same invalid payload is rejected identically via the API path.
+
 ## Migration Patterns (CRITICAL)
 - Data table PK: `{ type: Sequelize.STRING(36), primaryKey: true, allowNull: false, unique: true }`
 - NO `autoIncrement: true` for data tables

@@ -8,7 +8,7 @@ const Op = Sequelize.Op;
 import * as rxjs from 'rxjs';
 
 import { sequelizeV2 } from '../../database/v2/index.js';
-import { encodeHex, generateOffer } from '../../utils/datalayer-utils.js';
+import { encodeHex, decodeHex, generateOffer } from '../../utils/datalayer-utils.js';
 import datalayer from '../../datalayer';
 import { loggerV2 } from '../../config/logger.js';
 import * as datalayerPersistance from '../../datalayer/persistance.js';
@@ -676,6 +676,84 @@ class StagingV2 extends Model {
   };
 
   /**
+   * Last line of defense before data reaches the chain: every INSERT change
+   * in the changelist must contain a non-empty value for each allowNull:false
+   * column of its model. Subscribers re-ingest on-chain values verbatim, and
+   * a record missing a NOT NULL column permanently halts their sync. This
+   * gate is deliberately NOT NULL-only (not full Joi) so commits touching
+   * legacy records already in the DB are never falsely rejected. It must
+   * never be the only validation — write paths validate via
+   * src/utils/v2-staging-validation.js before staging.
+   *
+   * @param {Array<{action: string, key: string, value?: string}>} changeList
+   * @throws {Error} If any INSERT change is missing a NOT NULL field.
+   */
+  static assertChangeListNotNullCompleteness(changeList) {
+    const tableToModelMap = StagingV2.getMutationGuardModelMap();
+    const timestampFields = new Set([
+      'createdAt',
+      'updatedAt',
+      'created_at',
+      'updated_at',
+    ]);
+
+    const failures = [];
+
+    for (const change of changeList) {
+      if (change.action !== 'insert' || !change.value) {
+        continue;
+      }
+
+      const decodedKey = decodeHex(change.key);
+      const separatorIndex = decodedKey.indexOf('|');
+      if (separatorIndex === -1) {
+        continue; // metadata keys such as comment/author
+      }
+
+      const table = decodedKey.substring(0, separatorIndex);
+      const ModelClass = tableToModelMap[table];
+      if (!ModelClass) {
+        continue;
+      }
+
+      let record;
+      try {
+        record = JSON.parse(decodeHex(change.value));
+      } catch {
+        failures.push(`${decodedKey}: change value is not valid JSON`);
+        continue;
+      }
+
+      const missing = [];
+      for (const [attrName, meta] of Object.entries(ModelClass.rawAttributes)) {
+        if (meta.allowNull !== false || timestampFields.has(attrName)) {
+          continue;
+        }
+        const dbField = meta.field || attrName;
+        const value = record[dbField] ?? record[attrName];
+        // Only null/undefined halt subscriber sync (allowNull: false rejects
+        // them on re-ingest). Empty strings satisfy NOT NULL and are the
+        // write-path Joi validation's responsibility, not this gate's.
+        if (value === undefined || value === null) {
+          missing.push(dbField);
+        }
+      }
+
+      if (missing.length > 0) {
+        failures.push(
+          `table '${table}', key '${decodedKey}': missing NOT NULL field(s) ${missing.join(', ')}`,
+        );
+      }
+    }
+
+    if (failures.length > 0) {
+      throw new Error(
+        `Commit aborted: staged data failed NOT NULL completeness check and would halt sync for all subscribers. ${failures.join('; ')}`,
+      );
+    }
+  }
+
+  /**
    * Pushes data to the DataLayer.
    * @param {string} tableToPush - The name of the table to push (optional filter).
    * @param {string} comment - The comment to associate with the data.
@@ -971,6 +1049,9 @@ class StagingV2 extends Model {
 
       // Stage 5: Push to datalayer
       const stage5Start = Date.now();
+
+      // Final commit-time gate: refuse to push any incomplete record.
+      StagingV2.assertChangeListNotNullCompleteness(finalChangeList);
 
       monitor.rpcCount += 1; // pushDataLayerChangeList
 

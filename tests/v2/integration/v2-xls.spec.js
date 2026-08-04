@@ -18,6 +18,7 @@ import {
   VerificationV2,
   MethodologyV2,
   ProjectMethodologyV2,
+  StakeholderV2,
   StagingV2,
 } from '../../../src/models/v2/index.js';
 import TaskManager from '../../../src/tasks/index.js';
@@ -35,6 +36,28 @@ import {
   addUuidIfNeeded,
   createV2TestProgramChain,
 } from '../utils/v2-test-helpers.js';
+import {
+  initializePicklists,
+  getRandomPicklistValue,
+} from '../utils/v2-picklist-test-helpers.js';
+
+/**
+ * Build a complete, schema-valid project row for import staging tests.
+ * stageV2XlsRecords enforces REST-API validation parity, so rows must
+ * contain every required field with picklist-valid values.
+ */
+const buildValidProjectRow = (overrides = {}) => ({
+  projectRegistryName: 'Test Registry',
+  projectId: `XLS-IMPORT-${uuidv4().slice(0, 8)}`,
+  projectName: 'Staged Project',
+  projectLink: 'https://example.com/project',
+  projectSector: [getRandomPicklistValue('projectSector')],
+  projectType: [getRandomPicklistValue('projectType')],
+  projectStatus: getRandomPicklistValue('projectStatus'),
+  projectStatusDate: '2024-01-01',
+  projectUnitMetric: getRandomPicklistValue('projectUnitMetric'),
+  ...overrides,
+});
 
 describe('V2 XLS Utility Functions', function () {
   this.timeout(30000);
@@ -43,6 +66,7 @@ describe('V2 XLS Utility Functions', function () {
     await prepareV2Db();
     TaskManager.stopAll();
     await createV2TestHomeOrg();
+    await initializePicklists();
   });
 
   beforeEach(async function () {
@@ -549,13 +573,7 @@ describe('V2 XLS Utility Functions', function () {
     it('should create staging INSERT records for new parent rows', async function () {
       const projectId = uuidv4();
       const parsedData = {
-        main: [
-          {
-            cadTrustProjectId: projectId,
-            projectName: 'Staged Project',
-            projectRegistryName: 'Test',
-          },
-        ],
+        main: [buildValidProjectRow({ cadTrustProjectId: projectId })],
         children: {},
       };
 
@@ -578,15 +596,19 @@ describe('V2 XLS Utility Functions', function () {
         programRegistryActivityId: 'STAGE-UPD',
       });
 
+      // Existing record must be complete: UPDATE validation runs against the
+      // merged record (existing + changes).
       const project = await ProjectV2.create(
-        addUuidIfNeeded('ProjectV2', {
-          projectRegistryName: 'Old Registry',
-          projectId: 'STAGE-001',
-          projectName: 'Old Name',
-          projectSector: ['Agriculture'],
-          cadTrustProgramId: program.cadTrustProgramId,
-          orgUid: homeOrgId,
-        }),
+        addUuidIfNeeded(
+          'ProjectV2',
+          buildValidProjectRow({
+            projectRegistryName: 'Old Registry',
+            projectId: 'STAGE-001',
+            projectName: 'Old Name',
+            cadTrustProgramId: program.cadTrustProgramId,
+            orgUid: homeOrgId,
+          }),
+        ),
       );
 
       const parsedData = {
@@ -619,17 +641,16 @@ describe('V2 XLS Utility Functions', function () {
 
       const parsedData = {
         main: [
-          {
+          buildValidProjectRow({
             cadTrustProjectId: projectId,
             projectName: 'Parent Project',
-            projectRegistryName: 'Test',
-          },
+          }),
         ],
         children: {
           locations: [
             {
               cadTrustLocationId: locationId,
-              locationCountry: 'US',
+              locationCountry: 'United States of America',
               cadTrustProjectId: projectId,
             },
           ],
@@ -651,18 +672,17 @@ describe('V2 XLS Utility Functions', function () {
       expect(childRecords[0].action).to.equal('INSERT');
 
       const childData = JSON.parse(childRecords[0].data);
-      expect(childData[0].location_country).to.equal('US');
+      expect(childData[0].location_country).to.equal('United States of America');
     });
 
     it('should skip empty rows', async function () {
       const projectId = uuidv4();
       const parsedData = {
         main: [
-          {
+          buildValidProjectRow({
             cadTrustProjectId: projectId,
             projectName: 'Valid Row',
-            projectRegistryName: 'Test',
-          },
+          }),
           { cadTrustProjectId: '', projectName: '', projectRegistryName: '' },
         ],
         children: {},
@@ -676,12 +696,7 @@ describe('V2 XLS Utility Functions', function () {
 
     it('should assign UUIDs to rows without primary key', async function () {
       const parsedData = {
-        main: [
-          {
-            projectName: 'No PK Project',
-            projectRegistryName: 'Test',
-          },
-        ],
+        main: [buildValidProjectRow({ projectName: 'No PK Project' })],
         children: {},
       };
 
@@ -693,6 +708,55 @@ describe('V2 XLS Utility Functions', function () {
         /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
       );
       expect(records[0].action).to.equal('INSERT');
+    });
+
+    it('should reject incomplete rows and stage nothing', async function () {
+      const parsedData = {
+        main: [
+          buildValidProjectRow(),
+          {
+            cadTrustProjectId: uuidv4(),
+            projectName: 'Incomplete Project',
+            projectRegistryName: 'Test',
+          },
+        ],
+        children: {},
+      };
+
+      let thrown;
+      try {
+        await stageV2XlsRecords(parsedData, ProjectV2);
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect(thrown, 'incomplete row must fail import validation').to.exist;
+      expect(thrown.message).to.include('projectLink');
+
+      const records = await StagingV2.findAll({ where: { table: 'project' } });
+      expect(records).to.have.lengthOf(0);
+    });
+
+    it('should reject rows referencing a nonexistent foreign key', async function () {
+      const parsedData = {
+        main: [
+          buildValidProjectRow({ cadTrustProgramId: uuidv4() }),
+        ],
+        children: {},
+      };
+
+      let thrown;
+      try {
+        await stageV2XlsRecords(parsedData, ProjectV2);
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect(thrown, 'unresolvable FK must fail import validation').to.exist;
+      expect(thrown.message).to.include('cadTrustProgramId');
+
+      const records = await StagingV2.findAll({ where: { table: 'project' } });
+      expect(records).to.have.lengthOf(0);
     });
   });
 
@@ -755,8 +819,37 @@ describe('V2 XLS Utility Functions', function () {
     });
 
     it('should produce valid staging records from sample-projects-import.xlsx', async function () {
+      // The fixture references pre-existing entities via {{...}} placeholders,
+      // exactly like the live-API import flow. Create them and substitute real
+      // IDs so FK validation can resolve every reference.
+      const chain = await createV2TestProgramChain({ testId: 'xls-fixture' });
+      const stakeholder = await StakeholderV2.create({
+        cadTrustStakeholderId: uuidv4(),
+        stakeholderName: 'Fixture Stakeholder',
+        stakeholderType: 'Owner',
+      });
+
+      const replacements = {
+        '{{PROGRAM_ID}}': chain.program.cadTrustProgramId,
+        '{{METHODOLOGY_ID}}': chain.methodology.cadTrustMethodologyId,
+        '{{STAKEHOLDER_ID}}': stakeholder.cadTrustStakeholderId,
+        '{{VALIDATION_ID}}': chain.validation.cadTrustValidationId,
+      };
+
       const buffer = readFileSync(join(fixtureDir, 'sample-projects-import.xlsx'));
       const parsed = parseV2Xlsx(buffer, ProjectV2);
+
+      const applyReplacements = (row) => {
+        for (const [key, value] of Object.entries(row)) {
+          if (typeof value === 'string' && replacements[value]) {
+            row[key] = replacements[value];
+          }
+        }
+      };
+      parsed.main.forEach(applyReplacements);
+      Object.values(parsed.children).forEach((rows) =>
+        rows.forEach(applyReplacements),
+      );
 
       await stageV2XlsRecords(parsed, ProjectV2);
 

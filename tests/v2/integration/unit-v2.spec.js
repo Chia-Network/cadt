@@ -1383,8 +1383,8 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         const xlsx = xlsxModule.default || xlsxModule;
         const newUnitId = uuidv4();
         const testData = [
-          ['cadTrustUnitId', 'unitSerialId', 'unitStartBlock', 'unitEndBlock', 'unitCount', 'unitType', 'unitVintageYear', 'unitStatus', 'cadTrustIssuanceId'],
-          [newUnitId, 'XLSX-UNIT-001', '1000', '2000', '50', 'Avoidance - nature', '2024', 'Issued', testIssuanceForAdvanced.cadTrustIssuanceId],
+          ['cadTrustUnitId', 'unitSerialId', 'unitStartBlock', 'unitEndBlock', 'unitCount', 'unitType', 'unitVintageYear', 'unitStatus', 'unitStatusReason', 'unitMetric', 'cadTrustIssuanceId'],
+          [newUnitId, 'XLSX-UNIT-001', '1000', '2000', '50', 'Avoidance - nature', '2024', 'Issued', 'Initial issuance', 'tCO2e', testIssuanceForAdvanced.cadTrustIssuanceId],
         ];
         const xlsxBuffer = xlsx.build([{ name: 'units', data: testData }]);
 
@@ -1410,11 +1410,35 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         expect(data[0].unit_serial_id).to.equal('XLSX-UNIT-001');
       });
 
+      it('should reject an XLSX with an incomplete row and stage nothing', async function () {
+        const xlsxModule = await import('node-xlsx');
+        const xlsx = xlsxModule.default || xlsxModule;
+        const testData = [
+          ['cadTrustUnitId', 'unitSerialId', 'cadTrustIssuanceId'],
+          [uuidv4(), 'INCOMPLETE-UNIT-001', testIssuanceForAdvanced.cadTrustIssuanceId],
+        ];
+        const xlsxBuffer = xlsx.build([{ name: 'units', data: testData }]);
+
+        const response = await supertest(app)
+          .put('/v2/unit/xlsx')
+          .attach('xlsx', xlsxBuffer, 'test.xlsx')
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.error).to.include('unitCount');
+
+        const stagingRecords = await StagingV2.findAll({
+          where: { table: 'unit' },
+        });
+        expect(stagingRecords).to.have.lengthOf(0);
+      });
+
       it('should stage UPDATE for an existing unit from XLSX', async function () {
         const xlsxModule = await import('node-xlsx');
         const xlsx = xlsxModule.default || xlsxModule;
 
-        // Create a unit to update
+        // Create a unit to update. UPDATE validation runs on the merged
+        // record, so the existing unit must be complete under the API schema.
         const homeOrgId = await getV2HomeOrgId();
         const unit = await UnitV2.create({
           cadTrustUnitId: uuidv4(),
@@ -1426,6 +1450,8 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
           unitType: 'Avoidance - nature',
           unitVintageYear: 2024,
           unitStatus: 'Held',
+          unitStatusReason: 'Held pending verification',
+          unitMetric: 'tCO2e',
           cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
         });
 
@@ -1457,8 +1483,8 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         const xlsx = xlsxModule.default || xlsxModule;
         const newUnitId = uuidv4();
         const testData = [
-          ['cadTrustUnitId', 'unitSerialId', 'unitStartBlock', 'unitEndBlock', 'unitCount', 'unitVintageYear', 'cadTrustIssuanceId'],
-          [newUnitId, 'SING-UNIT-001', '100', '200', '10', '2024', testIssuanceForAdvanced.cadTrustIssuanceId],
+          ['cadTrustUnitId', 'unitSerialId', 'unitStartBlock', 'unitEndBlock', 'unitCount', 'unitType', 'unitVintageYear', 'unitStatus', 'unitStatusReason', 'unitMetric', 'cadTrustIssuanceId'],
+          [newUnitId, 'SING-UNIT-001', '100', '200', '10', 'Avoidance - nature', '2024', 'Issued', 'Initial issuance', 'tCO2e', testIssuanceForAdvanced.cadTrustIssuanceId],
         ];
         const xlsxBuffer = xlsx.build([{ name: 'unit', data: testData }]);
 
@@ -1490,21 +1516,29 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         const xlsx = xlsxModule.default || xlsxModule;
         const unitId = uuidv4();
         const unitLabelId = uuidv4();
-        const labelId = uuidv4();
+
+        // unitLabel FK validation requires an existing label
+        const label = await LabelV2.create({
+          cadTrustLabelId: uuidv4(),
+          labelName: 'Multi Sheet Label',
+          labelType: 'Certification',
+          labelLink: 'https://example.com/label',
+        });
+        const labelId = label.cadTrustLabelId;
 
         const xlsxBuffer = xlsx.build([
           {
             name: 'units',
             data: [
-              ['cadTrustUnitId', 'unitSerialId', 'unitStartBlock', 'unitEndBlock', 'unitCount', 'unitVintageYear', 'cadTrustIssuanceId'],
-              [unitId, 'MULTI-UNIT-001', '1000', '2000', '50', '2024', testIssuanceForAdvanced.cadTrustIssuanceId],
+              ['cadTrustUnitId', 'unitSerialId', 'unitStartBlock', 'unitEndBlock', 'unitCount', 'unitType', 'unitVintageYear', 'unitStatus', 'unitStatusReason', 'unitMetric', 'cadTrustIssuanceId'],
+              [unitId, 'MULTI-UNIT-001', '1000', '2000', '50', 'Avoidance - nature', '2024', 'Issued', 'Initial issuance', 'tCO2e', testIssuanceForAdvanced.cadTrustIssuanceId],
             ],
           },
           {
             name: 'unitLabels',
             data: [
-              ['cadTrustUnitLabelId', 'cadTrustUnitId', 'cadTrustLabelId'],
-              [unitLabelId, unitId, labelId],
+              ['cadTrustUnitLabelId', 'cadTrustUnitId', 'cadTrustLabelId', 'labelUnitDate'],
+              [unitLabelId, unitId, labelId, '2024-06-15'],
             ],
           },
         ]);
@@ -1565,8 +1599,8 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
           {
             name: 'units',
             data: [
-              ['cadTrustUnitId', 'unitSerialId', 'unitStartBlock', 'unitEndBlock', 'unitVintageYear', 'cadTrustIssuanceId'],
-              [unitId, 'UNKNOWN-UNIT-001', '100', '200', '2024', testIssuanceForAdvanced.cadTrustIssuanceId],
+              ['cadTrustUnitId', 'unitSerialId', 'unitStartBlock', 'unitEndBlock', 'unitCount', 'unitType', 'unitVintageYear', 'unitStatus', 'unitStatusReason', 'unitMetric', 'cadTrustIssuanceId'],
+              [unitId, 'UNKNOWN-UNIT-001', '100', '200', '10', 'Avoidance - nature', '2024', 'Issued', 'Initial issuance', 'tCO2e', testIssuanceForAdvanced.cadTrustIssuanceId],
             ],
           },
           {
@@ -1592,6 +1626,8 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
 
       it('should round-trip: export then re-import produces matching staging records', async function () {
         const homeOrgId = await getV2HomeOrgId();
+        // Re-import validates the merged (exported) record, so the source
+        // unit must be complete under the API schema.
         const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
           unitSerialId: 'RT-UNIT-001',
           unitStartBlock: '500',
@@ -1600,6 +1636,8 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
           unitType: 'Avoidance - nature',
           unitVintageYear: 2024,
           unitStatus: 'Issued',
+          unitStatusReason: 'Initial issuance',
+          unitMetric: 'tCO2e',
           cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
           orgUid: homeOrgId,
         }));
