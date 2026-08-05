@@ -8,9 +8,11 @@ import {
   ProgramV2,
   StagingV2,
 } from '../../../src/models/v2/index.js';
+import { Simulator } from '../../../src/models/index.js';
 import TaskManager from '../../../src/tasks/index.js';
 import { validateStagedRecord } from '../../../src/utils/v2-staging-validation.js';
-import { encodeHex } from '../../../src/utils/datalayer-utils.js';
+import { stageV2XlsRecords } from '../../../src/utils/v2-xls.js';
+import { encodeHex, decodeHex } from '../../../src/utils/datalayer-utils.js';
 import {
   resetV2StagingTable,
   resetV2DataTables,
@@ -268,6 +270,58 @@ describe('V2 Staging Validation', function () {
 
       const staged = await StagingV2.findOne({ where: { uuid: programId } });
       expect(staged.committed).to.equal(false);
+    });
+
+    it('commits a staged project to the simulated chain without dropping fields', async function () {
+      // Guards changelist fidelity: every field in the staged data must
+      // appear verbatim in the on-chain record. The commit pipeline's XLS
+      // transformation silently drops object-valued columns, so staging a
+      // field in the wrong shape shows up here as a missing on-chain key.
+      const projectId = uuidv4();
+      const parsedData = {
+        main: [buildValidProjectRecord({ cadTrustProjectId: projectId })],
+        children: {},
+      };
+      await stageV2XlsRecords(parsedData, ProjectV2);
+
+      const staged = await StagingV2.findOne({
+        where: { uuid: projectId },
+        raw: true,
+      });
+      const stagedData = JSON.parse(staged.data)[0];
+
+      const response = await supertest(app)
+        .post('/v2/staging/commit')
+        .send({ comment: 'fidelity test', author: 'Test User' });
+      expect(response.status).to.equal(200);
+
+      // The datalayer push is fire-and-forget, so poll the simulator store.
+      const keySuffix = `_${encodeHex(`project|${projectId}`)}`;
+      let onChainRow = null;
+      for (let attempt = 0; attempt < 40 && !onChainRow; attempt++) {
+        const rows = await Simulator.findAll({ raw: true });
+        onChainRow = rows.find((row) => row.key.endsWith(keySuffix));
+        if (!onChainRow) {
+          await new Promise((resolve) => setTimeout(resolve, 250));
+        }
+      }
+      expect(onChainRow, 'committed project must reach the simulated chain').to
+        .exist;
+
+      const onChainRecord = JSON.parse(decodeHex(onChainRow.value));
+      for (const [field, stagedValue] of Object.entries(stagedData)) {
+        expect(
+          onChainRecord,
+          `on-chain record must include staged field '${field}'`,
+        ).to.have.property(field);
+        expect(onChainRecord[field], `field '${field}' must survive commit`).to.equal(
+          stagedValue,
+        );
+      }
+
+      // Array fields specifically: staged as JSON strings, preserved verbatim.
+      expect(onChainRecord.project_sector).to.equal(stagedData.project_sector);
+      expect(JSON.parse(onChainRecord.project_sector)).to.be.an('array');
     });
   });
 });

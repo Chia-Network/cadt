@@ -88,13 +88,58 @@ function naiveSingular(word) {
 // Spreadsheet cells carry native types, so numeric-looking values (e.g. a
 // rating of 4.2) arrive as numbers even when the column is a string in the
 // model and the API schema. Coerce those to strings so imports match what
-// the REST API receives as JSON.
+// the REST API receives as JSON. Date cells (parsed with cellDates: true)
+// and raw Excel date serials in date columns become YYYY-MM-DD strings.
 const STRINGISH_TYPE_KEYS = new Set(['STRING', 'TEXT', 'CHAR', 'CITEXT', 'UUID']);
+const DATE_TYPE_KEYS = new Set(['DATE', 'DATEONLY']);
+
+// Days between the Excel epoch (1900-01-01, with the fictional 1900 leap day)
+// and the Unix epoch.
+const EXCEL_EPOCH_OFFSET_DAYS = 25569;
+
+// SheetJS (cellDates: true) yields local-midnight Dates, so format with
+// local components. Joi.date() would accept the Date itself, but staging
+// must carry the same JSON string the REST API receives.
+function formatLocalDateOnly(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+// Convert Date cells to YYYY-MM-DD in place. Must run before transformMetaUid,
+// which JSON round-trips the sheets and would mangle Dates into full ISO
+// strings with a timezone offset baked in.
+function normalizeDateCells(xlsxParsed) {
+  for (const sheet of xlsxParsed) {
+    for (const row of sheet.data ?? []) {
+      for (let i = 0; i < row.length; i++) {
+        if (row[i] instanceof Date) {
+          row[i] = formatLocalDateOnly(row[i]);
+        }
+      }
+    }
+  }
+  return xlsxParsed;
+}
 
 function coerceCellForModel(modelClass, column, value) {
   if (typeof value !== 'number') return value;
   const meta = modelClass.rawAttributes[column];
-  if (meta && STRINGISH_TYPE_KEYS.has(meta.type?.key)) {
+  const typeKey = meta?.type?.key;
+  if (DATE_TYPE_KEYS.has(typeKey)) {
+    // A bare number in a date column is an Excel date serial; interpreting it
+    // as-is would let Joi.date() treat it as a Unix timestamp and stage a
+    // wrong date. The serial is timezone-less, so convert via UTC. Values
+    // outside Date range fall through so Joi rejects them with row context.
+    const ms = Math.round((value - EXCEL_EPOCH_OFFSET_DAYS) * 86400 * 1000);
+    const date = new Date(ms);
+    if (!Number.isNaN(date.getTime())) {
+      return date.toISOString().slice(0, 10);
+    }
+    return value;
+  }
+  if (STRINGISH_TYPE_KEYS.has(typeKey)) {
     return String(value);
   }
   return value;
@@ -109,7 +154,11 @@ function coerceCellForModel(modelClass, column, value) {
  */
 export function parseV2Xlsx(fileBuffer, model) {
   const schema = buildXlsSchema(model);
-  const xlsxParsed = transformMetaUid(xlsx.parse(fileBuffer));
+  // cellDates: true makes Excel-native date cells arrive as Date objects
+  // instead of raw serial numbers, so normalizeDateCells can format them.
+  const xlsxParsed = transformMetaUid(
+    normalizeDateCells(xlsx.parse(fileBuffer, { cellDates: true })),
+  );
 
   // Build a lookup: sheetName → { type: 'main' | 'child', childInfo? }
   const sheetLookup = {};
@@ -256,13 +305,20 @@ export function toAttributeNames(row, modelClass) {
  * (generateChangeListFromStagedData → transformFullXslsToChangeList) expects
  * staging data to use snake_case field names, matching what the normal API
  * controllers produce.
+ *
+ * Array values are serialized to JSON strings, matching the REST controllers
+ * (e.g. project_sector: JSON.stringify([...])).  The commit pipeline's XLS
+ * transformation drops object-valued columns, so an array staged raw would be
+ * silently omitted from the on-chain record.
  */
 export function toDbFieldNames(row, modelClass) {
   const attrs = modelClass.rawAttributes;
   const result = {};
   for (const [key, value] of Object.entries(row)) {
     const attr = attrs[key];
-    result[attr && attr.field ? attr.field : key] = value;
+    result[attr && attr.field ? attr.field : key] = Array.isArray(value)
+      ? JSON.stringify(value)
+      : value;
   }
   return result;
 }
