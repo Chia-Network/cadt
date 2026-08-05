@@ -1,3 +1,4 @@
+// DEPRECATED: Socket.IO is legacy and unmaintained; skip in testing/maintenance.
 import { assert } from 'chai';
 import { createServer } from 'http';
 import { io as Client } from 'socket.io-client';

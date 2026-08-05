@@ -525,6 +525,9 @@ npm run create-linux-x64-dist
 
 #### Connecting to Socket.IO
 
+> **Deprecated:** Socket.IO is legacy and unmaintained. It is no longer used and
+> can be skipped in testing and future maintenance.
+
 CADT exposes Socket.IO namespaces at `http://localhost:31310/v1/ws` and `http://localhost:31310/v2/ws`.
 
 After connecting, emit `'/subscribe'` with the feed you want to receive:
