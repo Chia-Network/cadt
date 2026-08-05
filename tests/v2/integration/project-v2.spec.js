@@ -1621,8 +1621,8 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         const xlsx = xlsxModule.default || xlsxModule;
         const newProjectId = uuidv4();
         const testData = [
-          ['cadTrustProjectId', 'projectRegistryName', 'projectId', 'projectName', 'projectSector', 'projectType', 'projectStatus', 'projectUnitMetric'],
-          [newProjectId, 'Test Registry', 'XLSX-001', 'XLSX Test Project', '["Agriculture"]', '["Landfill gas"]', 'Listed', 'tCO2e'],
+          ['cadTrustProjectId', 'projectRegistryName', 'projectId', 'projectName', 'projectLink', 'projectSector', 'projectType', 'projectStatus', 'projectStatusDate', 'projectUnitMetric'],
+          [newProjectId, 'Test Registry', 'XLSX-001', 'XLSX Test Project', 'https://example.com/xlsx-001', '["Agriculture"]', '["Landfill gas"]', 'Listed', '2024-01-01', 'tCO2e'],
         ];
         const xlsxBuffer = xlsx.build([{ name: 'projects', data: testData }]);
 
@@ -1648,22 +1648,52 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         expect(data[0].project_name).to.equal('XLSX Test Project');
       });
 
+      it('should reject an XLSX with an incomplete row and stage nothing', async function () {
+        const xlsxModule = await import('node-xlsx');
+        const xlsx = xlsxModule.default || xlsxModule;
+        const testData = [
+          ['cadTrustProjectId', 'projectRegistryName', 'projectName'],
+          [uuidv4(), 'Test Registry', 'Incomplete Project'],
+        ];
+        const xlsxBuffer = xlsx.build([{ name: 'projects', data: testData }]);
+
+        const response = await supertest(app)
+          .put('/v2/project/xlsx')
+          .attach('xlsx', xlsxBuffer, 'test.xlsx')
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.error).to.include('projectLink');
+
+        const stagingRecords = await StagingV2.findAll({
+          where: { table: 'project' },
+        });
+        expect(stagingRecords).to.have.lengthOf(0);
+      });
+
       it('should stage UPDATE for an existing project from XLSX', async function () {
         const xlsxModule = await import('node-xlsx');
         const xlsx = xlsxModule.default || xlsxModule;
 
         const homeOrgId = await getV2HomeOrgId();
+        // UPDATE validation runs on the merged record, so the existing
+        // project must be complete under the API schema.
         const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
           projectRegistryName: 'Original Registry',
           projectId: 'XLSX-UPD-001',
           projectName: 'Original Name',
+          projectLink: 'https://example.com/xlsx-upd-001',
           projectSector: ['Agriculture'],
+          projectType: ['Landfill gas'],
+          projectStatus: 'Listed',
+          projectStatusDate: '2024-01-01',
+          projectUnitMetric: 'tCO2e',
           orgUid: homeOrgId,
         }));
 
         const testData = [
           ['cadTrustProjectId', 'projectRegistryName', 'projectId', 'projectName', 'projectSector', 'projectUnitMetric'],
-          [project.cadTrustProjectId, 'Updated Registry', 'XLSX-UPD-001', 'Updated Name', '["Energy"]', 'tCO2e'],
+          [project.cadTrustProjectId, 'Updated Registry', 'XLSX-UPD-001', 'Updated Name', '["Energy demand"]', 'tCO2e'],
         ];
         const xlsxBuffer = xlsx.build([{ name: 'projects', data: testData }]);
 
@@ -1689,8 +1719,8 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         const xlsx = xlsxModule.default || xlsxModule;
         const newProjectId = uuidv4();
         const testData = [
-          ['cadTrustProjectId', 'projectRegistryName', 'projectId', 'projectName'],
-          [newProjectId, 'Singular Sheet', 'SING-001', 'Singular Test'],
+          ['cadTrustProjectId', 'projectRegistryName', 'projectId', 'projectName', 'projectLink', 'projectSector', 'projectType', 'projectStatus', 'projectStatusDate', 'projectUnitMetric'],
+          [newProjectId, 'Singular Sheet', 'SING-001', 'Singular Test', 'https://example.com/sing-001', '["Agriculture"]', '["Landfill gas"]', 'Listed', '2024-01-01', 'tCO2e'],
         ];
         const xlsxBuffer = xlsx.build([{ name: 'project', data: testData }]);
 
@@ -1728,15 +1758,15 @@ describe('V2 Project API - Basic CRUD Tests', function () {
           {
             name: 'projects',
             data: [
-              ['cadTrustProjectId', 'projectRegistryName', 'projectId', 'projectName', 'projectSector'],
-              [projectId, 'Multi Sheet Registry', 'MULTI-001', 'Multi Sheet Project', '["Agriculture"]'],
+              ['cadTrustProjectId', 'projectRegistryName', 'projectId', 'projectName', 'projectLink', 'projectSector', 'projectType', 'projectStatus', 'projectStatusDate', 'projectUnitMetric'],
+              [projectId, 'Multi Sheet Registry', 'MULTI-001', 'Multi Sheet Project', 'https://example.com/multi-001', '["Agriculture"]', '["Landfill gas"]', 'Listed', '2024-01-01', 'tCO2e'],
             ],
           },
           {
             name: 'locations',
             data: [
               ['cadTrustLocationId', 'locationCountry', 'locationRegion', 'cadTrustProjectId'],
-              [locationId, 'US', 'California', projectId],
+              [locationId, 'United States of America', 'California', projectId],
             ],
           },
           {
@@ -1769,7 +1799,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         expect(locationStaging).to.exist;
         expect(locationStaging.action).to.equal('INSERT');
         const locationData = JSON.parse(locationStaging.data);
-        expect(locationData[0].location_country).to.equal('US');
+        expect(locationData[0].location_country).to.equal('United States of America');
         expect(locationData[0].location_region).to.equal('California');
 
         const estimationStaging = await StagingV2.findOne({
@@ -1812,8 +1842,8 @@ describe('V2 Project API - Basic CRUD Tests', function () {
           {
             name: 'projects',
             data: [
-              ['cadTrustProjectId', 'projectRegistryName', 'projectId', 'projectName'],
-              [projectId, 'Test', 'UNKNOWN-001', 'Valid Project'],
+              ['cadTrustProjectId', 'projectRegistryName', 'projectId', 'projectName', 'projectLink', 'projectSector', 'projectType', 'projectStatus', 'projectStatusDate', 'projectUnitMetric'],
+              [projectId, 'Test', 'UNKNOWN-001', 'Valid Project', 'https://example.com/unknown-001', '["Agriculture"]', '["Landfill gas"]', 'Listed', '2024-01-01', 'tCO2e'],
             ],
           },
           {
@@ -1842,19 +1872,25 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         const xlsxLib = xlsxModule.default || xlsxModule;
 
         const homeOrgId = await getV2HomeOrgId();
+        // Re-import validates the merged (exported) record, so the source
+        // records must be complete and picklist-valid.
         const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
           projectRegistryName: 'RT Registry',
           projectId: 'RT-001',
           projectName: 'Round Trip Project',
+          projectLink: 'https://example.com/rt-001',
           projectSector: ['Agriculture'],
-          projectType: ['Forestry'],
+          projectType: ['Reforestation'],
+          projectStatus: 'Listed',
+          projectStatusDate: '2024-01-01',
+          projectUnitMetric: 'tCO2e',
           cadTrustProgramId: testProgram.cadTrustProgramId,
           orgUid: homeOrgId,
         }));
 
         await LocationV2.create({
           cadTrustLocationId: uuidv4(),
-          locationCountry: 'DE',
+          locationCountry: 'Germany',
           locationRegion: 'Bavaria',
           cadTrustProjectId: project.cadTrustProjectId,
         });

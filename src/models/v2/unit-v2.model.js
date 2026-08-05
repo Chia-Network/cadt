@@ -25,6 +25,7 @@ import {
   stageConsolidatedCsvRecord,
 } from '../../utils/v2-xls.js';
 import { assertRecordExistanceOrStaged } from '../../utils/v2-data-assertions.js';
+import { validateStagedRecord } from '../../utils/v2-staging-validation.js';
 import { IssuanceV2 } from './issuance-v2.model.js';
 import { getDeletedItems } from '../../utils/model-utils.js';
 import { UnitLabelV2 } from './unit-label-v2.model.js';
@@ -333,10 +334,13 @@ class UnitV2 extends Model {
 
       let totalSplitCount = 0;
 
-      // Create split records
+      // Create split records, tracking which fields each split actually
+      // overrides so validation can scope Joi to caller-supplied values.
+      const overriddenFieldsPerRecord = [];
       const splitRecords = await Promise.all(
         records.map(async (record, index) => {
           const newRecord = originalRecord.toJSON();
+          const overriddenFields = ['unitCount'];
 
           // First record keeps original ID, others get new UUIDs
           if (index > 0) {
@@ -356,26 +360,32 @@ class UnitV2 extends Model {
             newRecord.unitSerialId = `${blockStart}-${blockEnd}`;
             newRecord.unitStartBlock = blockStart;
             newRecord.unitEndBlock = blockEnd;
+            overriddenFields.push('unitSerialId', 'unitStartBlock', 'unitEndBlock');
           }
 
           // Update optional fields if provided
           if (record.unitCurrentOwner !== undefined) {
             newRecord.unitCurrentOwner = record.unitCurrentOwner;
+            overriddenFields.push('unitCurrentOwner');
           }
           if (record.unitStatus !== undefined) {
             newRecord.unitStatus = record.unitStatus;
+            overriddenFields.push('unitStatus');
           }
           if (record.unitStatusReason !== undefined) {
             newRecord.unitStatusReason = record.unitStatusReason;
+            overriddenFields.push('unitStatusReason');
           }
           if (record.unitStatusDate !== undefined) {
             newRecord.unitStatusDate = record.unitStatusDate;
+            overriddenFields.push('unitStatusDate');
           }
 
           // Remove timestamps (handled automatically)
           delete newRecord.createdAt;
           delete newRecord.updatedAt;
 
+          overriddenFieldsPerRecord[index] = overriddenFields;
           return newRecord;
         }),
       );
@@ -386,6 +396,24 @@ class UnitV2 extends Model {
         throw new Error(
           `Total split count (${totalSplitCount}) does not match original unit count (${originalCount})`,
         );
+      }
+
+      // Split records are staged verbatim, so caller-supplied overrides must
+      // pass the same Joi rules as every other write path, and each record
+      // must satisfy NOT NULL completeness and FK existence. Joi is scoped to
+      // the fields each split actually overrides so cloned values from records
+      // that predate the current schemas never block a split.
+      const splitValidationErrors = [];
+      for (const [index, splitRecord] of splitRecords.entries()) {
+        const rowErrors = await validateStagedRecord(UnitV2, splitRecord, {
+          joiFields: overriddenFieldsPerRecord[index],
+        });
+        for (const message of rowErrors) {
+          splitValidationErrors.push(`split record ${index + 1}: ${message}`);
+        }
+      }
+      if (splitValidationErrors.length > 0) {
+        throw new Error(splitValidationErrors.join('; '));
       }
 
       // Create staging record with UPDATE action
