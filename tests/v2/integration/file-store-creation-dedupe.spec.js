@@ -95,9 +95,9 @@ describe('File store creation dedup', function () {
 
       coinGate.resolve({ success: true, coinCount: 1 });
       await waitFor(() => pendingFileStoreCreations.size === 0);
+      await waitFor(() => syncDataLayer.callCount === 1);
 
       expect(createStore.callCount).to.equal(1);
-      expect(syncDataLayer.callCount).to.equal(1);
       expect(
         syncDataLayer.calledWithExactly(testOrgUid, {
           fileStoreId: 'new-store-id',
@@ -134,6 +134,55 @@ describe('File store creation dedup', function () {
       // The persisted id must be used as-is; no new store may be created.
       await FilestoreV2.addFileToFileStore('sha-1', 'a.txt', 'dGVzdA==');
       expect(createStore.callCount).to.equal(1);
+    });
+
+    it('releases the pending guard once the id is persisted, so the v1 model can adopt it while the org-store push is still running', async function () {
+      sandbox
+        .stub(datalayer, 'waitForSpendableCoins')
+        .resolves({ success: true, coinCount: 1 });
+      const createStore = sandbox
+        .stub(datalayer, 'createDataLayerStoreWithRetry')
+        .resolves('slow-sync-store');
+      const syncGate = deferred();
+      const syncDataLayer = sandbox
+        .stub(datalayer, 'syncDataLayer')
+        .returns(syncGate.promise);
+
+      try {
+        await expectRetryLater(() => FilestoreV2.getFileStoreItem('sha-1'));
+        await waitFor(() => syncDataLayer.callCount === 1);
+
+        // The push is still in flight, but the store is minted and recorded,
+        // so the guard has done its job and must no longer be held.
+        expect(pendingFileStoreCreations.has(testOrgUid)).to.equal(false);
+        const v2Org = await OrganizationsV2.findOne({
+          where: { org_uid: testOrgUid },
+          raw: true,
+        });
+        expect(v2Org.file_store_subscribed).to.equal('slow-sync-store');
+
+        // The v1 side of the same upgraded org adopts that id rather than
+        // waiting out the push or minting a second store.
+        sandbox
+          .stub(Organization, 'getHomeOrg')
+          .resolves({ orgUid: testOrgUid, fileStoreId: null });
+        sandbox.stub(Organization, 'findOne').resolves(null);
+        const orgUpdate = sandbox.stub(Organization, 'update').resolves([1]);
+
+        await expectRetryLater(() => FileStore.getFileStoreItem('sha-1'));
+        await waitFor(() => pendingFileStoreCreations.size === 0);
+
+        expect(createStore.callCount).to.equal(1);
+        expect(syncDataLayer.callCount).to.equal(1);
+        expect(
+          orgUpdate.calledWithExactly(
+            { fileStoreId: 'slow-sync-store' },
+            { where: { orgUid: testOrgUid } },
+          ),
+        ).to.equal(true);
+      } finally {
+        syncGate.resolve();
+      }
     });
 
     it('clears the pending entry after a failed creation so a later request can retry', async function () {
@@ -286,6 +335,7 @@ describe('File store creation dedup', function () {
 
       coinGate.resolve({ success: true, coinCount: 1 });
       await waitFor(() => pendingFileStoreCreations.size === 0);
+      await waitFor(() => syncDataLayer.callCount === 1);
 
       expect(createStore.callCount).to.equal(1);
       expect(
@@ -300,6 +350,51 @@ describe('File store creation dedup', function () {
           fileStoreId: 'v1-store-id',
         }),
       ).to.equal(true);
+    });
+
+    it('releases the pending guard once the id is persisted, so a later caller adopts it while the org-store push is still running', async function () {
+      sandbox
+        .stub(Organization, 'getHomeOrg')
+        .resolves({ orgUid: v1OrgUid, fileStoreId: null });
+      const orgFindOne = sandbox.stub(Organization, 'findOne').resolves(null);
+      const orgUpdate = sandbox.stub(Organization, 'update').resolves([1]);
+
+      sandbox
+        .stub(datalayer, 'waitForSpendableCoins')
+        .resolves({ success: true, coinCount: 1 });
+      const createStore = sandbox
+        .stub(datalayer, 'createDataLayerStoreWithRetry')
+        .resolves('v1-slow-sync-store');
+      const syncGate = deferred();
+      const syncDataLayer = sandbox
+        .stub(datalayer, 'syncDataLayer')
+        .returns(syncGate.promise);
+
+      try {
+        await expectRetryLater(() => FileStore.getFileStoreItem('sha-1'));
+        await waitFor(() => syncDataLayer.callCount === 1);
+
+        // The push is still in flight, but the store is minted and recorded,
+        // so the guard has done its job and must no longer be held.
+        expect(pendingFileStoreCreations.has(v1OrgUid)).to.equal(false);
+        expect(
+          orgUpdate.calledWithExactly(
+            { fileStoreId: 'v1-slow-sync-store' },
+            { where: { orgUid: v1OrgUid } },
+          ),
+        ).to.equal(true);
+
+        // A request arriving during the push adopts the persisted id instead
+        // of minting a second store.
+        orgFindOne.resolves({ fileStoreId: 'v1-slow-sync-store' });
+        await expectRetryLater(() => FileStore.getFileStoreItem('sha-1'));
+        await waitFor(() => orgUpdate.callCount === 2);
+
+        expect(createStore.callCount).to.equal(1);
+        expect(syncDataLayer.callCount).to.equal(1);
+      } finally {
+        syncGate.resolve();
+      }
     });
 
     it('adopts a store id recorded by the v2 model for an upgraded org', async function () {

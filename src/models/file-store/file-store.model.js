@@ -67,7 +67,7 @@ const startFileStoreCreation = (myOrganization) => {
 
   pendingFileStoreCreations.add(orgUid);
 
-  const create = async () => {
+  const mintAndPersist = async () => {
     // The caller's org snapshot may predate a creation that has since
     // finished, and the v2 model may have recorded the store for an
     // upgraded org; adopt any persisted id instead of minting another.
@@ -77,7 +77,7 @@ const startFileStoreCreation = (myOrganization) => {
         { fileStoreId: existingId },
         { where: { orgUid } },
       );
-      return;
+      return null;
     }
 
     await datalayer.waitForSpendableCoins(1);
@@ -89,6 +89,30 @@ const startFileStoreCreation = (myOrganization) => {
       { fileStoreId: newFileStoreId },
       { where: { orgUid } },
     );
+    return newFileStoreId;
+  };
+
+  const run = async () => {
+    let newFileStoreId = null;
+    try {
+      newFileStoreId = await mintAndPersist();
+    } catch (error) {
+      logger.error(
+        `Failed to create file store for org ${orgUid}: ${error.message}`,
+      );
+    } finally {
+      // Released before the org-store push, which retries for up to half an
+      // hour. The guard only has to cover the mint, and the id is persisted by
+      // this point, so anything arriving later adopts it rather than minting.
+      // Holding it across the push would keep the v2 model from adopting the
+      // id for an upgraded org for that whole window.
+      pendingFileStoreCreations.delete(orgUid);
+    }
+
+    if (!newFileStoreId) {
+      return;
+    }
+
     try {
       await datalayer.syncDataLayer(orgUid, { fileStoreId: newFileStoreId });
     } catch (error) {
@@ -101,15 +125,11 @@ const startFileStoreCreation = (myOrganization) => {
     }
   };
 
-  create()
-    .catch((error) => {
-      logger.error(
-        `Failed to create file store for org ${orgUid}: ${error.message}`,
-      );
-    })
-    .finally(() => {
-      pendingFileStoreCreations.delete(orgUid);
-    });
+  run().catch((error) => {
+    logger.error(
+      `File store creation for org ${orgUid} failed unexpectedly: ${error?.message}`,
+    );
+  });
 };
 
 class FileStore extends Model {
