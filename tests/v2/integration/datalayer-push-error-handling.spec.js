@@ -347,12 +347,16 @@ describe('pushChangeListToDataLayer - error handling', function () {
     sinon.stub(wallet, 'getTransactionHealth').resolves(settledWallet());
 
     // Never succeeds, so every remaining attempt sees a pending root.
-    const { clearPending } = stubPendingRootThenSuccess({ succeedOnCall: 99 });
+    const { batchUpdate, clearPending } = stubPendingRootThenSuccess({
+      succeedOnCall: 99,
+    });
 
     const result = await pushChangeListToDataLayer(testStoreId, testChangelist);
 
     expect(result).to.be.false;
     expect(clearPending.callCount).to.equal(1);
+    // One clear refunds one attempt, so the loop is capped at maxAttempts + 1.
+    expect(batchUpdate.callCount).to.equal(6);
   });
 
   it('should retry a clear that did not take effect', async function () {
@@ -371,6 +375,27 @@ describe('pushChangeListToDataLayer - error handling', function () {
     expect(result).to.be.true;
     // Nothing was discarded, so the one-per-push cap does not apply.
     expect(clearPending.callCount).to.equal(2);
+  });
+
+  it('should retry the push when the clear only succeeds on the last attempt', async function () {
+    this.timeout(120000);
+
+    sinon.stub(wallet, 'getDLWalletId').resolves('2');
+    sinon.stub(wallet, 'getTransactionHealth').resolves(settledWallet());
+
+    const { batchUpdate, clearPending } = stubPendingRootThenSuccess({
+      succeedOnCall: 6,
+      clearSucceeds: false,
+    });
+    // The clear takes effect only on the attempt that exhausts the budget, so
+    // the push that the clear unblocked still has to be tried.
+    clearPending.onCall(3).returns(createSuperagentMock({ success: true }));
+
+    const result = await pushChangeListToDataLayer(testStoreId, testChangelist);
+
+    expect(result).to.be.true;
+    expect(clearPending.callCount).to.equal(4);
+    expect(batchUpdate.callCount).to.equal(6);
   });
 
   it('should throw a permanent error for "not owned by DL Wallet"', async function () {

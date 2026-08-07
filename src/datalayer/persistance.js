@@ -850,8 +850,11 @@ const pushChangeListToDataLayer = async (
       ) {
         attempts++;
         pendingRootSightings++;
+        // Sightings are logged alongside the attempt because a successful clear
+        // refunds an attempt, so the same attempt number can appear twice.
         logger.info(
-          `Pending root for store ${storeId}; waiting for confirmation (attempt ${attempts}/${maxAttempts})`,
+          `Pending root for store ${storeId}; waiting for confirmation ` +
+            `(sighting ${pendingRootSightings}, attempt ${attempts}/${maxAttempts})`,
         );
         await wallet.waitForAllTransactionsToConfirm();
 
@@ -868,6 +871,12 @@ const pushChangeListToDataLayer = async (
           (await clearOrphanedPendingRoot(storeId))
         ) {
           pendingRootCleared = true;
+          // The clear is what makes the next push viable, so the sighting that
+          // triggered it must not be the attempt that exhausts the budget;
+          // otherwise a clear on the last attempt reports failure without ever
+          // retrying the push it just unblocked. Bounded by pendingRootCleared,
+          // so this refunds at most one attempt per push.
+          attempts--;
           continue;
         }
 
