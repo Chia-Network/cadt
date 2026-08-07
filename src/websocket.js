@@ -1,5 +1,10 @@
 'use strict';
 
+/**
+ * @deprecated Socket.IO is legacy and unmaintained. No longer used; skip in
+ * testing and future maintenance.
+ */
+
 import { Project, Unit, Staging } from './models/index.js';
 import { ProjectV2, UnitV2, StagingV2 } from './models/v2/index.js';
 import { logger } from './config/logger.js';

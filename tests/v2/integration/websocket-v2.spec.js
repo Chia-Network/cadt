@@ -16,6 +16,9 @@ import * as rxjs from 'rxjs';
 /**
  * Phase 29: Websocket Support for V2 Tests
  *
+ * DEPRECATED: Socket.IO is legacy and unmaintained. No longer used; skip in
+ * testing and future maintenance.
+ *
  * Tests for websocket change notifications in V2 models
  */
 describe('Phase 29: Websocket Support for V2 Tests', function () {
