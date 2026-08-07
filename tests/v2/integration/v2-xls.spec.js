@@ -370,6 +370,74 @@ describe('V2 XLS Utility Functions', function () {
       expect(result.main[0].projectStatusDate).to.equal('2024-03-15');
     });
 
+    it('should read the same calendar date from a date cell and from a raw serial', async function () {
+      // Excel stores both as the same serial; the only difference is whether
+      // the cell carries a date number format. Both parsing paths must land
+      // on the same YYYY-MM-DD, including below serial 61 where Excel counts
+      // a 1900-02-29 that never existed.
+      const XLSXModule = await import('xlsx');
+      const XLSX = XLSXModule.default || XLSXModule;
+
+      const parseDateCell = (serial) => {
+        const ws = {
+          '!ref': 'A1:B2',
+          A1: { t: 's', v: 'cadTrustProjectId' },
+          B1: { t: 's', v: 'projectStatusDate' },
+          A2: { t: 's', v: uuidv4() },
+          B2: { t: 'n', v: serial, z: 'm/d/yy' },
+        };
+        const buffer = XLSX.write(
+          { SheetNames: ['projects'], Sheets: { projects: ws } },
+          { type: 'buffer', bookType: 'xlsx' },
+        );
+        return parseV2Xlsx(buffer, ProjectV2).main[0].projectStatusDate;
+      };
+
+      const parseRawSerial = (serial) => {
+        const buffer = xlsx.build([
+          {
+            name: 'projects',
+            data: [
+              ['cadTrustProjectId', 'projectStatusDate'],
+              [uuidv4(), serial],
+            ],
+          },
+        ]);
+        return parseV2Xlsx(buffer, ProjectV2).main[0].projectStatusDate;
+      };
+
+      const expectedBySerial = {
+        1: '1900-01-01',
+        2: '1900-01-02',
+        59: '1900-02-28',
+        61: '1900-03-01',
+        36525: '1999-12-31',
+        45366: '2024-03-15',
+        45658: '2025-01-01',
+      };
+
+      for (const [serial, expected] of Object.entries(expectedBySerial)) {
+        expect(parseDateCell(Number(serial)), `date cell for serial ${serial}`).to.equal(expected);
+        expect(parseRawSerial(Number(serial)), `raw serial ${serial}`).to.equal(expected);
+      }
+    });
+
+    it("should roll Excel's phantom 1900-02-29 serial forward to a real date", function () {
+      const buffer = xlsx.build([
+        {
+          name: 'projects',
+          data: [
+            ['cadTrustProjectId', 'projectStatusDate'],
+            [uuidv4(), 60],
+          ],
+        },
+      ]);
+
+      expect(parseV2Xlsx(buffer, ProjectV2).main[0].projectStatusDate).to.equal(
+        '1900-03-01',
+      );
+    });
+
     it('should skip sheets with fewer than 2 rows', function () {
       const buffer = xlsx.build([
         {

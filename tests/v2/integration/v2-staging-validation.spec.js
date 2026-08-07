@@ -17,6 +17,8 @@ import {
   resetV2StagingTable,
   resetV2DataTables,
   createV2TestHomeOrg,
+  getV2HomeOrgId,
+  addUuidIfNeeded,
 } from '../utils/v2-test-helpers.js';
 import {
   initializePicklists,
@@ -134,6 +136,124 @@ describe('V2 Staging Validation', function () {
         { checkForeignKeys: false },
       );
       expect(errors.join('; ')).to.include('No validation schema registered');
+    });
+  });
+
+  describe('CSV batch upload parity with the REST API', function () {
+    // Picklist entries can contain commas, so every value has to be quoted.
+    const toCsv = (record) => {
+      const keys = Object.keys(record);
+      const quote = (value) => `"${String(value).replace(/"/g, '""')}"`;
+      const value = (key) =>
+        quote(
+          Array.isArray(record[key]) ? record[key].join('|') : record[key],
+        );
+      return Buffer.from(
+        `${keys.join(',')}\n${keys.map(value).join(',')}`,
+        'utf8',
+      );
+    };
+
+    const postProject = (record) =>
+      supertest(app).post('/v2/project').send(record);
+
+    const batchProject = (record) =>
+      supertest(app)
+        .post('/v2/project/batch')
+        .attach('csv', toCsv(record), 'parity.csv');
+
+    it('rejects an invalid picklist value on both paths', async function () {
+      const record = buildValidProjectRecord({
+        projectStatus: getInvalidPicklistValue('projectStatus'),
+      });
+
+      const apiResponse = await postProject(record);
+      expect(apiResponse.status).to.equal(400);
+
+      const batchResponse = await batchProject(record);
+      expect(batchResponse.status).to.equal(400);
+      expect(batchResponse.body.stagedCount).to.equal(0);
+      expect(batchResponse.body.errors[0].error).to.include('projectStatus');
+
+      expect(await StagingV2.count({ where: { table: 'project' } })).to.equal(0);
+    });
+
+    it('rejects a malformed projectLink on both paths', async function () {
+      const record = buildValidProjectRecord({ projectLink: 'not-a-url' });
+
+      const apiResponse = await postProject(record);
+      expect(apiResponse.status).to.equal(400);
+
+      const batchResponse = await batchProject(record);
+      expect(batchResponse.status).to.equal(400);
+      expect(batchResponse.body.errors[0].error).to.include('projectLink');
+
+      expect(await StagingV2.count({ where: { table: 'project' } })).to.equal(0);
+    });
+
+    it('rejects an unresolvable foreign key on both paths', async function () {
+      const record = buildValidProjectRecord({ cadTrustProgramId: uuidv4() });
+
+      const apiResponse = await postProject(record);
+      expect(apiResponse.status).to.equal(400);
+
+      const batchResponse = await batchProject(record);
+      expect(batchResponse.status).to.equal(400);
+      expect(batchResponse.body.errors[0].error).to.include('cadTrustProgramId');
+
+      expect(await StagingV2.count({ where: { table: 'project' } })).to.equal(0);
+    });
+
+    it('accepts a record both paths consider valid', async function () {
+      const record = buildValidProjectRecord();
+
+      const apiResponse = await postProject(record);
+      expect(apiResponse.status).to.equal(200);
+
+      await resetV2StagingTable();
+
+      const batchResponse = await batchProject(record);
+      expect(batchResponse.status).to.equal(200);
+      expect(batchResponse.body.stagedCount).to.equal(1);
+      expect(batchResponse.body.errorCount).to.equal(0);
+    });
+
+    it('accepts an INSERT row that leaves an optional column blank', async function () {
+      const record = buildValidProjectRecord({ projectDescription: '' });
+
+      const batchResponse = await batchProject(record);
+      expect(batchResponse.status).to.equal(200);
+      expect(batchResponse.body.stagedCount).to.equal(1);
+      expect(batchResponse.body.errorCount).to.equal(0);
+    });
+
+    it('accepts an UPDATE row that blanks an optional column', async function () {
+      const project = await ProjectV2.create(
+        addUuidIfNeeded('ProjectV2', {
+          ...buildValidProjectRecord(),
+          orgUid: await getV2HomeOrgId(),
+          projectDescription: 'Set by the seed record',
+        }),
+      );
+      await resetV2StagingTable();
+
+      const batchResponse = await batchProject({
+        cadTrustProjectId: project.cadTrustProjectId,
+        projectDescription: '',
+      });
+      expect(batchResponse.status).to.equal(200);
+      expect(batchResponse.body.stagedCount).to.equal(1);
+      expect(batchResponse.body.errorCount).to.equal(0);
+    });
+
+    it('reports a blank required column as missing rather than as empty', async function () {
+      const record = buildValidProjectRecord({ projectName: '' });
+
+      const batchResponse = await batchProject(record);
+      expect(batchResponse.status).to.equal(400);
+      expect(batchResponse.body.errors[0].error).to.include(
+        '"projectName" is required',
+      );
     });
   });
 

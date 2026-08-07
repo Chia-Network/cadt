@@ -1672,10 +1672,17 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
     });
 
     describe('POST /v2/unit/batch', function () {
+      // A CSV INSERT row creates a record from the CSV alone, so it has to
+      // satisfy the same Joi schema as POST /v2/unit.
+      const INSERT_HEADER =
+        'unitSerialId,unitStartBlock,unitEndBlock,unitCount,unitType,unitVintageYear,unitStatus,unitStatusReason,unitMetric,cadTrustIssuanceId';
+      const insertRow = (serialId, startBlock, endBlock, issuanceId, extra = '') =>
+        `${serialId},${startBlock},${endBlock},50,Avoidance - nature,2024,Issued,Issued and active,tCO2e,${issuanceId}${extra}`;
+
       it('should batch upload new units from CSV file (INSERT) with snake_case staging data and counts', async function () {
-        const csvContent = `unitSerialId,unitStartBlock,unitEndBlock,unitCount,unitType,unitVintageYear,unitStatus,cadTrustIssuanceId
-CSV-UNIT-001,1000,2000,50,Avoidance - nature,2024,Issued,${testIssuanceForAdvanced.cadTrustIssuanceId}
-CSV-UNIT-002,2000,3000,75,Reduction - technical,2024,Held,${testIssuanceForAdvanced.cadTrustIssuanceId}`;
+        const csvContent = `${INSERT_HEADER}
+${insertRow('CSV-UNIT-001', 1000, 2000, testIssuanceForAdvanced.cadTrustIssuanceId)}
+${insertRow('CSV-UNIT-002', 2000, 3000, testIssuanceForAdvanced.cadTrustIssuanceId)}`;
 
         const csvBuffer = Buffer.from(csvContent, 'utf8');
 
@@ -1893,7 +1900,12 @@ ${unit.cadTrustUnitId},75`;
             unit_serial_id: 'STAGED-INSERT-UNIT',
             unit_start_block: '100',
             unit_end_block: '200',
+            unit_count: 50,
+            unit_type: 'Avoidance - nature',
             unit_vintage_year: 2024,
+            unit_status: 'Issued',
+            unit_status_reason: 'Issued and active',
+            unit_metric: 'tCO2e',
             cad_trust_issuance_id: testIssuanceForAdvanced.cadTrustIssuanceId,
             unit_link: 'https://example.com/staged-unit',
           }]),
@@ -1988,8 +2000,8 @@ ${unit.cadTrustUnitId},75`;
       });
 
       it('should strip unknown columns from staged data', async function () {
-        const csvContent = `unitSerialId,unitStartBlock,unitEndBlock,unitVintageYear,cadTrustIssuanceId,foobar,unitLabels
-STRIP-UNIT-001,100,200,2024,${testIssuanceForAdvanced.cadTrustIssuanceId},garbage,"[{""id"":""x""}]"`;
+        const csvContent = `${INSERT_HEADER},foobar,unitLabels
+${insertRow('STRIP-UNIT-001', 100, 200, testIssuanceForAdvanced.cadTrustIssuanceId, ',garbage,"[{""id"":""x""}]"')}`;
 
         const csvBuffer = Buffer.from(csvContent, 'utf8');
 
@@ -2011,8 +2023,8 @@ STRIP-UNIT-001,100,200,2024,${testIssuanceForAdvanced.cadTrustIssuanceId},garbag
       });
 
       it('should report error for non-existent cadTrustIssuanceId (FK check, 400 when all rows fail)', async function () {
-        const csvContent = `unitSerialId,unitStartBlock,unitEndBlock,unitVintageYear,cadTrustIssuanceId
-FK-UNIT-001,100,200,2024,non-existent-issuance-id`;
+        const csvContent = `${INSERT_HEADER}
+${insertRow('FK-UNIT-001', 100, 200, uuidv4())}`;
 
         const csvBuffer = Buffer.from(csvContent, 'utf8');
 
@@ -2028,8 +2040,8 @@ FK-UNIT-001,100,200,2024,non-existent-issuance-id`;
       });
 
       it('should succeed with valid cadTrustIssuanceId (FK check)', async function () {
-        const csvContent = `unitSerialId,unitStartBlock,unitEndBlock,unitVintageYear,cadTrustIssuanceId
-FK-UNIT-OK,100,200,2024,${testIssuanceForAdvanced.cadTrustIssuanceId}`;
+        const csvContent = `${INSERT_HEADER}
+${insertRow('FK-UNIT-OK', 100, 200, testIssuanceForAdvanced.cadTrustIssuanceId)}`;
 
         const csvBuffer = Buffer.from(csvContent, 'utf8');
 
@@ -2059,8 +2071,8 @@ FK-UNIT-OK,100,200,2024,${testIssuanceForAdvanced.cadTrustIssuanceId}`;
           is_transfer: false,
         });
 
-        const csvContent = `unitSerialId,unitStartBlock,unitEndBlock,unitCount,unitType,unitVintageYear,unitStatus,cadTrustIssuanceId
-FK-STAGED-UNIT,100,200,50,Avoidance - nature,2024,Issued,${stagedIssuanceId}`;
+        const csvContent = `${INSERT_HEADER}
+${insertRow('FK-STAGED-UNIT', 100, 200, stagedIssuanceId)}`;
         const csvBuffer = Buffer.from(csvContent, 'utf8');
 
         const response = await supertest(app)
@@ -2077,9 +2089,14 @@ FK-STAGED-UNIT,100,200,50,Avoidance - nature,2024,Issued,${stagedIssuanceId}`;
       it('should handle large batch (15+ rows) without race condition', async function () {
         const rows = [];
         for (let i = 1; i <= 15; i++) {
-          rows.push(`RACE-UNIT-${String(i).padStart(3, '0')},${i * 100},${i * 100 + 99},2024,${testIssuanceForAdvanced.cadTrustIssuanceId}`);
+          rows.push(insertRow(
+            `RACE-UNIT-${String(i).padStart(3, '0')}`,
+            i * 100,
+            i * 100 + 99,
+            testIssuanceForAdvanced.cadTrustIssuanceId,
+          ));
         }
-        const csvContent = `unitSerialId,unitStartBlock,unitEndBlock,unitVintageYear,cadTrustIssuanceId\n${rows.join('\n')}`;
+        const csvContent = `${INSERT_HEADER}\n${rows.join('\n')}`;
         const csvBuffer = Buffer.from(csvContent, 'utf8');
 
         const response = await supertest(app)
@@ -2104,9 +2121,9 @@ FK-STAGED-UNIT,100,200,50,Avoidance - nature,2024,Issued,${stagedIssuanceId}`;
           orgUid: homeOrgId,
         }));
 
-        const csvContent = `cadTrustUnitId,unitSerialId,unitStartBlock,unitEndBlock,unitVintageYear,cadTrustIssuanceId
-${existingUnit.cadTrustUnitId},MIX-EXISTING-UNIT,100,200,2024,${testIssuanceForAdvanced.cadTrustIssuanceId}
-,MIX-NEW-UNIT,300,400,2024,${testIssuanceForAdvanced.cadTrustIssuanceId}`;
+        const csvContent = `cadTrustUnitId,${INSERT_HEADER}
+${existingUnit.cadTrustUnitId},${insertRow('MIX-EXISTING-UNIT', 100, 200, testIssuanceForAdvanced.cadTrustIssuanceId)}
+,${insertRow('MIX-NEW-UNIT', 300, 400, testIssuanceForAdvanced.cadTrustIssuanceId)}`;
 
         const csvBuffer = Buffer.from(csvContent, 'utf8');
 
@@ -2125,8 +2142,8 @@ ${existingUnit.cadTrustUnitId},MIX-EXISTING-UNIT,100,200,2024,${testIssuanceForA
       });
 
       it('should accept snake_case CSV headers', async function () {
-        const csvContent = `unit_serial_id,unit_start_block,unit_end_block,unit_vintage_year,cad_trust_issuance_id
-SNAKE-UNIT-001,100,200,2024,${testIssuanceForAdvanced.cadTrustIssuanceId}`;
+        const csvContent = `unit_serial_id,unit_start_block,unit_end_block,unit_count,unit_type,unit_vintage_year,unit_status,unit_status_reason,unit_metric,cad_trust_issuance_id
+SNAKE-UNIT-001,100,200,50,Avoidance - nature,2024,Issued,Issued and active,tCO2e,${testIssuanceForAdvanced.cadTrustIssuanceId}`;
 
         const csvBuffer = Buffer.from(csvContent, 'utf8');
 
@@ -2177,10 +2194,9 @@ MISSING-REQ-001,${testIssuanceForAdvanced.cadTrustIssuanceId}`;
         expect(response.body.success).to.be.false;
         expect(response.body.stagedCount).to.equal(0);
         expect(response.body.errorCount).to.equal(1);
-        expect(response.body.errors[0].error).to.include('Missing required field(s)');
-        expect(response.body.errors[0].error).to.include('unitStartBlock');
-        expect(response.body.errors[0].error).to.include('unitEndBlock');
-        expect(response.body.errors[0].error).to.include('unitVintageYear');
+        expect(response.body.errors[0].error).to.include('"unitStartBlock" is required');
+        expect(response.body.errors[0].error).to.include('"unitEndBlock" is required');
+        expect(response.body.errors[0].error).to.include('"unitVintageYear" is required');
       });
 
       it('should accept UPDATE rows that omit required INSERT fields (merged from DB)', async function () {
@@ -2212,9 +2228,9 @@ ${unit.cadTrustUnitId},Retired`;
 
       it('should return partial success with correct counts for mixed valid/invalid rows', async function () {
         // Row 1: valid INSERT, Row 2: bad FK
-        const csvContent = `unitSerialId,unitStartBlock,unitEndBlock,unitVintageYear,cadTrustIssuanceId
-PARTIAL-UNIT-001,100,200,2024,${testIssuanceForAdvanced.cadTrustIssuanceId}
-PARTIAL-UNIT-002,300,400,2024,non-existent-issuance-id`;
+        const csvContent = `${INSERT_HEADER}
+${insertRow('PARTIAL-UNIT-001', 100, 200, testIssuanceForAdvanced.cadTrustIssuanceId)}
+${insertRow('PARTIAL-UNIT-002', 300, 400, uuidv4())}`;
 
         const csvBuffer = Buffer.from(csvContent, 'utf8');
 
@@ -2274,8 +2290,8 @@ ${otherOrgUnit.cadTrustUnitId},99`;
       });
 
       it('should derive unitSerialId from start/end blocks in CSV', async function () {
-        const csvContent = `unitStartBlock,unitEndBlock,unitVintageYear,cadTrustIssuanceId
-5000,6000,2024,${testIssuanceForAdvanced.cadTrustIssuanceId}`;
+        const csvContent = `unitStartBlock,unitEndBlock,unitCount,unitType,unitVintageYear,unitStatus,unitStatusReason,unitMetric,cadTrustIssuanceId
+5000,6000,50,Avoidance - nature,2024,Issued,Issued and active,tCO2e,${testIssuanceForAdvanced.cadTrustIssuanceId}`;
 
         const csvBuffer = Buffer.from(csvContent, 'utf8');
 
