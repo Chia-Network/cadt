@@ -208,14 +208,15 @@ export async function validateCsvBatchRecord(
   mergedRecord,
   { action, csvFields },
 ) {
-  // A blank cell in a declared column arrives as '' rather than as an absent
-  // key. That means "no value supplied", so drop those keys before validating
-  // instead of handing '' to schemas whose string rules reject it. The NOT
-  // NULL and FK checks already read '' and undefined the same way, so this
-  // only changes what Joi sees. Validate a copy — callers stage the original.
+  // A blank cell means "no value supplied", so it reaches here as null rather
+  // than as an absent key. Drop those before validating instead of handing
+  // null to the schemas, which only some fields accept. The NOT NULL and FK
+  // checks read null and undefined the same way, so this only changes what
+  // Joi sees, and it reports a blank required column as missing rather than as
+  // the wrong type. Validate a copy — callers stage the original.
   const record = {};
   for (const [key, value] of Object.entries(mergedRecord)) {
-    if (value !== '') {
+    if (value !== null && value !== '') {
       record[key] = value;
     }
   }

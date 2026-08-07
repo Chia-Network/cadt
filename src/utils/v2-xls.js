@@ -278,6 +278,11 @@ function buildSnakeToCamelMap(modelClass) {
  * name.  Accepts headers in either camelCase or snake_case.  Keys that don't
  * map to any known attribute are left as-is so they can be stripped later.
  *
+ * Blank cells become null. The parser reports a blank cell in a declared
+ * column as '', which would otherwise be staged as an empty string and read
+ * back as a value; null is what "no value supplied" means everywhere else,
+ * and it keeps a cleared field out of IS NOT NULL results downstream.
+ *
  * @param {Object} row
  * @param {import('sequelize').Model} modelClass
  * @returns {Object} row with normalized keys
@@ -287,7 +292,7 @@ export function normalizeCsvHeaders(row, modelClass) {
   const result = {};
   for (const [key, value] of Object.entries(row)) {
     const normalized = snakeToCamel.get(key) || key;
-    result[normalized] = value;
+    result[normalized] = value === '' ? null : value;
   }
   return result;
 }

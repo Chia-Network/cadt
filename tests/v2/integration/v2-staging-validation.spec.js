@@ -227,6 +227,23 @@ describe('V2 Staging Validation', function () {
       expect(batchResponse.body.errorCount).to.equal(0);
     });
 
+    it('stages a blank cell as null rather than as an empty string', async function () {
+      const record = buildValidProjectRecord({
+        projectDescription: '',
+        cadTrustProgramId: '',
+      });
+
+      expect((await batchProject(record)).status).to.equal(200);
+
+      const staged = await StagingV2.findOne({
+        where: { table: 'project' },
+        raw: true,
+      });
+      const [stagedRecord] = JSON.parse(staged.data);
+      expect(stagedRecord.project_description).to.be.null;
+      expect(stagedRecord.cad_trust_program_id).to.be.null;
+    });
+
     it('accepts an UPDATE row that blanks an optional column', async function () {
       const project = await ProjectV2.create(
         addUuidIfNeeded('ProjectV2', {
