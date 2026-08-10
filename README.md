@@ -55,14 +55,6 @@ System recommendation:
    chia init
    ```
 
-1. Use testnet for development work (skip if this is your production setup).
-
-   ```bash
-   chia-tools network switch testneta
-   yq -y -i '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
-   sudo systemctl restart cadt@ubuntu chia-full-node@ubuntu chia-wallet@ubuntu chia-data-layer@ubuntu
-   ```
-
 1. Configure the Datalayer public directory.
 
    ```bash
@@ -79,6 +71,13 @@ System recommendation:
    sudo nginx -t && sudo systemctl restart nginx
    ```
 
+1. Start and enable Chia, CADT, and Nginx.
+
+   ```bash
+   sudo systemctl enable nginx cadt@ubuntu chia-full-node@ubuntu chia-wallet@ubuntu chia-data-layer@ubuntu
+   sudo systemctl start cadt@ubuntu chia-full-node@ubuntu chia-wallet@ubuntu chia-data-layer@ubuntu
+   ```
+
 1. Configure CADT with the Datalayer address.
 
    Please use a domain name if possible instead of the IP address. Replace the `curl` part in `()` with your domain name if you can. Otherwise this will automatically use the IP address. **Note this IP address *MUST* be a static IP**.
@@ -86,6 +85,7 @@ System recommendation:
    ```bash
    DATALAYER_FILE_SERVER_URL="http://$(curl -fsS https://ip.chia.net | tr -d '[:space:]')/data/"
    yq -y -i ".APP.DATALAYER_FILE_SERVER_URL = \"$DATALAYER_FILE_SERVER_URL\"" ~/.chia/mainnet/cadt/config.yaml
+   sudo systemctl restart cadt@ubuntu
    ```
 
 1. Set your API key.
@@ -94,13 +94,15 @@ System recommendation:
 
    ```bash
    KEY=$(openssl rand -hex 10) yq -yi ".V1.CADT_API_KEY = \"$KEY\" | .V2.CADT_API_KEY = \"$KEY\"" ~/.chia/mainnet/cadt/config.yaml
+   sudo systemctl restart cadt@ubuntu
    ```
 
-1. Start and enable Chia, CADT, and Nginx.
+1. Use testnet for development work (skip if this is your production setup).
 
    ```bash
-   sudo systemctl enable nginx cadt@ubuntu chia-full-node@ubuntu chia-wallet@ubuntu chia-data-layer@ubuntu
-   sudo systemctl start cadt@ubuntu chia-full-node@ubuntu chia-wallet@ubuntu chia-data-layer@ubuntu
+   chia-tools network switch testneta
+   yq -y -i '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
+   sudo systemctl restart cadt@ubuntu chia-full-node@ubuntu chia-wallet@ubuntu chia-data-layer@ubuntu
    ```
 
 1. Fund your Chia wallet (mainnet only).
