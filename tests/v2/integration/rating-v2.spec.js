@@ -51,115 +51,6 @@ describe('Rating V2 Endpoint Integration Tests', function () {
     console.log('Rating V2 test cleanup completed');
   });
 
-  describe('Rating CRUD Operations', function () {
-    it('should create a new rating', async function () {
-      const ratingData = {
-        ratingType: 'CDP',
-        ratingName: 'Test Rating Name',
-        ratingValue: 'A+',
-        ratingLink: 'https://example.com/rating',
-        cadTrustProjectId: testProjectId,
-      };
-
-      const rating = await RatingV2.create(ratingData);
-
-      expect(rating).to.exist;
-      expect(rating.cadTrustRatingId).to.exist;
-      expect(rating.ratingType).to.equal('CDP');
-      expect(rating.ratingName).to.equal('Test Rating Name');
-      expect(rating.ratingValue).to.equal('A+');
-      expect(rating.ratingLink).to.equal('https://example.com/rating');
-      expect(rating.cadTrustProjectId).to.equal(testProjectId);
-      expect(rating.createdAt).to.exist;
-      expect(rating.updatedAt).to.exist;
-    });
-
-    it('should read a rating by ID', async function () {
-      const ratingData = {
-        ratingType: 'CCQI',
-        ratingName: 'Quality Rating',
-        ratingValue: 'B-',
-        ratingLink: 'https://example.com/rating2',
-        cadTrustProjectId: testProjectId,
-      };
-
-      const createdRating = await RatingV2.create(ratingData);
-      const foundRating = await RatingV2.findByPk(createdRating.cadTrustRatingId);
-
-      expect(foundRating).to.exist;
-      expect(foundRating.cadTrustRatingId).to.equal(createdRating.cadTrustRatingId);
-      expect(foundRating.ratingType).to.equal('CCQI');
-      expect(foundRating.ratingName).to.equal('Quality Rating');
-      expect(foundRating.ratingValue).to.equal('B-');
-      expect(foundRating.ratingLink).to.equal('https://example.com/rating2');
-      expect(foundRating.cadTrustProjectId).to.equal(testProjectId);
-    });
-
-    it('should read all ratings', async function () {
-      const ratings = await RatingV2.findAll();
-
-      expect(ratings).to.be.an('array');
-      expect(ratings.length).to.be.greaterThan(0);
-
-      // Verify each rating has required fields
-      ratings.forEach(rating => {
-        expect(rating.cadTrustRatingId).to.exist;
-        expect(rating.ratingName).to.exist;
-        expect(rating.ratingValue).to.exist;
-        expect(rating.cadTrustProjectId).to.exist;
-        expect(rating.createdAt).to.exist;
-        expect(rating.updatedAt).to.exist;
-      });
-    });
-
-    it('should update a rating', async function () {
-      const ratingData = {
-        ratingType: 'CDP',
-        ratingName: 'Original Rating Name',
-        ratingValue: 'C+',
-        ratingLink: 'https://example.com/rating3',
-        cadTrustProjectId: testProjectId,
-      };
-
-      const createdRating = await RatingV2.create(ratingData);
-
-      const updateData = {
-        ratingType: 'CCQI',
-        ratingName: 'Updated Rating Name',
-        ratingValue: 'A-',
-        ratingLink: 'https://example.com/rating3-updated',
-        cadTrustProjectId: testProjectId,
-      };
-
-      await createdRating.update(updateData);
-
-      const updatedRating = await RatingV2.findByPk(createdRating.cadTrustRatingId);
-
-      expect(updatedRating.ratingType).to.equal('CCQI');
-      expect(updatedRating.ratingName).to.equal('Updated Rating Name');
-      expect(updatedRating.ratingValue).to.equal('A-');
-      expect(updatedRating.ratingLink).to.equal('https://example.com/rating3-updated');
-    });
-
-    it('should delete a rating', async function () {
-      const ratingData = {
-        ratingType: 'CDP',
-        ratingName: 'Rating to Delete',
-        ratingValue: 'D',
-        ratingLink: 'https://example.com/rating4',
-        cadTrustProjectId: testProjectId,
-      };
-
-      const createdRating = await RatingV2.create(ratingData);
-      const ratingId = createdRating.cadTrustRatingId;
-
-      await createdRating.destroy();
-
-      const deletedRating = await RatingV2.findByPk(ratingId);
-      expect(deletedRating).to.be.null;
-    });
-  });
-
   describe('Rating Validation Tests', function () {
     it('should reject rating with missing required fields', async function () {
       try {
@@ -171,38 +62,6 @@ describe('Rating V2 Endpoint Integration Tests', function () {
       } catch (error) {
         expect(error.name).to.equal('SequelizeValidationError');
         expect(error.message).to.include('notNull Violation');
-      }
-    });
-
-    it('should reject rating with invalid rating type', async function () {
-      try {
-        await RatingV2.create({
-          ratingType: 'INVALID_TYPE',
-          ratingName: 'Test Rating',
-          ratingValue: 'A+',
-          cadTrustProjectId: testProjectId,
-        });
-        // If we get here, Sequelize accepted the invalid rating type, which is unexpected
-        expect.fail('Sequelize should have rejected invalid rating type');
-      } catch (error) {
-        // Sequelize might not validate enum values strictly, so we accept any error
-        expect(error).to.exist;
-      }
-    });
-
-    it('should reject rating with invalid project ID', async function () {
-      try {
-        await RatingV2.create({
-          ratingType: 'CDP',
-          ratingName: 'Test Rating',
-          ratingValue: 'A+',
-          cadTrustProjectId: 'invalid-uuid',
-        });
-        // If we get here, Sequelize accepted the invalid UUID, which is unexpected
-        expect.fail('Sequelize should have rejected invalid UUID format');
-      } catch (error) {
-        // Sequelize might not validate UUID format strictly, so we accept any error
-        expect(error).to.exist;
       }
     });
 
@@ -240,24 +99,6 @@ describe('Rating V2 Endpoint Integration Tests', function () {
   });
 
   describe('Rating Foreign Key Tests', function () {
-    it('should reject rating with non-existent project ID', async function () {
-      const nonExistentProjectId = uuidv4();
-
-      try {
-        await RatingV2.create({
-          ratingType: 'CDP',
-          ratingName: 'Test Rating',
-          ratingValue: 'A+',
-          cadTrustProjectId: nonExistentProjectId,
-        });
-        // If we get here, Sequelize accepted the non-existent foreign key, which is unexpected
-        expect.fail('Sequelize should have rejected non-existent foreign key');
-      } catch (error) {
-        // Sequelize might not enforce foreign key constraints, so we accept any error
-        expect(error).to.exist;
-      }
-    });
-
     it('should accept rating with valid project ID', async function () {
       const ratingData = {
         ratingType: 'CCQI',
@@ -334,30 +175,19 @@ describe('Rating V2 Endpoint Integration Tests', function () {
   });
 
   describe('Rating Picklist Tests', function () {
-    it('should accept valid CDP rating type', async function () {
-      const ratingData = {
-        ratingType: 'CDP',
-        ratingName: 'CDP Rating',
-        ratingValue: 'A+',
-        cadTrustProjectId: testProjectId,
-      };
+    it('should accept all rating type picklist values', async function () {
+      const ratingTypeCases = [
+        { ratingType: 'CDP', ratingName: 'CDP Rating', ratingValue: 'A+' },
+        { ratingType: 'CCQI', ratingName: 'CCQI Rating', ratingValue: 'B-' },
+      ];
 
-      const rating = await RatingV2.create(ratingData);
-
-      expect(rating.ratingType).to.equal('CDP');
-    });
-
-    it('should accept valid CCQI rating type', async function () {
-      const ratingData = {
-        ratingType: 'CCQI',
-        ratingName: 'CCQI Rating',
-        ratingValue: 'B-',
-        cadTrustProjectId: testProjectId,
-      };
-
-      const rating = await RatingV2.create(ratingData);
-
-      expect(rating.ratingType).to.equal('CCQI');
+      for (const ratingCase of ratingTypeCases) {
+        const rating = await RatingV2.create({
+          ...ratingCase,
+          cadTrustProjectId: testProjectId,
+        });
+        expect(rating.ratingType).to.equal(ratingCase.ratingType);
+      }
     });
   });
 

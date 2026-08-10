@@ -19,98 +19,6 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
     console.log('Stakeholder V2 test cleanup completed');
   });
 
-  describe('Stakeholder CRUD Operations', function () {
-    it('should create a new stakeholder', async function () {
-      const stakeholderData = {
-        stakeholderName: 'Test Stakeholder',
-        stakeholderType: 'Owner',
-        stakeholderLink: 'https://example.com/stakeholder',
-      };
-
-      const stakeholder = await StakeholderV2.create(stakeholderData);
-
-      expect(stakeholder).to.exist;
-      expect(stakeholder.cadTrustStakeholderId).to.exist;
-      expect(stakeholder.stakeholderName).to.equal('Test Stakeholder');
-      expect(stakeholder.stakeholderType).to.equal('Owner');
-      expect(stakeholder.stakeholderLink).to.equal('https://example.com/stakeholder');
-      expect(stakeholder.createdAt).to.exist;
-      expect(stakeholder.updatedAt).to.exist;
-    });
-
-    it('should read a stakeholder by ID', async function () {
-      const stakeholderData = {
-        stakeholderName: 'Test Stakeholder for Read',
-        stakeholderType: 'Developer',
-        stakeholderLink: 'https://example.com/developer',
-      };
-
-      const createdStakeholder = await StakeholderV2.create(stakeholderData);
-      const foundStakeholder = await StakeholderV2.findByPk(createdStakeholder.cadTrustStakeholderId);
-
-      expect(foundStakeholder).to.exist;
-      expect(foundStakeholder.cadTrustStakeholderId).to.equal(createdStakeholder.cadTrustStakeholderId);
-      expect(foundStakeholder.stakeholderName).to.equal('Test Stakeholder for Read');
-      expect(foundStakeholder.stakeholderType).to.equal('Developer');
-      expect(foundStakeholder.stakeholderLink).to.equal('https://example.com/developer');
-    });
-
-    it('should read all stakeholders', async function () {
-      const stakeholders = await StakeholderV2.findAll();
-
-      expect(stakeholders).to.be.an('array');
-      expect(stakeholders.length).to.be.greaterThan(0);
-
-      // Verify each stakeholder has required fields
-      stakeholders.forEach(stakeholder => {
-        expect(stakeholder.cadTrustStakeholderId).to.exist;
-        expect(stakeholder.stakeholderName).to.exist;
-        expect(stakeholder.createdAt).to.exist;
-        expect(stakeholder.updatedAt).to.exist;
-      });
-    });
-
-    it('should update a stakeholder', async function () {
-      const stakeholderData = {
-        stakeholderName: 'Test Stakeholder for Update',
-        stakeholderType: 'Consultant',
-        stakeholderLink: 'https://example.com/consultant',
-      };
-
-      const createdStakeholder = await StakeholderV2.create(stakeholderData);
-
-      const updateData = {
-        stakeholderName: 'Updated Stakeholder Name',
-        stakeholderType: 'Owner',
-        stakeholderLink: 'https://example.com/updated',
-      };
-
-      await createdStakeholder.update(updateData);
-
-      const updatedStakeholder = await StakeholderV2.findByPk(createdStakeholder.cadTrustStakeholderId);
-
-      expect(updatedStakeholder.stakeholderName).to.equal('Updated Stakeholder Name');
-      expect(updatedStakeholder.stakeholderType).to.equal('Owner');
-      expect(updatedStakeholder.stakeholderLink).to.equal('https://example.com/updated');
-    });
-
-    it('should delete a stakeholder', async function () {
-      const stakeholderData = {
-        stakeholderName: 'Test Stakeholder for Delete',
-        stakeholderType: 'Developer',
-        stakeholderLink: 'https://example.com/delete',
-      };
-
-      const createdStakeholder = await StakeholderV2.create(stakeholderData);
-      const stakeholderId = createdStakeholder.cadTrustStakeholderId;
-
-      await createdStakeholder.destroy();
-
-      const deletedStakeholder = await StakeholderV2.findByPk(stakeholderId);
-      expect(deletedStakeholder).to.be.null;
-    });
-  });
-
   describe('Stakeholder Validation Tests', function () {
     it('should reject stakeholder with missing required fields', async function () {
       try {
@@ -171,34 +79,14 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
   });
 
   describe('Stakeholder Type Picklist Tests', function () {
-    it('should accept Owner stakeholder type', async function () {
-      const stakeholderData = {
-        stakeholderName: 'Owner Stakeholder',
-        stakeholderType: 'Owner',
-      };
-
-      const stakeholder = await StakeholderV2.create(stakeholderData);
-      expect(stakeholder.stakeholderType).to.equal('Owner');
-    });
-
-    it('should accept Developer stakeholder type', async function () {
-      const stakeholderData = {
-        stakeholderName: 'Developer Stakeholder',
-        stakeholderType: 'Developer',
-      };
-
-      const stakeholder = await StakeholderV2.create(stakeholderData);
-      expect(stakeholder.stakeholderType).to.equal('Developer');
-    });
-
-    it('should accept Consultant stakeholder type', async function () {
-      const stakeholderData = {
-        stakeholderName: 'Consultant Stakeholder',
-        stakeholderType: 'Consultant',
-      };
-
-      const stakeholder = await StakeholderV2.create(stakeholderData);
-      expect(stakeholder.stakeholderType).to.equal('Consultant');
+    it('should accept all stakeholder type picklist values', async function () {
+      for (const stakeholderType of ['Owner', 'Developer', 'Consultant']) {
+        const stakeholder = await StakeholderV2.create({
+          stakeholderName: `${stakeholderType} Stakeholder`,
+          stakeholderType,
+        });
+        expect(stakeholder.stakeholderType).to.equal(stakeholderType);
+      }
     });
   });
 

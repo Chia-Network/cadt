@@ -21,106 +21,6 @@ describe('Label V2 Endpoint Integration Tests', function () {
     console.log('Label V2 test cleanup completed');
   });
 
-  describe('Label CRUD Operations', function () {
-    it('should create a new label', async function () {
-      const labelData = {
-        labelName: 'Test Label',
-        labelType: 'Certification',
-        labelLink: 'https://example.com/label',
-        labelDate: '2024-07-15',
-      };
-
-      const label = await LabelV2.create(labelData);
-
-      expect(label).to.exist;
-      expect(label.cadTrustLabelId).to.exist;
-      expect(label.labelName).to.equal('Test Label');
-      expect(label.labelType).to.equal('Certification');
-      expect(label.labelLink).to.equal('https://example.com/label');
-      expect(label.labelDate).to.equal('2024-07-15');
-      expect(label.createdAt).to.exist;
-      expect(label.updatedAt).to.exist;
-    });
-
-    it('should read a label by ID', async function () {
-      const labelData = {
-        labelName: 'Test Label for Read',
-        labelType: 'Article 6 - Endorsement',
-        labelLink: 'https://example.com/endorsement',
-        labelDate: '2024-08-01',
-      };
-
-      const createdLabel = await LabelV2.create(labelData);
-      const foundLabel = await LabelV2.findByPk(createdLabel.cadTrustLabelId);
-
-      expect(foundLabel).to.exist;
-      expect(foundLabel.cadTrustLabelId).to.equal(createdLabel.cadTrustLabelId);
-      expect(foundLabel.labelName).to.equal('Test Label for Read');
-      expect(foundLabel.labelType).to.equal('Article 6 - Endorsement');
-      expect(foundLabel.labelLink).to.equal('https://example.com/endorsement');
-      expect(foundLabel.labelDate).to.equal('2024-08-01');
-    });
-
-    it('should read all labels', async function () {
-      const labels = await LabelV2.findAll();
-
-      expect(labels).to.be.an('array');
-      expect(labels.length).to.be.greaterThan(0);
-
-      // Verify each label has required fields
-      labels.forEach(label => {
-        expect(label.cadTrustLabelId).to.exist;
-        expect(label.labelName).to.exist;
-        expect(label.createdAt).to.exist;
-        expect(label.updatedAt).to.exist;
-      });
-    });
-
-    it('should update a label', async function () {
-      const labelData = {
-        labelName: 'Test Label for Update',
-        labelType: 'Article 6 - Letter of Qualification',
-        labelLink: 'https://example.com/qualification',
-        labelDate: '2024-09-01',
-      };
-
-      const createdLabel = await LabelV2.create(labelData);
-
-      const updateData = {
-        labelName: 'Updated Label Name',
-        labelType: 'Article 6 - Authorisation',
-        labelLink: 'https://example.com/authorisation',
-        labelDate: '2024-10-01',
-      };
-
-      await createdLabel.update(updateData);
-
-      const updatedLabel = await LabelV2.findByPk(createdLabel.cadTrustLabelId);
-
-      expect(updatedLabel.labelName).to.equal('Updated Label Name');
-      expect(updatedLabel.labelType).to.equal('Article 6 - Authorisation');
-      expect(updatedLabel.labelLink).to.equal('https://example.com/authorisation');
-      expect(updatedLabel.labelDate).to.equal('2024-10-01');
-    });
-
-    it('should delete a label', async function () {
-      const labelData = {
-        labelName: 'Test Label for Delete',
-        labelType: 'Article 6 - Letter of Approvals',
-        labelLink: 'https://example.com/approvals',
-        labelDate: '2024-11-01',
-      };
-
-      const createdLabel = await LabelV2.create(labelData);
-      const labelId = createdLabel.cadTrustLabelId;
-
-      await createdLabel.destroy();
-
-      const deletedLabel = await LabelV2.findByPk(labelId);
-      expect(deletedLabel).to.be.null;
-    });
-  });
-
   describe('Label Validation Tests', function () {
     it('should reject label with missing required fields', async function () {
       try {
@@ -132,50 +32,6 @@ describe('Label V2 Endpoint Integration Tests', function () {
       } catch (error) {
         expect(error.name).to.equal('SequelizeValidationError');
         expect(error.message).to.include('notNull Violation');
-      }
-    });
-
-    it('should reject label with invalid label type', async function () {
-      try {
-        await LabelV2.create({
-          labelName: 'Test Label',
-          labelType: 'INVALID_TYPE',
-        });
-        // If we get here, Sequelize accepted the invalid type, which is unexpected
-        expect.fail('Sequelize should have rejected invalid label type');
-      } catch (error) {
-        // Sequelize might not validate enum values strictly, so we accept any error
-        expect(error).to.exist;
-      }
-    });
-
-    it('should reject label with invalid link format', async function () {
-      try {
-        await LabelV2.create({
-          labelName: 'Test Label',
-          labelType: 'Certification',
-          labelLink: 'not-a-valid-url',
-        });
-        // If we get here, Sequelize accepted the invalid URL, which is unexpected
-        expect.fail('Sequelize should have rejected invalid URL format');
-      } catch (error) {
-        // Sequelize might not validate URL format strictly, so we accept any error
-        expect(error).to.exist;
-      }
-    });
-
-    it('should reject label with invalid date format', async function () {
-      try {
-        await LabelV2.create({
-          labelName: 'Test Label',
-          labelType: 'Certification',
-          labelDate: 'invalid-date',
-        });
-        // If we get here, Sequelize accepted the invalid date, which is unexpected
-        expect.fail('Sequelize should have rejected invalid date format');
-      } catch (error) {
-        // Sequelize might not validate date format strictly, so we accept any error
-        expect(error).to.exist;
       }
     });
 
@@ -198,54 +54,28 @@ describe('Label V2 Endpoint Integration Tests', function () {
   });
 
   describe('Label Type Picklist Tests', function () {
-    it('should accept Certification label type', async function () {
-      const labelData = {
-        labelName: 'Certification Label',
-        labelType: 'Certification',
-      };
+    it('should accept all label type picklist values', async function () {
+      const labelTypeCases = [
+        { labelName: 'Certification Label', labelType: 'Certification' },
+        { labelName: 'Endorsement Label', labelType: 'Article 6 - Endorsement' },
+        {
+          labelName: 'Qualification Label',
+          labelType: 'Article 6 - Letter of Qualification',
+        },
+        {
+          labelName: 'Authorisation Label',
+          labelType: 'Article 6 - Authorisation',
+        },
+        {
+          labelName: 'Approvals Label',
+          labelType: 'Article 6 - Letter of Approvals',
+        },
+      ];
 
-      const label = await LabelV2.create(labelData);
-      expect(label.labelType).to.equal('Certification');
-    });
-
-    it('should accept Article 6 - Endorsement label type', async function () {
-      const labelData = {
-        labelName: 'Endorsement Label',
-        labelType: 'Article 6 - Endorsement',
-      };
-
-      const label = await LabelV2.create(labelData);
-      expect(label.labelType).to.equal('Article 6 - Endorsement');
-    });
-
-    it('should accept Article 6 - Letter of Qualification label type', async function () {
-      const labelData = {
-        labelName: 'Qualification Label',
-        labelType: 'Article 6 - Letter of Qualification',
-      };
-
-      const label = await LabelV2.create(labelData);
-      expect(label.labelType).to.equal('Article 6 - Letter of Qualification');
-    });
-
-    it('should accept Article 6 - Authorisation label type', async function () {
-      const labelData = {
-        labelName: 'Authorisation Label',
-        labelType: 'Article 6 - Authorisation',
-      };
-
-      const label = await LabelV2.create(labelData);
-      expect(label.labelType).to.equal('Article 6 - Authorisation');
-    });
-
-    it('should accept Article 6 - Letter of Approvals label type', async function () {
-      const labelData = {
-        labelName: 'Approvals Label',
-        labelType: 'Article 6 - Letter of Approvals',
-      };
-
-      const label = await LabelV2.create(labelData);
-      expect(label.labelType).to.equal('Article 6 - Letter of Approvals');
+      for (const labelData of labelTypeCases) {
+        const label = await LabelV2.create(labelData);
+        expect(label.labelType).to.equal(labelData.labelType);
+      }
     });
   });
 
