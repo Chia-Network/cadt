@@ -6,27 +6,25 @@ import TaskManager from '../../../src/tasks/index.js';
 import { getConfig, getConfigV2 } from '../../../src/utils/config-loader.js';
 
 /**
- * Phase 17.1: AuditV2 Model Methods Tests
+ * AuditV2 Model Methods Tests
  *
- * Tests for AuditV2 model methods: findAll, findConflicts, resetToGeneration, resetToDate
+ * Tests for AuditV2 model methods that exercise model-only logic not
+ * reachable through the HTTP layer: resetToGeneration across orgs,
+ * resetToDate with home-org exclusion.
  */
-describe('Phase 17.1: AuditV2 Model Methods', function () {
+describe('AuditV2 Model Methods', function () {
   this.timeout(30000);
 
   let testOrgUid;
 
   before(async function () {
-    console.log('Setting up V2 test environment...');
     await prepareV2Db();
 
-    // Stop background tasks to prevent interference with audit record counts
     TaskManager.stopAll();
 
-    // Clean up any existing data
     await AuditV2.destroy({ where: {} });
     await OrganizationsV2.destroy({ where: {} });
 
-    // Create test home organization
     const homeOrg = await createV2TestHomeOrg();
     testOrgUid = homeOrg.org_uid;
   });
@@ -38,306 +36,7 @@ describe('Phase 17.1: AuditV2 Model Methods', function () {
   });
 
   beforeEach(async function () {
-    // Clean up audit records before each test
     await AuditV2.destroy({ where: {} });
-  });
-
-  describe('findAll', function () {
-    it('should return result with expected shape', async function () {
-      const result = await AuditV2.findAuditHistory(testOrgUid, 'DESC', 10, 1);
-
-      expect(result).to.have.property('rows');
-      expect(result).to.have.property('count');
-      expect(result.rows).to.be.an('array');
-      expect(result.count).to.be.a('number');
-    });
-
-    it('should return audit records with pagination', async function () {
-      // Snapshot baseline — background sync can insert audit records for testOrgUid
-      const baseline = await AuditV2.findAuditHistory(testOrgUid, 'DESC', 1000, 1);
-      const baselineCount = baseline.count;
-
-      // Use timestamps far in the future so test records always sort last/first
-      const futureTs = '9999999991';
-      await AuditV2.bulkCreate([
-        {
-          org_uid: testOrgUid,
-          registry_id: 'test-registry-1',
-          root_hash: 'pagination-hash1',
-          type: 'insert',
-          change: '{"test": "data1"}',
-          table: 'project',
-          onchain_confirmation_time_stamp: futureTs,
-          generation: 9901,
-        },
-        {
-          org_uid: testOrgUid,
-          registry_id: 'test-registry-1',
-          root_hash: 'pagination-hash2',
-          type: 'update',
-          change: '{"test": "data2"}',
-          table: 'project',
-          onchain_confirmation_time_stamp: (parseInt(futureTs) + 1).toString(),
-          generation: 9902,
-        },
-        {
-          org_uid: testOrgUid,
-          registry_id: 'test-registry-1',
-          root_hash: 'pagination-hash3',
-          type: 'delete',
-          change: '{"test": "data3"}',
-          table: 'project',
-          onchain_confirmation_time_stamp: (parseInt(futureTs) + 2).toString(),
-          generation: 9903,
-        },
-      ]);
-
-      const result = await AuditV2.findAuditHistory(testOrgUid, 'DESC', 2, 1);
-
-      expect(result.count).to.equal(baselineCount + 3);
-      expect(result.rows).to.have.length(2);
-      // DESC — our future-timestamped records are the most recent
-      expect(result.rows[0].generation).to.equal(9903);
-      expect(result.rows[1].generation).to.equal(9902);
-    });
-
-    it('should return audit records ordered ASC', async function () {
-      const baseline = await AuditV2.findAuditHistory(testOrgUid, 'ASC', 1000, 1);
-      const baselineCount = baseline.count;
-
-      const futureTs = '9999999991';
-      await AuditV2.bulkCreate([
-        {
-          org_uid: testOrgUid,
-          registry_id: 'test-registry-1',
-          root_hash: 'asc-hash1',
-          type: 'insert',
-          change: '{"test": "data1"}',
-          table: 'project',
-          onchain_confirmation_time_stamp: futureTs,
-          generation: 9901,
-        },
-        {
-          org_uid: testOrgUid,
-          registry_id: 'test-registry-1',
-          root_hash: 'asc-hash2',
-          type: 'update',
-          change: '{"test": "data2"}',
-          table: 'project',
-          onchain_confirmation_time_stamp: (parseInt(futureTs) + 1).toString(),
-          generation: 9902,
-        },
-      ]);
-
-      const result = await AuditV2.findAuditHistory(testOrgUid, 'ASC', 1000, 1);
-
-      expect(result.count).to.equal(baselineCount + 2);
-      // Verify our test records appear in ASC order at the end
-      const testRows = result.rows.filter((r) => r.root_hash.startsWith('asc-'));
-      expect(testRows).to.have.length(2);
-      expect(testRows[0].generation).to.equal(9901);
-      expect(testRows[1].generation).to.equal(9902);
-    });
-
-    it('should filter by orgUid', async function () {
-      const baseline = await AuditV2.findAuditHistory(testOrgUid, 'DESC', 1000, 1);
-      const baselineCount = baseline.count;
-
-      const otherOrg = await OrganizationsV2.create({
-        org_uid: 'other-org-uid',
-        name: 'Other Org',
-        registry_id: 'other-registry',
-        is_home: false,
-        subscribed: true,
-      });
-
-      const futureTs = '9999999991';
-      await AuditV2.bulkCreate([
-        {
-          org_uid: testOrgUid,
-          registry_id: 'test-registry-1',
-          root_hash: 'filter-hash1',
-          type: 'insert',
-          change: '{"test": "data1"}',
-          table: 'project',
-          onchain_confirmation_time_stamp: futureTs,
-          generation: 9901,
-        },
-        {
-          org_uid: otherOrg.org_uid,
-          registry_id: 'other-registry',
-          root_hash: 'filter-hash2',
-          type: 'insert',
-          change: '{"test": "data2"}',
-          table: 'project',
-          onchain_confirmation_time_stamp: (parseInt(futureTs) + 1).toString(),
-          generation: 9901,
-        },
-      ]);
-
-      const result = await AuditV2.findAuditHistory(testOrgUid, 'DESC', 1000, 1);
-
-      // Only one new record for testOrgUid; the other-org record is excluded
-      expect(result.count).to.equal(baselineCount + 1);
-      expect(result.rows.every((r) => r.org_uid === testOrgUid)).to.be.true;
-    });
-
-    it('should throw error for invalid orgUid', async function () {
-      try {
-        await AuditV2.findAuditHistory('invalid-org-uid', 'DESC', 10, 1);
-        expect.fail('Should have thrown an error');
-      } catch (error) {
-        expect(error.message).to.include('is not in the list of subscribed organizations');
-      }
-    });
-
-    it('should work without pagination parameters', async function () {
-      const baseline = await AuditV2.findAuditHistory(testOrgUid);
-      const baselineCount = baseline.count;
-
-      const futureTs = '9999999991';
-      await AuditV2.bulkCreate([
-        {
-          org_uid: testOrgUid,
-          registry_id: 'test-registry-1',
-          root_hash: 'nopag-hash1',
-          type: 'insert',
-          change: '{"test": "data1"}',
-          table: 'project',
-          onchain_confirmation_time_stamp: futureTs,
-          generation: 9901,
-        },
-      ]);
-
-      const result = await AuditV2.findAuditHistory(testOrgUid);
-
-      expect(result.count).to.equal(baselineCount + 1);
-      expect(result.rows.length).to.equal(baselineCount + 1);
-    });
-
-    it('should throw error for invalid limit value (too large)', async function () {
-      try {
-        await AuditV2.findAuditHistory(testOrgUid, 'DESC', 1001, 1);
-        expect.fail('Should have thrown an error');
-      } catch (error) {
-        expect(error.message).to.include('Invalid limit value');
-      }
-    });
-
-    it('should throw error for invalid limit value (negative)', async function () {
-      try {
-        await AuditV2.findAuditHistory(testOrgUid, 'DESC', -1, 1);
-        expect.fail('Should have thrown an error');
-      } catch (error) {
-        expect(error.message).to.include('Invalid limit value');
-      }
-    });
-
-    it('should throw error for invalid limit value (non-numeric)', async function () {
-      try {
-        await AuditV2.findAuditHistory(testOrgUid, 'DESC', 'not-a-number', 1);
-        expect.fail('Should have thrown an error');
-      } catch (error) {
-        expect(error.message).to.include('Invalid limit value');
-      }
-    });
-
-    it('should throw error for invalid page value (too large)', async function () {
-      try {
-        await AuditV2.findAuditHistory(testOrgUid, 'DESC', 10, 100001);
-        expect.fail('Should have thrown an error');
-      } catch (error) {
-        expect(error.message).to.include('Invalid page value');
-      }
-    });
-
-    it('should throw error for invalid page value (negative)', async function () {
-      try {
-        await AuditV2.findAuditHistory(testOrgUid, 'DESC', 10, -1);
-        expect.fail('Should have thrown an error');
-      } catch (error) {
-        expect(error.message).to.include('Invalid page value');
-      }
-    });
-
-    it('should throw error for invalid page value (non-numeric)', async function () {
-      try {
-        await AuditV2.findAuditHistory(testOrgUid, 'DESC', 10, 'not-a-number');
-        expect.fail('Should have thrown an error');
-      } catch (error) {
-        expect(error.message).to.include('Invalid page value');
-      }
-    });
-
-    it('should accept valid limit and page at maximum bounds', async function () {
-      const baseline = await AuditV2.findAuditHistory(testOrgUid, 'DESC', 1000, 1);
-      const baselineCount = baseline.count;
-
-      const futureTs = '9999999991';
-      await AuditV2.bulkCreate([
-        {
-          org_uid: testOrgUid,
-          registry_id: 'test-registry-1',
-          root_hash: 'bounds-hash1',
-          type: 'insert',
-          change: '{"test": "data1"}',
-          table: 'project',
-          onchain_confirmation_time_stamp: futureTs,
-          generation: 9901,
-        },
-      ]);
-
-      const result = await AuditV2.findAuditHistory(testOrgUid, 'DESC', 1000, 1);
-      expect(result.count).to.equal(baselineCount + 1);
-    });
-
-    it('should default to DESC for invalid order value', async function () {
-      const futureTs = '9999999991';
-      await AuditV2.bulkCreate([
-        {
-          org_uid: testOrgUid,
-          registry_id: 'test-registry-1',
-          root_hash: 'order-hash1',
-          type: 'insert',
-          change: '{"test": "data1"}',
-          table: 'project',
-          onchain_confirmation_time_stamp: futureTs,
-          generation: 9901,
-        },
-        {
-          org_uid: testOrgUid,
-          registry_id: 'test-registry-1',
-          root_hash: 'order-hash2',
-          type: 'update',
-          change: '{"test": "data2"}',
-          table: 'project',
-          onchain_confirmation_time_stamp: (parseInt(futureTs) + 1).toString(),
-          generation: 9902,
-        },
-      ]);
-
-      // Invalid order should default to DESC — our future-timestamped records come first
-      const result = await AuditV2.findAuditHistory(testOrgUid, 'INVALID', 1000, 1);
-      const testRows = result.rows.filter((r) => r.root_hash.startsWith('order-'));
-      expect(testRows).to.have.length(2);
-      // DESC: 9902 before 9901
-      expect(testRows[0].generation).to.equal(9902);
-      expect(testRows[1].generation).to.equal(9901);
-    });
-  });
-
-  describe('findConflicts', function () {
-    it('should return empty array (placeholder implementation)', async function () {
-      const result = await AuditV2.findConflicts(testOrgUid);
-
-      expect(result).to.be.an('array').that.is.empty;
-    });
-
-    it('should work without orgUid parameter', async function () {
-      const result = await AuditV2.findConflicts();
-
-      expect(result).to.be.an('array').that.is.empty;
-    });
   });
 
   describe('resetToGeneration', function () {

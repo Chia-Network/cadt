@@ -331,3 +331,45 @@ describe('GovernanceV2.sync subscribe-first ordering', function () {
     );
   });
 });
+
+describe('GovernanceV2.sync cache preservation (simulator mode)', function () {
+  this.timeout(10000);
+
+  before(async function () {
+    await prepareDb();
+    await prepareV2Db();
+    TaskManager.stopAll();
+  });
+
+  afterEach(async function () {
+    await GovernanceV2.destroy({ where: {} });
+  });
+
+  it('should not remove previously cached orgList when only pickList is written', async function () {
+    await GovernanceV2.upsert({
+      meta_key: 'orgList',
+      meta_value: JSON.stringify({ orgs: ['existing-org'] }),
+      confirmed: true,
+    });
+
+    await GovernanceV2.sync();
+
+    const orgList = await GovernanceV2.findOne({ where: { meta_key: 'orgList' } });
+    expect(orgList).to.exist;
+    expect(JSON.parse(orgList.meta_value)).to.deep.equal({ orgs: ['existing-org'] });
+  });
+
+  it('should not remove previously cached glossary when only pickList is written', async function () {
+    await GovernanceV2.upsert({
+      meta_key: 'glossary',
+      meta_value: JSON.stringify({ terms: ['carbon credit'] }),
+      confirmed: true,
+    });
+
+    await GovernanceV2.sync();
+
+    const glossary = await GovernanceV2.findOne({ where: { meta_key: 'glossary' } });
+    expect(glossary).to.exist;
+    expect(JSON.parse(glossary.meta_value)).to.deep.equal({ terms: ['carbon credit'] });
+  });
+});
