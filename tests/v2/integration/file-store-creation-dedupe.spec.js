@@ -5,7 +5,9 @@ import { FilestoreV2, OrganizationsV2 } from '../../../src/models/v2/index.js';
 import { FileStore } from '../../../src/models/file-store/index.js';
 import { Organization } from '../../../src/models/organizations/index.js';
 import datalayer from '../../../src/datalayer/index.js';
-import pendingFileStoreCreations from '../../../src/datalayer/pending-file-store-creations.js';
+import pendingFileStoreCreations, {
+  fileStoreIdsPendingOrgStorePush,
+} from '../../../src/datalayer/pending-file-store-creations.js';
 import { createV2TestHomeOrg } from '../utils/v2-test-helpers.js';
 
 const RETRY_LATER_MESSAGE =
@@ -23,7 +25,7 @@ const deferred = () => {
 
 const waitFor = async (condition, timeoutMs = 5000) => {
   const start = Date.now();
-  while (!condition()) {
+  while (!(await condition())) {
     if (Date.now() - start > timeoutMs) {
       throw new Error('Timed out waiting for condition');
     }
@@ -56,6 +58,7 @@ describe('File store creation dedup', function () {
   beforeEach(async function () {
     sandbox = sinon.createSandbox();
     pendingFileStoreCreations.clear();
+    fileStoreIdsPendingOrgStorePush.clear();
     await OrganizationsV2.update(
       { file_store_subscribed: null },
       { where: { org_uid: testOrgUid } },
@@ -65,6 +68,7 @@ describe('File store creation dedup', function () {
   afterEach(function () {
     sandbox.restore();
     pendingFileStoreCreations.clear();
+    fileStoreIdsPendingOrgStorePush.clear();
   });
 
   describe('v2 model', function () {
@@ -76,9 +80,7 @@ describe('File store creation dedup', function () {
       const createStore = sandbox
         .stub(datalayer, 'createDataLayerStoreWithRetry')
         .resolves('new-store-id');
-      const syncDataLayer = sandbox
-        .stub(datalayer, 'syncDataLayer')
-        .resolves();
+      const syncDataLayer = sandbox.stub(datalayer, 'syncDataLayer').resolves();
 
       await expectRetryLater(() =>
         FilestoreV2.addFileToFileStore('sha-1', 'a.txt', 'dGVzdA=='),
@@ -182,6 +184,203 @@ describe('File store creation dedup', function () {
         ).to.equal(true);
       } finally {
         syncGate.resolve();
+      }
+    });
+
+    it('re-adopts the in-flight id when reconciliation clears the recorded id mid-push', async function () {
+      sandbox
+        .stub(datalayer, 'waitForSpendableCoins')
+        .resolves({ success: true, coinCount: 1 });
+      const createStore = sandbox
+        .stub(datalayer, 'createDataLayerStoreWithRetry')
+        .resolves('race-store-id');
+      const syncGate = deferred();
+      const syncDataLayer = sandbox
+        .stub(datalayer, 'syncDataLayer')
+        .returns(syncGate.promise);
+
+      try {
+        await expectRetryLater(() => FilestoreV2.getFileStoreItem('sha-1'));
+        await waitFor(() => syncDataLayer.callCount === 1);
+
+        // Reconciliation takes the org store as the source of truth, and the
+        // org store has no fileStoreId until the push above lands.
+        await OrganizationsV2.update(
+          { file_store_subscribed: null },
+          { where: { org_uid: testOrgUid } },
+        );
+
+        await expectRetryLater(() => FilestoreV2.getFileStoreItem('sha-1'));
+        await waitFor(async () => {
+          const org = await OrganizationsV2.findOne({
+            where: { org_uid: testOrgUid },
+            raw: true,
+          });
+          return org?.file_store_subscribed === 'race-store-id';
+        });
+
+        // The store was already paid for, so it must be re-adopted rather
+        // than replaced.
+        expect(createStore.callCount).to.equal(1);
+        expect(syncDataLayer.callCount).to.equal(1);
+      } finally {
+        syncGate.resolve();
+      }
+    });
+
+    it('keeps the in-flight id when the org-store push fails, so the paid-for store is not replaced', async function () {
+      sandbox
+        .stub(datalayer, 'waitForSpendableCoins')
+        .resolves({ success: true, coinCount: 1 });
+      const createStore = sandbox
+        .stub(datalayer, 'createDataLayerStoreWithRetry')
+        .resolves('push-failed-store');
+      const syncDataLayer = sandbox
+        .stub(datalayer, 'syncDataLayer')
+        .rejects(new Error('push failed'));
+
+      await expectRetryLater(() => FilestoreV2.getFileStoreItem('sha-1'));
+      await waitFor(() => syncDataLayer.callCount === 1);
+
+      // A failed push means the org store never receives the id, so
+      // reconciliation keeps clearing the recorded one.
+      await OrganizationsV2.update(
+        { file_store_subscribed: null },
+        { where: { org_uid: testOrgUid } },
+      );
+
+      await expectRetryLater(() => FilestoreV2.getFileStoreItem('sha-1'));
+      await waitFor(async () => {
+        const org = await OrganizationsV2.findOne({
+          where: { org_uid: testOrgUid },
+          raw: true,
+        });
+        return org?.file_store_subscribed === 'push-failed-store';
+      });
+
+      expect(createStore.callCount).to.equal(1);
+    });
+
+    it('retries a failed org-store push after re-adopting the paid-for store id', async function () {
+      sandbox
+        .stub(datalayer, 'waitForSpendableCoins')
+        .resolves({ success: true, coinCount: 1 });
+      const createStore = sandbox
+        .stub(datalayer, 'createDataLayerStoreWithRetry')
+        .resolves('retry-push-store');
+      const syncDataLayer = sandbox.stub(datalayer, 'syncDataLayer');
+      syncDataLayer.onFirstCall().rejects(new Error('push failed'));
+      syncDataLayer.resolves();
+
+      await expectRetryLater(() => FilestoreV2.getFileStoreItem('sha-1'));
+      await waitFor(() => syncDataLayer.callCount === 1);
+
+      await OrganizationsV2.update(
+        { file_store_subscribed: null },
+        { where: { org_uid: testOrgUid } },
+      );
+
+      await expectRetryLater(() => FilestoreV2.getFileStoreItem('sha-1'));
+      await waitFor(() => syncDataLayer.callCount === 2);
+
+      expect(createStore.callCount).to.equal(1);
+      expect(
+        syncDataLayer.alwaysCalledWithExactly(testOrgUid, {
+          fileStoreId: 'retry-push-store',
+        }),
+      ).to.equal(true);
+      expect(fileStoreIdsPendingOrgStorePush.has(testOrgUid)).to.equal(false);
+    });
+
+    it('drops the in-flight id on unsubscribe so it cannot be re-adopted', async function () {
+      sandbox
+        .stub(datalayer, 'waitForSpendableCoins')
+        .resolves({ success: true, coinCount: 1 });
+      const createStore = sandbox.stub(
+        datalayer,
+        'createDataLayerStoreWithRetry',
+      );
+      createStore.onFirstCall().resolves('unsubscribed-store');
+      createStore.onSecondCall().resolves('replacement-store');
+      const syncDataLayer = sandbox
+        .stub(datalayer, 'syncDataLayer')
+        .rejects(new Error('push failed'));
+      sandbox.stub(datalayer, 'unsubscribeFromDataLayerStore').resolves();
+
+      await expectRetryLater(() => FilestoreV2.getFileStoreItem('sha-1'));
+      await waitFor(() => syncDataLayer.callCount === 1);
+
+      await FilestoreV2.unsubscribeFromFileStore(testOrgUid);
+
+      await expectRetryLater(() => FilestoreV2.getFileStoreItem('sha-1'));
+      await waitFor(async () => {
+        const org = await OrganizationsV2.findOne({
+          where: { org_uid: testOrgUid },
+          raw: true,
+        });
+        return org?.file_store_subscribed === 'replacement-store';
+      });
+
+      expect(createStore.callCount).to.equal(2);
+    });
+
+    it('drops the in-flight id on unsubscribe after reconciliation clears the recorded id', async function () {
+      sandbox
+        .stub(datalayer, 'waitForSpendableCoins')
+        .resolves({ success: true, coinCount: 1 });
+      const createStore = sandbox.stub(
+        datalayer,
+        'createDataLayerStoreWithRetry',
+      );
+      createStore.onFirstCall().resolves('cleared-before-unsubscribe');
+      createStore.onSecondCall().resolves('replacement-after-cleared');
+      const firstSyncGate = deferred();
+      const secondSyncGate = deferred();
+      const syncDataLayer = sandbox.stub(datalayer, 'syncDataLayer');
+      syncDataLayer.onFirstCall().returns(firstSyncGate.promise);
+      syncDataLayer.onSecondCall().returns(secondSyncGate.promise);
+      const unsubscribeFromDataLayerStore = sandbox
+        .stub(datalayer, 'unsubscribeFromDataLayerStore')
+        .resolves();
+
+      try {
+        await expectRetryLater(() => FilestoreV2.getFileStoreItem('sha-1'));
+        await waitFor(() => syncDataLayer.callCount === 1);
+
+        await OrganizationsV2.update(
+          { file_store_subscribed: null },
+          { where: { org_uid: testOrgUid } },
+        );
+        await FilestoreV2.unsubscribeFromFileStore(testOrgUid);
+
+        expect(
+          unsubscribeFromDataLayerStore.calledWithExactly(
+            'cleared-before-unsubscribe',
+          ),
+        ).to.equal(true);
+        expect(fileStoreIdsPendingOrgStorePush.has(testOrgUid)).to.equal(false);
+
+        await expectRetryLater(() => FilestoreV2.getFileStoreItem('sha-1'));
+        await waitFor(async () => {
+          const org = await OrganizationsV2.findOne({
+            where: { org_uid: testOrgUid },
+            raw: true,
+          });
+          return org?.file_store_subscribed === 'replacement-after-cleared';
+        });
+
+        expect(createStore.callCount).to.equal(2);
+        firstSyncGate.resolve();
+        await waitFor(
+          () =>
+            fileStoreIdsPendingOrgStorePush.get(testOrgUid)?.fileStoreId ===
+            'replacement-after-cleared',
+        );
+        secondSyncGate.resolve();
+        await waitFor(() => !fileStoreIdsPendingOrgStorePush.has(testOrgUid));
+      } finally {
+        firstSyncGate.resolve();
+        secondSyncGate.resolve();
       }
     });
 
@@ -318,9 +517,7 @@ describe('File store creation dedup', function () {
       const createStore = sandbox
         .stub(datalayer, 'createDataLayerStoreWithRetry')
         .resolves('v1-store-id');
-      const syncDataLayer = sandbox
-        .stub(datalayer, 'syncDataLayer')
-        .resolves();
+      const syncDataLayer = sandbox.stub(datalayer, 'syncDataLayer').resolves();
 
       await expectRetryLater(() => FileStore.getFileStoreItem('sha-1'));
       await expectRetryLater(() =>
@@ -392,6 +589,48 @@ describe('File store creation dedup', function () {
 
         expect(createStore.callCount).to.equal(1);
         expect(syncDataLayer.callCount).to.equal(1);
+      } finally {
+        syncGate.resolve();
+      }
+    });
+
+    it('re-adopts the in-flight id when the recorded id is cleared mid-push', async function () {
+      sandbox
+        .stub(Organization, 'getHomeOrg')
+        .resolves({ orgUid: v1OrgUid, fileStoreId: null });
+      // Never reports an id, standing in for a record cleared while the push
+      // that would register the store is still running.
+      sandbox.stub(Organization, 'findOne').resolves(null);
+      const orgUpdate = sandbox.stub(Organization, 'update').resolves([1]);
+
+      sandbox
+        .stub(datalayer, 'waitForSpendableCoins')
+        .resolves({ success: true, coinCount: 1 });
+      const createStore = sandbox
+        .stub(datalayer, 'createDataLayerStoreWithRetry')
+        .resolves('v1-race-store');
+      const syncGate = deferred();
+      const syncDataLayer = sandbox
+        .stub(datalayer, 'syncDataLayer')
+        .returns(syncGate.promise);
+
+      try {
+        await expectRetryLater(() => FileStore.getFileStoreItem('sha-1'));
+        await waitFor(() => syncDataLayer.callCount === 1);
+
+        await expectRetryLater(() => FileStore.getFileStoreItem('sha-1'));
+        await waitFor(() => orgUpdate.callCount === 2);
+
+        // The store was already paid for, so it must be re-adopted rather
+        // than replaced.
+        expect(createStore.callCount).to.equal(1);
+        expect(syncDataLayer.callCount).to.equal(1);
+        expect(
+          orgUpdate.alwaysCalledWithExactly(
+            { fileStoreId: 'v1-race-store' },
+            { where: { orgUid: v1OrgUid } },
+          ),
+        ).to.equal(true);
       } finally {
         syncGate.resolve();
       }
