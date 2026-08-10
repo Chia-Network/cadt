@@ -861,9 +861,9 @@ const pushChangeListToDataLayer = async (
         // A first sighting gets the benefit of the doubt, since a concurrent
         // push to this store may still be between staging its root and creating
         // the transaction that publishes it. Count sightings of this error
-        // rather than reading `attempts`, which sibling branches also advance
-        // and which therefore says nothing about how often this store reported
-        // a pending root. Clearing again after that would only repeat the same
+        // rather than reading `attempts`, which a successful clear refunds and
+        // which therefore says nothing about how often this store reported a
+        // pending root. Clearing again after that would only repeat the same
         // gamble, so a push discards at most one root.
         if (
           pendingRootSightings > 1 &&
@@ -884,24 +884,17 @@ const pushChangeListToDataLayer = async (
         continue;
       }
 
+      // DataLayer rejects a push with a root already pending before it touches
+      // the tree, and the rejected call stages nothing, so this error means the
+      // key is in the committed tree and the desired end state already holds.
+      // No pending root of ours can be responsible, and discarding one that
+      // appeared since would only destroy a concurrent push's changelist.
       if (data.error && data.error.includes('Key already present')) {
-        logger.info('Pending root detected, waiting 5 seconds and retrying');
-        const rootsCleared = await clearPendingRoots(storeId);
-
-        if (rootsCleared) {
-          attempts++;
-          await new Promise((resolve) => setTimeout(resolve, 5000));
-          continue; // Retry
-        } else {
-          // If clearing pending roots didn't help, the key already exists in the datalayer
-          // This can happen when trying to INSERT a record that already exists
-          // Treat this as success since the desired end state (record exists) is already achieved
-          logger.info(
-            `Key already present in datalayer for storeId: ${storeId}. ` +
-              `This indicates the data already exists. Treating as success.`,
-          );
-          return true;
-        }
+        logger.info(
+          `Key already present in datalayer for storeId: ${storeId}. ` +
+            `This indicates the data already exists. Treating as success.`,
+        );
+        return true;
       }
 
       // Handle "no change to tree data" error - this means the changelist wouldn't
