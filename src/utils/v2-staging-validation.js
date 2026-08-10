@@ -4,13 +4,18 @@
  * Shared staging validation for V2 write paths.
  *
  * INVARIANT: every record staged to StagingV2 — regardless of entry path
- * (REST API, XLSX import, CSV import, or any future path) — must pass the
- * same Joi schema, foreign-key existence check, and NOT NULL completeness
- * check that the REST API applies. Staged records become on-chain DataLayer
- * values verbatim, and every subscriber re-ingests them into models with
- * allowNull: false columns; an incomplete record permanently halts sync for
- * all subscribers of the registry. New write paths must call
+ * (REST API, XLSX import, CSV import, or any future path) — is checked
+ * against the same Joi schema, foreign-key existence, and NOT NULL
+ * completeness that the REST API applies. Staged records become on-chain
+ * DataLayer values verbatim, and every subscriber re-ingests them into models
+ * with allowNull: false columns; an incomplete record permanently halts sync
+ * for all subscribers of the registry. New write paths must call
  * validateStagedRecord and add a parity test.
+ *
+ * FK and NOT NULL always run against the whole record. Joi reporting can be
+ * narrowed with `joiFields` for paths that edit a few fields of a record they
+ * did not author — see that option's docs. Paths that build a record from
+ * scratch must not narrow it.
  */
 
 import { locationV2Schema } from '../validations/v2/location-v2.validations.js';
@@ -179,4 +184,44 @@ export async function validateStagedRecord(
   }
 
   return errors;
+}
+
+/**
+ * Validate one row of a CSV batch upload against the REST API rules.
+ *
+ * INSERT rows get full Joi scrutiny: the record is built from the CSV alone,
+ * so it must be as complete as a POST body. UPDATE rows get Joi scoped to the
+ * columns the CSV actually supplies — the batch contract allows sparse rows
+ * merged onto existing records, including ones that predate the current
+ * schemas — while NOT NULL and FK checks always run on the full merged record.
+ *
+ * @param {import('sequelize').Model} modelClass
+ * @param {Object} mergedRecord - full record with camelCase attribute keys
+ * @param {Object} options
+ * @param {'INSERT'|'UPDATE'} options.action
+ * @param {string[]} options.csvFields - attribute names the row is responsible
+ *   for: those its CSV columns supply, plus any the importer derives from them
+ * @returns {Promise<string[]>} array of error messages (empty when valid)
+ */
+export async function validateCsvBatchRecord(
+  modelClass,
+  mergedRecord,
+  { action, csvFields },
+) {
+  // A blank cell means "no value supplied", so it reaches here as null rather
+  // than as an absent key. Drop those before validating instead of handing
+  // null to the schemas, which only some fields accept. The NOT NULL and FK
+  // checks read null and undefined the same way, so this only changes what
+  // Joi sees, and it reports a blank required column as missing rather than as
+  // the wrong type. Validate a copy — callers stage the original.
+  const record = {};
+  for (const [key, value] of Object.entries(mergedRecord)) {
+    if (value !== null && value !== '') {
+      record[key] = value;
+    }
+  }
+
+  return validateStagedRecord(modelClass, record, {
+    joiFields: action === 'INSERT' ? null : csvFields,
+  });
 }

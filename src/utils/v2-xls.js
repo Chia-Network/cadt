@@ -97,14 +97,36 @@ const DATE_TYPE_KEYS = new Set(['DATE', 'DATEONLY']);
 // and the Unix epoch.
 const EXCEL_EPOCH_OFFSET_DAYS = 25569;
 
-// SheetJS (cellDates: true) yields local-midnight Dates, so format with
-// local components. Joi.date() would accept the Date itself, but staging
-// must carry the same JSON string the REST API receives.
+function formatDateOnly(year, month, day) {
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+// SheetJS (cellDates: true) converts a serial to UTC and then rebuilds the
+// Date from those parts in local time, so the local components — not the UTC
+// ones — carry the spreadsheet's calendar date. Joi.date() would accept the
+// Date itself, but staging must carry the same JSON string the REST API
+// receives.
 function formatLocalDateOnly(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  return formatDateOnly(date.getFullYear(), date.getMonth() + 1, date.getDate());
+}
+
+// Serials never carry a timezone, so the conversion is pure UTC arithmetic and
+// the UTC components are read back. Serials whose whole-day part is at or
+// below 60 are shifted by a day because Excel counts a 1900-02-29 that never
+// existed; SheetJS applies the same shift to date cells, so both parsing paths
+// land on the same calendar date for the same serial. The gate reads the whole
+// day so a fractional serial follows the day it belongs to.
+function excelSerialToDateOnly(serial) {
+  const shifted = Math.floor(serial) > 60 ? serial : serial + 1;
+  const date = new Date(Math.round((shifted - EXCEL_EPOCH_OFFSET_DAYS) * 86400 * 1000));
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return formatDateOnly(
+    date.getUTCFullYear(),
+    date.getUTCMonth() + 1,
+    date.getUTCDate(),
+  );
 }
 
 // Convert Date cells to YYYY-MM-DD in place. Must run before transformMetaUid,
@@ -130,14 +152,9 @@ function coerceCellForModel(modelClass, column, value) {
   if (DATE_TYPE_KEYS.has(typeKey)) {
     // A bare number in a date column is an Excel date serial; interpreting it
     // as-is would let Joi.date() treat it as a Unix timestamp and stage a
-    // wrong date. The serial is timezone-less, so convert via UTC. Values
-    // outside Date range fall through so Joi rejects them with row context.
-    const ms = Math.round((value - EXCEL_EPOCH_OFFSET_DAYS) * 86400 * 1000);
-    const date = new Date(ms);
-    if (!Number.isNaN(date.getTime())) {
-      return date.toISOString().slice(0, 10);
-    }
-    return value;
+    // wrong date. Values outside Date range fall through so Joi rejects them
+    // with row context.
+    return excelSerialToDateOnly(value) ?? value;
   }
   if (STRINGISH_TYPE_KEYS.has(typeKey)) {
     return String(value);
@@ -261,6 +278,11 @@ function buildSnakeToCamelMap(modelClass) {
  * name.  Accepts headers in either camelCase or snake_case.  Keys that don't
  * map to any known attribute are left as-is so they can be stripped later.
  *
+ * Blank cells become null. The parser reports a blank cell in a declared
+ * column as '', which would otherwise be staged as an empty string and read
+ * back as a value; null is what "no value supplied" means everywhere else,
+ * and it keeps a cleared field out of IS NOT NULL results downstream.
+ *
  * @param {Object} row
  * @param {import('sequelize').Model} modelClass
  * @returns {Object} row with normalized keys
@@ -270,7 +292,7 @@ export function normalizeCsvHeaders(row, modelClass) {
   const result = {};
   for (const [key, value] of Object.entries(row)) {
     const normalized = snakeToCamel.get(key) || key;
-    result[normalized] = value;
+    result[normalized] = value === '' ? null : value;
   }
   return result;
 }
@@ -356,16 +378,13 @@ export function stripUnknownDbFields(dbRow, modelClass, logger = null) {
 /**
  * Validate that a camelCase row destined for INSERT contains all fields
  * marked `allowNull: false` in the model definition.  Skips fields that
- * are auto-managed (primary key, orgUid, timestamps) and any fields listed
- * in the optional `skipFields` set (e.g. `unitSerialId` when it can be
- * derived from other fields).
+ * are auto-managed (primary key, orgUid, timestamps).
  *
  * @param {Object} row - camelCase row to validate
  * @param {import('sequelize').Model} modelClass
- * @param {Set<string>} [skipFields] - attribute names to skip
  * @returns {string[]} array of missing field names (empty if valid)
  */
-export function validateRequiredFields(row, modelClass, skipFields = new Set()) {
+export function validateRequiredFields(row, modelClass) {
   const autoManaged = new Set([
     modelClass.primaryKeyAttribute,
     'orgUid',
@@ -379,7 +398,7 @@ export function validateRequiredFields(row, modelClass, skipFields = new Set()) 
 
   const missing = [];
   for (const [attrName, meta] of Object.entries(modelClass.rawAttributes)) {
-    if (meta.allowNull === false && !autoManaged.has(attrName) && !skipFields.has(attrName)) {
+    if (meta.allowNull === false && !autoManaged.has(attrName)) {
       const val = row[attrName];
       if (val === undefined || val === null || val === '') {
         missing.push(attrName);
@@ -542,11 +561,9 @@ export async function stageConsolidatedCsvRecord(
   { pendingRows } = {},
 ) {
   // Staged records become on-chain DataLayer values verbatim, and a record
-  // missing a NOT NULL column halts sync for every subscriber, so the exact
-  // record being staged must be complete. This is deliberately NOT NULL-only:
-  // the CSV batch contract allows sparse rows merged onto existing records
-  // (including legacy records that predate the current Joi schemas), and
-  // batchUpload callers already run FK and ownership checks per row.
+  // missing a NOT NULL column halts sync for every subscriber. This is the
+  // last check on the bytes actually being written, independent of whatever
+  // the caller validated on its own copy of the record.
   const missingNotNull = validateRequiredFields(
     toAttributeNames(cleanedRecord, modelClass),
     modelClass,

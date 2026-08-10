@@ -1926,10 +1926,17 @@ describe('V2 Project API - Basic CRUD Tests', function () {
     });
 
     describe('POST /v2/project/batch', function () {
+      // A CSV INSERT row creates a record from the CSV alone, so it has to
+      // satisfy the same Joi schema as POST /v2/project.
+      const INSERT_HEADER =
+        'projectRegistryName,projectId,projectName,projectLink,projectSector,projectType,projectStatus,projectStatusDate,projectUnitMetric,cadTrustProgramId';
+      const insertRow = (projectId, projectName, programId, extra = '') =>
+        `Test Registry,${projectId},${projectName},https://example.com/${projectId},Agriculture,Landfill gas,Listed,2024-01-01,tCO2e,${programId}${extra}`;
+
       it('should batch upload new projects from CSV file (INSERT) with snake_case staging data and counts', async function () {
-        const csvContent = `projectRegistryName,projectId,projectName,projectSector,projectType,projectStatus,projectUnitMetric,cadTrustProgramId
-Test Registry,CSV-001,CSV Test Project 1,Agriculture,Landfill gas,Listed,tCO2e,${testProgram.cadTrustProgramId}
-Test Registry,CSV-002,CSV Test Project 2,Energy,Energy efficiency,Registered,tCO2e,${testProgram.cadTrustProgramId}`;
+        const csvContent = `${INSERT_HEADER}
+${insertRow('CSV-001', 'CSV Test Project 1', testProgram.cadTrustProgramId)}
+${insertRow('CSV-002', 'CSV Test Project 2', testProgram.cadTrustProgramId)}`;
 
         const csvBuffer = Buffer.from(csvContent, 'utf8');
 
@@ -2146,7 +2153,13 @@ ${project.cadTrustProjectId},CSV Updated Name`;
             project_registry_name: 'Staged Registry',
             project_id: 'STAGED-INSERT-001',
             project_name: 'Staged Insert Name',
+            project_link: 'https://example.com/staged-insert-001',
             project_description: 'Staged insert description',
+            project_sector: JSON.stringify(['Agriculture']),
+            project_type: JSON.stringify(['Landfill gas']),
+            project_status: 'Listed',
+            project_status_date: '2024-01-01',
+            project_unit_metric: 'tCO2e',
           }]),
           committed: false,
           failed_commit: false,
@@ -2217,8 +2230,8 @@ ${project.cadTrustProjectId},Should Fail`;
       });
 
       it('should strip unknown/child columns from staged data', async function () {
-        const csvContent = `projectRegistryName,projectId,projectName,locations,estimations,foobar,cadTrustProgramId
-Test Registry,STRIP-001,Strip Test,"[{""country"":""US""}]","[{""count"":100}]",garbage,${testProgram.cadTrustProgramId}`;
+        const csvContent = `${INSERT_HEADER},locations,estimations,foobar
+${insertRow('STRIP-001', 'Strip Test', testProgram.cadTrustProgramId, ',"[{""country"":""US""}]","[{""count"":100}]",garbage')}`;
 
         const csvBuffer = Buffer.from(csvContent, 'utf8');
 
@@ -2242,8 +2255,8 @@ Test Registry,STRIP-001,Strip Test,"[{""country"":""US""}]","[{""count"":100}]",
       });
 
       it('should report error for non-existent cadTrustProgramId (FK check, 400 when all rows fail)', async function () {
-        const csvContent = `projectRegistryName,projectId,projectName,cadTrustProgramId
-Test Registry,FK-001,FK Test,non-existent-program-id`;
+        const csvContent = `${INSERT_HEADER}
+${insertRow('FK-001', 'FK Test', uuidv4())}`;
 
         const csvBuffer = Buffer.from(csvContent, 'utf8');
 
@@ -2272,8 +2285,8 @@ Test Registry,FK-001,FK Test,non-existent-program-id`;
           is_transfer: false,
         });
 
-        const csvContent = `projectRegistryName,projectId,projectName,cadTrustProgramId
-Test Registry,FK-STAGED-001,Uses Staged Program,${stagedProgramId}`;
+        const csvContent = `${INSERT_HEADER}
+${insertRow('FK-STAGED-001', 'Uses Staged Program', stagedProgramId)}`;
         const csvBuffer = Buffer.from(csvContent, 'utf8');
 
         const response = await supertest(app)
@@ -2290,9 +2303,13 @@ Test Registry,FK-STAGED-001,Uses Staged Program,${stagedProgramId}`;
       it('should handle large batch (15+ rows) without race condition', async function () {
         const rows = [];
         for (let i = 1; i <= 15; i++) {
-          rows.push(`Test Registry,RACE-${String(i).padStart(3, '0')},Race Test Project ${i},Agriculture,tCO2e,${testProgram.cadTrustProgramId}`);
+          rows.push(insertRow(
+            `RACE-${String(i).padStart(3, '0')}`,
+            `Race Test Project ${i}`,
+            testProgram.cadTrustProgramId,
+          ));
         }
-        const csvContent = `projectRegistryName,projectId,projectName,projectSector,projectUnitMetric,cadTrustProgramId\n${rows.join('\n')}`;
+        const csvContent = `${INSERT_HEADER}\n${rows.join('\n')}`;
         const csvBuffer = Buffer.from(csvContent, 'utf8');
 
         const response = await supertest(app)
@@ -2315,9 +2332,9 @@ Test Registry,FK-STAGED-001,Uses Staged Program,${stagedProgramId}`;
           orgUid: homeOrgId,
         }));
 
-        const csvContent = `cadTrustProjectId,projectRegistryName,projectId,projectName,cadTrustProgramId
-${existingProject.cadTrustProjectId},Test Registry,MIX-EXISTING,Updated Existing,${testProgram.cadTrustProgramId}
-,Test Registry,MIX-NEW,New Project,${testProgram.cadTrustProgramId}`;
+        const csvContent = `cadTrustProjectId,${INSERT_HEADER}
+${existingProject.cadTrustProjectId},${insertRow('MIX-EXISTING', 'Updated Existing', testProgram.cadTrustProgramId)}
+,${insertRow('MIX-NEW', 'New Project', testProgram.cadTrustProgramId)}`;
 
         const csvBuffer = Buffer.from(csvContent, 'utf8');
 
@@ -2336,8 +2353,8 @@ ${existingProject.cadTrustProjectId},Test Registry,MIX-EXISTING,Updated Existing
       });
 
       it('should accept snake_case CSV headers', async function () {
-        const csvContent = `project_registry_name,project_id,project_name,cad_trust_program_id
-Test Registry,SNAKE-001,Snake Case Test,${testProgram.cadTrustProgramId}`;
+        const csvContent = `project_registry_name,project_id,project_name,project_link,project_sector,project_type,project_status,project_status_date,project_unit_metric,cad_trust_program_id
+Test Registry,SNAKE-001,Snake Case Test,https://example.com/snake-001,Agriculture,Landfill gas,Listed,2024-01-01,tCO2e,${testProgram.cadTrustProgramId}`;
 
         const csvBuffer = Buffer.from(csvContent, 'utf8');
 
@@ -2392,8 +2409,7 @@ Test Registry,REQ-001,${testProgram.cadTrustProgramId}`;
         expect(response.body.success).to.be.false;
         expect(response.body.stagedCount).to.equal(0);
         expect(response.body.errorCount).to.equal(1);
-        expect(response.body.errors[0].error).to.include('Missing required field(s)');
-        expect(response.body.errors[0].error).to.include('projectName');
+        expect(response.body.errors[0].error).to.include('"projectName" is required');
       });
 
       it('should accept UPDATE rows that omit required INSERT fields (merged from DB)', async function () {
@@ -2429,9 +2445,9 @@ ${project.cadTrustProjectId},Listed`;
 
       it('should return partial success with correct counts for mixed valid/invalid rows', async function () {
         // Row 1: valid INSERT, Row 2: bad FK
-        const csvContent = `projectRegistryName,projectId,projectName,cadTrustProgramId
-Test Registry,PARTIAL-001,Valid Project,${testProgram.cadTrustProgramId}
-Test Registry,PARTIAL-002,Invalid FK Project,non-existent-program-id`;
+        const csvContent = `${INSERT_HEADER}
+${insertRow('PARTIAL-001', 'Valid Project', testProgram.cadTrustProgramId)}
+${insertRow('PARTIAL-002', 'Invalid FK Project', uuidv4())}`;
 
         const csvBuffer = Buffer.from(csvContent, 'utf8');
 

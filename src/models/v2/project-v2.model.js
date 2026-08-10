@@ -16,12 +16,10 @@ import {
   normalizeCsvHeaders,
   toDbFieldNames,
   stripUnknownDbFields,
-  validateRequiredFields,
   buildPendingCsvMergeBase,
   stageConsolidatedCsvRecord,
 } from '../../utils/v2-xls.js';
-import { assertRecordExistanceOrStaged } from '../../utils/v2-data-assertions.js';
-import { ProgramV2 } from './program-v2.model.js';
+import { validateCsvBatchRecord } from '../../utils/v2-staging-validation.js';
 import { getDeletedItems } from '../../utils/model-utils.js';
 import { keyValueToChangeList } from '../../utils/datalayer-utils.js';
 import { LocationV2 } from './location-v2.model.js';
@@ -371,7 +369,7 @@ class ProjectV2 extends Model {
    *   1. Normalize snake_case headers → camelCase attribute names
    *   2. Parse array fields (projectType / projectSector)
    *   3. Determine INSERT vs UPDATE, merge with existing record on UPDATE
-   *   4. Validate ownership and FK references
+   *   4. Validate ownership, then apply the shared staging validation
    *   5. Convert to DB field names, strip unknown keys
    *   6. Upsert into StagingV2
    *
@@ -465,27 +463,18 @@ class ProjectV2 extends Model {
             mergedRecord = { ...row };
           }
 
-          // Required-field validation for INSERT rows
-          if (action === 'INSERT') {
-            const missing = validateRequiredFields(mergedRecord, ProjectV2);
-            if (missing.length > 0) {
-              errors.push({ row: rowNum, error: `Missing required field(s): ${missing.join(', ')}` });
-              continue;
-            }
-          }
-
-          // FK existence check for cadTrustProgramId
-          if (mergedRecord.cadTrustProgramId) {
-            try {
-              await assertRecordExistanceOrStaged(
-                ProgramV2,
-                mergedRecord.cadTrustProgramId,
-                `cadTrustProgramId '${mergedRecord.cadTrustProgramId}' does not exist`,
-              );
-            } catch (err) {
-              errors.push({ row: rowNum, error: err.message });
-              continue;
-            }
+          // Same Joi + NOT NULL + FK rules the REST API applies. Validate a
+          // normalized copy: values merged in from the DB or a pending staged
+          // row may hold JSON-array strings the schema expects as arrays.
+          const validationRow = { ...mergedRecord };
+          ProjectV2.parseProjectArrayFields(validationRow);
+          const rowErrors = await validateCsvBatchRecord(ProjectV2, validationRow, {
+            action,
+            csvFields: Object.keys(row),
+          });
+          if (rowErrors.length > 0) {
+            errors.push({ row: rowNum, error: rowErrors.join('; ') });
+            continue;
           }
 
           // Remove timestamps (managed by Sequelize)

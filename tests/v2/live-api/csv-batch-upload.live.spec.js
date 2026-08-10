@@ -214,12 +214,14 @@ describe('CSV Batch Upload Live API Tests', function () {
 
   describe('Step 17: CSV batch insert (projects + units)', function () {
     it('should stage project and unit CSV batch inserts', async function () {
-      const projectCsv = `projectRegistryName,projectId,projectName,cadTrustProgramId
-Test Registry,${projectIdsUnderTest[0]},CSV Batch Live Project 1,${programId}
-Test Registry,${projectIdsUnderTest[1]},CSV Batch Live Project 2,${programId}`;
-      const unitCsv = `unitSerialId,unitStartBlock,unitEndBlock,unitCount,unitType,unitVintageYear,unitStatus,cadTrustIssuanceId
-${unitSerialsUnderTest[0]},100,200,50,Avoidance - nature,2024,Issued,${issuanceId}
-${unitSerialsUnderTest[1]},300,400,60,Reduction - technical,2024,Held,${issuanceId}`;
+      // CSV INSERT rows are held to the same schema as POST /v2/project and
+      // POST /v2/unit, so every required column has to be present.
+      const projectCsv = `projectRegistryName,projectId,projectName,projectLink,projectSector,projectType,projectStatus,projectStatusDate,projectUnitMetric,cadTrustProgramId
+Test Registry,${projectIdsUnderTest[0]},CSV Batch Live Project 1,https://example.com/csv-batch-live-1,Energy demand,Solar,Registered,2024-01-15,tCO2e,${programId}
+Test Registry,${projectIdsUnderTest[1]},CSV Batch Live Project 2,https://example.com/csv-batch-live-2,Energy demand,Solar,Registered,2024-01-15,tCO2e,${programId}`;
+      const unitCsv = `unitSerialId,unitStartBlock,unitEndBlock,unitCount,unitType,unitVintageYear,unitStatus,unitStatusReason,unitMetric,cadTrustIssuanceId
+${unitSerialsUnderTest[0]},100,200,50,Removal - technical,2024,Issued,Test reason,tCO2e,${issuanceId}
+${unitSerialsUnderTest[1]},300,400,60,Removal - technical,2024,Issued,Test reason,tCO2e,${issuanceId}`;
 
       const [projectResponse, unitResponse] = await Promise.all([
         request.post('/v2/project/batch').attach('csv', Buffer.from(projectCsv, 'utf8'), 'projects.csv'),
