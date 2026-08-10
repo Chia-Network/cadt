@@ -274,9 +274,8 @@ describe('pushChangeListToDataLayer - error handling', function () {
 
     const result = await pushChangeListToDataLayer(testStoreId, testChangelist);
 
-    // The key is in the committed tree, so the desired end state already holds.
-    // Any pending root now present belongs to a concurrent push and must
-    // survive: discarding it would destroy that push's changelist.
+    // clear_pending_roots is stubbed to succeed, so a discard would register
+    // here; zero calls pins that the branch returns without attempting one.
     expect(result).to.be.true;
     expect(clearPending.callCount).to.equal(0);
     expect(batchUpdate.callCount).to.equal(1);

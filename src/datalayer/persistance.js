@@ -884,15 +884,16 @@ const pushChangeListToDataLayer = async (
         continue;
       }
 
-      // DataLayer rejects a push with a root already pending before it touches
-      // the tree, and the rejected call stages nothing, so this error means the
-      // key is in the committed tree and the desired end state already holds.
-      // No pending root of ours can be responsible, and discarding one that
-      // appeared since would only destroy a concurrent push's changelist.
+      // A key collision is raised inside DataLayer's writer transaction, and
+      // the pending-root check runs before it, so this error can neither have
+      // staged a root of ours nor have been caused by one. Any root present now
+      // belongs to a concurrent push and would lose its changelist if cleared.
+      // Note the batch is rejected as a unit, so this error does not establish
+      // that the rest of the changelist landed.
       if (data.error && data.error.includes('Key already present')) {
         logger.info(
           `Key already present in datalayer for storeId: ${storeId}. ` +
-            `This indicates the data already exists. Treating as success.`,
+            `Treating as success.`,
         );
         return true;
       }
