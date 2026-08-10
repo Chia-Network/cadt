@@ -3,6 +3,7 @@
 import 'regenerator-runtime/runtime.js';
 import rootRouter, { initializeDatabases } from './routes';
 import http from 'http';
+// DEPRECATED: Socket.IO is legacy and unmaintained; skip in testing/maintenance.
 import { Server } from 'socket.io';
 import { connection } from './websocket';
 import { getConfig } from './utils/config-loader';
@@ -28,6 +29,7 @@ initializeDatabases()
       console.log(`Server listening at http://${bindAddress}:${port}`);
     });
 
+    // DEPRECATED: Socket.IO namespaces — legacy, unmaintained, no longer used.
     const io = new Server(server);
     io.of('/v1/ws').on('connection', connection);
     io.of('/v2/ws').on('connection', connection);

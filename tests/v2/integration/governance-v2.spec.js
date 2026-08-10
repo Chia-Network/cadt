@@ -134,6 +134,29 @@ describe('V2 Governance Model Tests', function () {
       expect(pickListRecord).to.exist;
     });
 
+    it('should not delete unrelated governance keys on partial update', async function () {
+      const bodyId = 'test-governance-body-123';
+
+      await GovernanceV2.upsertGovernanceDownload(bodyId, {
+        orgList: JSON.stringify({ orgs: ['org-a'] }),
+        pickList: JSON.stringify({ items: ['item-1'] }),
+        glossary: JSON.stringify({ terms: ['term-1'] }),
+      });
+
+      await GovernanceV2.upsertGovernanceDownload(bodyId, {
+        orgList: JSON.stringify({ orgs: ['org-b'] }),
+      });
+
+      const pickList = await GovernanceV2.findOne({ where: { meta_key: 'pickList' } });
+      expect(pickList).to.exist;
+
+      const glossary = await GovernanceV2.findOne({ where: { meta_key: 'glossary' } });
+      expect(glossary).to.exist;
+
+      const orgList = await GovernanceV2.findOne({ where: { meta_key: 'orgList' } });
+      expect(JSON.parse(orgList.meta_value)).to.deep.equal({ orgs: ['org-b'] });
+    });
+
     it('should use stub pickList when in simulator mode and pickList is missing', async function () {
       const sourceGovernanceBodyId = 'test-governance-body-123';
       const governanceData = {

@@ -2565,7 +2565,11 @@ CSV headers may use either camelCase attribute names (e.g., `cadTrustProjectId`)
 
 **Update behavior**: When a row includes a `cadTrustProjectId` that matches an existing project, the CSV row is **merged** with the latest pending state for that project — existing DB values plus any already-staged uncommitted edits for the same project. Fields present in the CSV overwrite that merged state; fields absent from the CSV retain their current values. This differs from the REST `PUT` endpoint, which requires all fields.
 
-**Validation**: INSERT rows are validated for required fields (`projectRegistryName`, `projectId`, `projectName`) and foreign key existence (`cadTrustProgramId` must reference an existing or staged program). UPDATE rows skip required-field checks since missing fields are merged from the existing record. Rows that fail validation are skipped and their errors are returned in the response with row numbers. The CSV validation is intentionally more lenient than the REST API — fields like `projectLink` and `projectStatusDate` that are required in the REST schema are optional in CSV batch upload. If **all** rows fail validation, the response returns HTTP 400 with `success: false`.
+**Validation**: INSERT rows must satisfy the same schema as `POST /v2/project` — every required field, picklist value, and format rule — plus foreign key existence (`cadTrustProgramId` must reference an existing or staged program). UPDATE rows are validated only on the columns the CSV supplies, since the remaining fields are merged from the existing record; the merged record still has to satisfy NOT NULL and foreign key checks. Rows that fail validation are skipped and their errors are returned in the response with row numbers. If **all** rows fail validation, the response returns HTTP 400 with `success: false`.
+
+**Blank cells**: A blank cell is staged as `null`, not as an empty string, so declaring a column and leaving it blank on some rows is allowed. On an INSERT row a blank cell in a required column is reported as missing; on an UPDATE row it clears the stored value, unless the column is NOT NULL, in which case the row is rejected.
+
+> **Breaking change**: CSV batch upload previously validated INSERT rows only against NOT NULL database columns, which was more lenient than `POST /v2/project`. INSERT rows now additionally require `projectLink`, `projectSector`, `projectType`, `projectStatus`, `projectStatusDate`, and `projectUnitMetric`. Error strings in `errors[].error` also now come from the shared schema validator, so a missing field reads `"projectName" is required` rather than `Missing required field(s): projectName`. Existing CSV templates that omit any of the newly required columns must be updated. Records already sitting in the staging table as sparse INSERTs will reject further CSV edits until they are committed or discarded.
 
 **Ownership**: UPDATE rows are verified to belong to the home organization. Attempting to update a project owned by another organization will produce an error for that row.
 
@@ -2576,10 +2580,10 @@ CSV headers may use either camelCase attribute names (e.g., `cadTrustProjectId`)
 
 Example CSV content:
 ```csv
-projectRegistryName,projectId,projectName,projectType,projectSector,projectStatus
-VCS,PROJ-001,Solar Farm Project,Solar,Energy,Registered
-VCS,PROJ-002,Multi-Type Project,Solar|Wind,Energy|Agriculture,Listed
-VCS,PROJ-003,JSON Format,"[""Afforestation"",""Reforestation""]","[""Agriculture""]",Validated
+projectRegistryName,projectId,projectName,projectLink,projectType,projectSector,projectStatus,projectStatusDate,projectUnitMetric
+VCS,PROJ-001,Solar Farm Project,https://example.com/proj-001,Solar,Energy demand,Registered,2024-01-01,tCO2e
+VCS,PROJ-002,Multi-Type Project,https://example.com/proj-002,Solar|Wind,Energy demand|Agriculture,Listed,2024-01-01,tCO2e
+VCS,PROJ-003,JSON Format,https://example.com/proj-003,"[""Afforestation"",""Reforestation""]","[""Agriculture""]",Validated,2024-01-01,tCO2e
 ```
 
 Request
@@ -2618,7 +2622,7 @@ Response (failure — no rows staged, HTTP 400)
   "stagedCount": 0,
   "errorCount": 2,
   "errors": [
-    { "row": 2, "error": "Missing required field(s): projectName" },
+    { "row": 2, "error": "\"projectName\" is required" },
     { "row": 3, "error": "cadTrustProgramId 'invalid-id' does not exist" }
   ]
 }
@@ -3932,7 +3936,11 @@ CSV headers may use either camelCase attribute names (e.g., `cadTrustUnitId`) or
 
 **Serial ID derivation**: If `unitSerialId` is not provided but `unitStartBlock` and `unitEndBlock` are, the serial ID is automatically derived as `<unitStartBlock>-<unitEndBlock>`. This also applies to UPDATE rows after merge: if you change one block boundary and omit `unitSerialId`, the serial ID is recomputed from the merged start/end block values.
 
-**Validation**: INSERT rows are validated for required fields (`unitStartBlock`, `unitEndBlock`, `unitVintageYear`, `cadTrustIssuanceId`) and foreign key existence (`cadTrustIssuanceId` must reference an existing or staged issuance). `unitSerialId` is not required if `unitStartBlock` and `unitEndBlock` are provided (it is derived automatically). UPDATE rows skip required-field checks since missing fields are merged from the existing record. Rows that fail validation are skipped and their errors are returned in the response with row numbers. If **all** rows fail validation, the response returns HTTP 400 with `success: false`.
+**Validation**: INSERT rows must satisfy the same schema as `POST /v2/unit` — every required field, picklist value, and format rule — plus foreign key existence (`cadTrustIssuanceId` must reference an existing or staged issuance). `unitSerialId` need not be supplied if `unitStartBlock` and `unitEndBlock` are, since it is derived before validation. UPDATE rows are validated only on the columns the CSV supplies, since the remaining fields are merged from the existing record; the merged record still has to satisfy NOT NULL and foreign key checks. Rows that fail validation are skipped and their errors are returned in the response with row numbers. If **all** rows fail validation, the response returns HTTP 400 with `success: false`.
+
+**Blank cells**: A blank cell is staged as `null`, not as an empty string, so declaring a column and leaving it blank on some rows is allowed. On an INSERT row a blank cell in a required column is reported as missing; on an UPDATE row it clears the stored value, unless the column is NOT NULL, in which case the row is rejected.
+
+> **Breaking change**: CSV batch upload previously validated INSERT rows only against NOT NULL database columns, which was more lenient than `POST /v2/unit`. INSERT rows now additionally require `unitCount`, `unitType`, `unitStatus`, `unitStatusReason`, and `unitMetric`. Error strings in `errors[].error` also now come from the shared schema validator, so a missing field reads `"unitCount" is required` rather than `Missing required field(s): unitCount`. Existing CSV templates that omit any of the newly required columns must be updated. Records already sitting in the staging table as sparse INSERTs will reject further CSV edits until they are committed or discarded.
 
 **Ownership**: UPDATE rows are verified to belong to the home organization. Attempting to update a unit owned by another organization will produce an error for that row.
 
@@ -3972,7 +3980,7 @@ Response (failure — no rows staged, HTTP 400)
   "stagedCount": 0,
   "errorCount": 1,
   "errors": [
-    { "row": 2, "error": "Missing required field(s): unitStartBlock, unitEndBlock" }
+    { "row": 2, "error": "\"unitStartBlock\" is required; \"unitEndBlock\" is required" }
   ]
 }
 ```

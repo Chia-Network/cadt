@@ -46,6 +46,9 @@ jobs:
           docker run -d --name cadt-test \
             -e USE_SIMULATOR=true \
             -e BIND_ADDRESS=0.0.0.0 \
+            -e DEFAULT_FEE=13 \
+            -e DEFAULT_COIN_AMOUNT=7 \
+            -e V1_GOVERNANCE_BODY_ID=12345678 \
             -p 31310:31310 \
             cadt-smoke-test
 
@@ -74,3 +77,31 @@ jobs:
           curl -sf http://localhost:31310/v2/health | jq .
 
           echo "All health checks passed"
+
+          # Numeric env vars must reach config.yaml as YAML numbers (quoted
+          # values make the app concatenate them instead of adding them), while
+          # digit-only values on non-numeric keys must keep their quotes.
+          # Only the asserted keys are printed: config.yaml is where every
+          # secret converges, so it must not be dumped into a public build log.
+          echo "Checking config.yaml value types..."
+
+          assert_config_line() {
+            local pattern=$1 description=$2
+            if ! docker exec cadt-test \
+              grep -qE "$pattern" /root/.chia/mainnet/cadt/config.yaml; then
+              echo "FAIL: $description"
+              docker exec cadt-test \
+                grep -nE 'DEFAULT_FEE|DEFAULT_COIN_AMOUNT|GOVERNANCE_BODY_ID' \
+                /root/.chia/mainnet/cadt/config.yaml
+              exit 1
+            fi
+          }
+
+          assert_config_line '^[[:space:]]*DEFAULT_FEE: 13$' \
+            "DEFAULT_FEE was not written as an unquoted YAML number"
+          assert_config_line '^[[:space:]]*DEFAULT_COIN_AMOUNT: 7$' \
+            "DEFAULT_COIN_AMOUNT was not written as an unquoted YAML number"
+          assert_config_line '^[[:space:]]*GOVERNANCE_BODY_ID: "12345678"$' \
+            "a digit-only GOVERNANCE_BODY_ID lost its quotes"
+
+          echo "config.yaml value types are correct"

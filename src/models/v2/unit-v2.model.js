@@ -20,12 +20,13 @@ import {
   normalizeCsvHeaders,
   toDbFieldNames,
   stripUnknownDbFields,
-  validateRequiredFields,
   buildPendingCsvMergeBase,
   stageConsolidatedCsvRecord,
 } from '../../utils/v2-xls.js';
-import { assertRecordExistanceOrStaged } from '../../utils/v2-data-assertions.js';
-import { IssuanceV2 } from './issuance-v2.model.js';
+import {
+  validateCsvBatchRecord,
+  validateStagedRecord,
+} from '../../utils/v2-staging-validation.js';
 import { getDeletedItems } from '../../utils/model-utils.js';
 import { UnitLabelV2 } from './unit-label-v2.model.js';
 import { loggerV2 } from '../../config/logger.js';
@@ -333,10 +334,13 @@ class UnitV2 extends Model {
 
       let totalSplitCount = 0;
 
-      // Create split records
+      // Create split records, tracking which fields each split actually
+      // overrides so validation can scope Joi to caller-supplied values.
+      const overriddenFieldsPerRecord = [];
       const splitRecords = await Promise.all(
         records.map(async (record, index) => {
           const newRecord = originalRecord.toJSON();
+          const overriddenFields = ['unitCount'];
 
           // First record keeps original ID, others get new UUIDs
           if (index > 0) {
@@ -356,26 +360,32 @@ class UnitV2 extends Model {
             newRecord.unitSerialId = `${blockStart}-${blockEnd}`;
             newRecord.unitStartBlock = blockStart;
             newRecord.unitEndBlock = blockEnd;
+            overriddenFields.push('unitSerialId', 'unitStartBlock', 'unitEndBlock');
           }
 
           // Update optional fields if provided
           if (record.unitCurrentOwner !== undefined) {
             newRecord.unitCurrentOwner = record.unitCurrentOwner;
+            overriddenFields.push('unitCurrentOwner');
           }
           if (record.unitStatus !== undefined) {
             newRecord.unitStatus = record.unitStatus;
+            overriddenFields.push('unitStatus');
           }
           if (record.unitStatusReason !== undefined) {
             newRecord.unitStatusReason = record.unitStatusReason;
+            overriddenFields.push('unitStatusReason');
           }
           if (record.unitStatusDate !== undefined) {
             newRecord.unitStatusDate = record.unitStatusDate;
+            overriddenFields.push('unitStatusDate');
           }
 
           // Remove timestamps (handled automatically)
           delete newRecord.createdAt;
           delete newRecord.updatedAt;
 
+          overriddenFieldsPerRecord[index] = overriddenFields;
           return newRecord;
         }),
       );
@@ -386,6 +396,24 @@ class UnitV2 extends Model {
         throw new Error(
           `Total split count (${totalSplitCount}) does not match original unit count (${originalCount})`,
         );
+      }
+
+      // Split records are staged verbatim, so caller-supplied overrides must
+      // pass the same Joi rules as every other write path, and each record
+      // must satisfy NOT NULL completeness and FK existence. Joi is scoped to
+      // the fields each split actually overrides so cloned values from records
+      // that predate the current schemas never block a split.
+      const splitValidationErrors = [];
+      for (const [index, splitRecord] of splitRecords.entries()) {
+        const rowErrors = await validateStagedRecord(UnitV2, splitRecord, {
+          joiFields: overriddenFieldsPerRecord[index],
+        });
+        for (const message of rowErrors) {
+          splitValidationErrors.push(`split record ${index + 1}: ${message}`);
+        }
+      }
+      if (splitValidationErrors.length > 0) {
+        throw new Error(splitValidationErrors.join('; '));
       }
 
       // Create staging record with UPDATE action
@@ -432,7 +460,7 @@ class UnitV2 extends Model {
    *   1. Normalize snake_case headers → camelCase attribute names
    *   2. Apply domain transforms (prepareXlsRow derives unitSerialId)
    *   3. Determine INSERT vs UPDATE, merge with existing record on UPDATE
-   *   4. Validate ownership and FK references
+   *   4. Validate ownership, then apply the shared staging validation
    *   5. Convert to DB field names, strip unknown keys
    *   6. Upsert into StagingV2
    *
@@ -468,17 +496,22 @@ class UnitV2 extends Model {
     const errors = [];
     let stagedCount = 0;
 
-    // unitSerialId is derivable from blocks — don't require it if blocks are present
-    const unitSkipFields = new Set(['unitSerialId']);
-
     await sequelizeV2.transaction(async (transaction) => {
       for (let i = 0; i < rawRows.length; i++) {
         const rowNum = i + 2; // +2: 1-indexed + header row
         try {
           let row = normalizeCsvHeaders(rawRows[i], UnitV2);
 
+          // Fields this row is responsible for, which scopes Joi on UPDATE.
+          // Captured before prepareXlsRow so a derived unitSerialId is
+          // attributed to the derivation rather than to the CSV.
+          const rowFields = new Set(Object.keys(row));
+
           // Derive unitSerialId from block range when not explicitly provided
           UnitV2.prepareXlsRow(row);
+          if (row.unitSerialId !== undefined) {
+            rowFields.add('unitSerialId');
+          }
 
           const unitId = row.cadTrustUnitId;
           let action;
@@ -531,6 +564,7 @@ class UnitV2 extends Model {
             if (changedBlockRange) {
               delete mergedRecord.unitSerialId;
               UnitV2.prepareXlsRow(mergedRecord);
+              rowFields.add('unitSerialId');
             }
           } else {
             row.cadTrustUnitId = uuidv4();
@@ -538,27 +572,14 @@ class UnitV2 extends Model {
             mergedRecord = { ...row };
           }
 
-          // Required-field validation for INSERT rows
-          if (action === 'INSERT') {
-            const missing = validateRequiredFields(mergedRecord, UnitV2, unitSkipFields);
-            if (missing.length > 0) {
-              errors.push({ row: rowNum, error: `Missing required field(s): ${missing.join(', ')}` });
-              continue;
-            }
-          }
-
-          // FK existence check for cadTrustIssuanceId
-          if (mergedRecord.cadTrustIssuanceId) {
-            try {
-              await assertRecordExistanceOrStaged(
-                IssuanceV2,
-                mergedRecord.cadTrustIssuanceId,
-                `cadTrustIssuanceId '${mergedRecord.cadTrustIssuanceId}' does not exist`,
-              );
-            } catch (err) {
-              errors.push({ row: rowNum, error: err.message });
-              continue;
-            }
+          // Same Joi + NOT NULL + FK rules the REST API applies.
+          const rowErrors = await validateCsvBatchRecord(UnitV2, mergedRecord, {
+            action,
+            csvFields: [...rowFields],
+          });
+          if (rowErrors.length > 0) {
+            errors.push({ row: rowNum, error: rowErrors.join('; ') });
+            continue;
           }
 
           // Remove timestamps (managed by Sequelize)

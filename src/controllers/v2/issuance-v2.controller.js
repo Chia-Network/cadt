@@ -90,17 +90,19 @@ export const create = async (req, res) => {
         newRecord.cadTrustProjectMethodologyId,
         `cadTrustProjectMethodologyId '${newRecord.cadTrustProjectMethodologyId}' does not exist. Please create the project methodology first or use a valid cadTrustProjectMethodologyId`,
       );
+      if (newRecord.cadTrustLocationId) {
+        await assertRecordExistanceOrStaged(
+          LocationV2,
+          newRecord.cadTrustLocationId,
+          `cadTrustLocationId '${newRecord.cadTrustLocationId}' does not exist. Please create the location first or use a valid cadTrustLocationId`,
+        );
+      }
     } catch (err) {
       return res.status(400).json({
         message: 'Error creating new issuance',
         error: err.message,
         success: false,
       });
-    }
-
-    if (newRecord.cadTrustLocationId) {
-      // Note: LocationV2 validation will be added when Location endpoint is implemented
-      // await assertRecordExistanceOrStaged(LocationV2, newRecord.cadTrustLocationId);
     }
 
     // Generate UUID for staging
@@ -270,17 +272,19 @@ export const update = async (req, res) => {
         updateData.cadTrustProjectMethodologyId,
         `cadTrustProjectMethodologyId '${updateData.cadTrustProjectMethodologyId}' does not exist. Please create the project methodology first or use a valid cadTrustProjectMethodologyId`,
       );
+      if (updateData.cadTrustLocationId) {
+        await assertRecordExistanceOrStaged(
+          LocationV2,
+          updateData.cadTrustLocationId,
+          `cadTrustLocationId '${updateData.cadTrustLocationId}' does not exist. Please create the location first or use a valid cadTrustLocationId`,
+        );
+      }
     } catch (err) {
       return res.status(400).json({
         message: 'Error updating issuance',
         error: err.message,
         success: false,
       });
-    }
-
-    if (updateData.cadTrustLocationId) {
-      // Note: LocationV2 validation will be added when Location endpoint is implemented
-      // await assertRecordExistanceOrStaged(LocationV2, updateData.cadTrustLocationId);
     }
 
     // Convert camelCase API fields to snake_case DB fields for staging

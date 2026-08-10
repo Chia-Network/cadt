@@ -263,6 +263,9 @@ const hasUnconfirmedTransactions = async (walletId = '1') => {
     .post(`${rpcUrl}/get_transactions`)
     .send({
       wallet_id: walletId,
+      // Filter in the wallet's DB: a settled wallet returns zero rows instead
+      // of a page of confirmed history to filter client-side.
+      confirmed: false,
       sort_key: 'RELEVANCE',
     })
     .key(key)
@@ -396,10 +399,31 @@ const getWalletConnections = async () => {
 };
 
 /**
+ * Build the get_coin_records request body.
+ * @param {Object} [options]
+ * @param {boolean} [options.unspentOnly=false] - Restrict the query to unspent coins
+ * @returns {Object} RPC request body
+ */
+const buildCoinRecordsRequest = ({ unspentOnly = false } = {}) => {
+  const payload = { wallet_id: 1 };
+
+  if (unspentOnly) {
+    // spent_height BETWEEN 0 AND 0 against an indexed column. Without this the
+    // RPC returns every coin the wallet has ever seen, so the response grows
+    // with spend history rather than staying proportional to the live UTXO set.
+    payload.spent_range = { start: 0, stop: 0 };
+  }
+
+  return payload;
+};
+
+/**
  * Get coin records from the wallet (includes coin IDs)
+ * @param {Object} [options]
+ * @param {boolean} [options.unspentOnly=false] - Ask the wallet for unspent coins only
  * @returns {Promise<{success: boolean, coin_records: Array}>} Object with coin_records array and success flag
  */
-const getCoinRecords = async () => {
+const getCoinRecords = async ({ unspentOnly = false } = {}) => {
   if (USE_SIMULATOR) {
     // In simulator mode, return mock coins
     return {
@@ -419,7 +443,7 @@ const getCoinRecords = async () => {
   try {
     const response = await superagent
       .post(`${rpcUrl}/get_coin_records`)
-      .send({ wallet_id: 1 })
+      .send(buildCoinRecordsRequest({ unspentOnly }))
       .key(key)
       .cert(cert)
       .timeout(timeout);
@@ -579,7 +603,7 @@ const waitForSpendableCoins = async (
       }
 
       // Get actual coin records to count usable coins
-      const coinResult = await getCoinRecords();
+      const coinResult = await getCoinRecords({ unspentOnly: true });
 
       if (!coinResult.success || !coinResult.coin_records) {
         logger.warn('[wallet]: Could not get coin records, retrying...');
@@ -955,6 +979,7 @@ export default {
   getLastWalletSyncError,
   getWalletBlockchainSyncStatus,
   getCoinRecords,
+  buildCoinRecordsRequest,
   splitCoins,
   isTransientWalletError,
   getTransactionHealth,

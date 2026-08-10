@@ -9,7 +9,6 @@ import { OrganizationsV2 } from '../models/v2/index.js';
 import { logger } from '../config/logger.js';
 import { getChiaRoot } from '../utils/chia-root.js';
 import { getMirrorUrl, decodeHex } from '../utils/datalayer-utils';
-import { isSplitInProgress } from '../tasks/coin-management.js';
 
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
@@ -178,6 +177,64 @@ const clearPendingRoots = async (storeId) => {
   }
 };
 
+/**
+ * DataLayer stages a pending root before it creates the wallet transaction that
+ * publishes it, so a failure between those two steps leaves a root DataLayer
+ * will never reconcile: its confirmation check returns early while the store's
+ * on-chain generation stays put, and every later push to the store is rejected.
+ * Dropping the root is only safe once the wallet is known to be settled, since
+ * an unconfirmed transaction may be the one the root is waiting on.
+ *
+ * @returns {Promise<boolean>} true when a pending root was cleared
+ */
+const clearOrphanedPendingRoot = async (storeId) => {
+  try {
+    // The transaction that publishes a root belongs to the DataLayer wallet, so
+    // without its id a settled wallet is indistinguishable from one that was
+    // never asked.
+    const dlWalletId = await wallet.getDLWalletId();
+    if (!dlWalletId) {
+      logger.warn(
+        `DataLayer wallet id is unavailable, so the pending root for store ` +
+          `${storeId} cannot be shown to be orphaned. Leaving it in place.`,
+      );
+      return false;
+    }
+
+    // getTransactionHealth throws when the RPC reports failure, which keeps an
+    // unanswerable question from being read as "nothing is unconfirmed".
+    // A DataLayer update can also spend from the standard wallet to pay its fee,
+    // so both wallets have to be settled.
+    const walletIds = dlWalletId === '1' ? ['1'] : ['1', dlWalletId];
+    for (const walletId of walletIds) {
+      const { inMempool, pending } =
+        await wallet.getTransactionHealth(walletId);
+
+      // Only a transaction that can still confirm keeps the root alive. A
+      // rejected one never will, and is itself a reason the root was stranded,
+      // so it must not block recovery.
+      if (inMempool.length + pending.length > 0) {
+        return false;
+      }
+    }
+  } catch (error) {
+    logger.warn(
+      `Could not determine wallet transaction state for store ${storeId}; ` +
+        `leaving its pending root in place. ${error.message}`,
+    );
+    return false;
+  }
+
+  const cleared = await clearPendingRoots(storeId);
+  if (cleared) {
+    logger.warn(
+      `Cleared the pending root for store ${storeId}: no transaction remained ` +
+        `that could confirm it.`,
+    );
+  }
+  return cleared;
+};
+
 const checkWalletBalanceForMirror = async (coinAmount, fee) => {
   try {
     const balanceXCH = await wallet.getWalletBalance();
@@ -211,11 +268,24 @@ const checkWalletBalanceForMirror = async (coinAmount, fee) => {
       );
       return { sufficient: true, fee: 0, balanceXCH: balanceXCH };
     } else {
-      if (isSplitInProgress()) {
+      // The wallet is the source of truth for in-flight spends: any
+      // unconfirmed transaction (coin split, store creation, ...) temporarily
+      // reduces the spendable balance and resolves itself on confirmation.
+      const hasUnconfirmed = await wallet
+        .hasAnyUnconfirmedTransactions()
+        .catch((error) => {
+          // Failing open means a shortfall is reported as genuinely
+          // insufficient funds below, so leave a trace of the failed check.
+          logger.warn(
+            `Could not check for unconfirmed transactions while evaluating mirror funding: ${error.message}`,
+          );
+          return false;
+        });
+      if (hasUnconfirmed) {
         logger.warn(
-          `Wallet balance temporarily reduced by coin split in progress ` +
+          `Wallet balance temporarily reduced by unconfirmed transaction(s) ` +
             `(have ${balanceMojos} mojos, need ${coinAmount} mojos). ` +
-            `Skipping mirror creation - will retry after split confirms.`,
+            `Skipping mirror creation - will retry after they confirm.`,
         );
       } else {
         logger.error(
@@ -709,6 +779,8 @@ const pushChangeListToDataLayer = async (
   { skipTransactionWait = false } = {},
 ) => {
   let attempts = 0;
+  let pendingRootSightings = 0;
+  let pendingRootCleared = false;
   const maxAttempts = 5;
 
   while (attempts < maxAttempts) {
@@ -788,33 +860,54 @@ const pushChangeListToDataLayer = async (
           'Already have a pending root waiting for confirmation',
         )
       ) {
-        logger.info(
-          `Pending root for store ${storeId}; waiting for confirmation then retrying (attempt ${attempts + 1}/${maxAttempts})`,
-        );
         attempts++;
+        pendingRootSightings++;
+        // Sightings are logged alongside the attempt because a successful clear
+        // refunds an attempt, so the same attempt number can appear twice.
+        logger.info(
+          `Pending root for store ${storeId}; waiting for confirmation ` +
+            `(sighting ${pendingRootSightings}, attempt ${attempts}/${maxAttempts})`,
+        );
         await wallet.waitForAllTransactionsToConfirm();
+
+        // A first sighting gets the benefit of the doubt, since a concurrent
+        // push to this store may still be between staging its root and creating
+        // the transaction that publishes it. Count sightings of this error
+        // rather than reading `attempts`, which a successful clear refunds and
+        // which therefore says nothing about how often this store reported a
+        // pending root. Clearing again after that would only repeat the same
+        // gamble, so a push discards at most one root.
+        if (
+          pendingRootSightings > 1 &&
+          !pendingRootCleared &&
+          (await clearOrphanedPendingRoot(storeId))
+        ) {
+          pendingRootCleared = true;
+          // The clear is what makes the next push viable, so the sighting that
+          // triggered it must not be the attempt that exhausts the budget;
+          // otherwise a clear on the last attempt reports failure without ever
+          // retrying the push it just unblocked. Bounded by pendingRootCleared,
+          // so this refunds at most one attempt per push.
+          attempts--;
+          continue;
+        }
+
         await new Promise((resolve) => setTimeout(resolve, 10000));
         continue;
       }
 
+      // A key collision is raised inside DataLayer's writer transaction, and
+      // the pending-root check runs before it, so this error can neither have
+      // staged a root of ours nor have been caused by one. Any root present now
+      // belongs to a concurrent push and would lose its changelist if cleared.
+      // Note the batch is rejected as a unit, so this error does not establish
+      // that the rest of the changelist landed.
       if (data.error && data.error.includes('Key already present')) {
-        logger.info('Pending root detected, waiting 5 seconds and retrying');
-        const rootsCleared = await clearPendingRoots(storeId);
-
-        if (rootsCleared) {
-          attempts++;
-          await new Promise((resolve) => setTimeout(resolve, 5000));
-          continue; // Retry
-        } else {
-          // If clearing pending roots didn't help, the key already exists in the datalayer
-          // This can happen when trying to INSERT a record that already exists
-          // Treat this as success since the desired end state (record exists) is already achieved
-          logger.info(
-            `Key already present in datalayer for storeId: ${storeId}. ` +
-              `This indicates the data already exists. Treating as success.`,
-          );
-          return true;
-        }
+        logger.info(
+          `Key already present in datalayer for storeId: ${storeId}. ` +
+            `Treating as success.`,
+        );
+        return true;
       }
 
       // Handle "no change to tree data" error - this means the changelist wouldn't

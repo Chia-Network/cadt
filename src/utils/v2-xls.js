@@ -7,6 +7,7 @@ import { sequelizeV2 } from '../database/v2/index.js';
 import StagingV2 from '../models/v2/staging-v2.model.js';
 import OrganizationsV2 from '../models/v2/organizations-v2.model.js';
 import { createXlsFromSequelizeResults, transformMetaUid } from './xls.js';
+import { validateStagedRecord } from './v2-staging-validation.js';
 import { loggerV2 } from '../config/logger.js';
 
 /**
@@ -84,6 +85,83 @@ function naiveSingular(word) {
   return word;
 }
 
+// Spreadsheet cells carry native types, so numeric-looking values (e.g. a
+// rating of 4.2) arrive as numbers even when the column is a string in the
+// model and the API schema. Coerce those to strings so imports match what
+// the REST API receives as JSON. Date cells (parsed with cellDates: true)
+// and raw Excel date serials in date columns become YYYY-MM-DD strings.
+const STRINGISH_TYPE_KEYS = new Set(['STRING', 'TEXT', 'CHAR', 'CITEXT', 'UUID']);
+const DATE_TYPE_KEYS = new Set(['DATE', 'DATEONLY']);
+
+// Days between the Excel epoch (1900-01-01, with the fictional 1900 leap day)
+// and the Unix epoch.
+const EXCEL_EPOCH_OFFSET_DAYS = 25569;
+
+function formatDateOnly(year, month, day) {
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+// SheetJS (cellDates: true) converts a serial to UTC and then rebuilds the
+// Date from those parts in local time, so the local components — not the UTC
+// ones — carry the spreadsheet's calendar date. Joi.date() would accept the
+// Date itself, but staging must carry the same JSON string the REST API
+// receives.
+function formatLocalDateOnly(date) {
+  return formatDateOnly(date.getFullYear(), date.getMonth() + 1, date.getDate());
+}
+
+// Serials never carry a timezone, so the conversion is pure UTC arithmetic and
+// the UTC components are read back. Serials whose whole-day part is at or
+// below 60 are shifted by a day because Excel counts a 1900-02-29 that never
+// existed; SheetJS applies the same shift to date cells, so both parsing paths
+// land on the same calendar date for the same serial. The gate reads the whole
+// day so a fractional serial follows the day it belongs to.
+function excelSerialToDateOnly(serial) {
+  const shifted = Math.floor(serial) > 60 ? serial : serial + 1;
+  const date = new Date(Math.round((shifted - EXCEL_EPOCH_OFFSET_DAYS) * 86400 * 1000));
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return formatDateOnly(
+    date.getUTCFullYear(),
+    date.getUTCMonth() + 1,
+    date.getUTCDate(),
+  );
+}
+
+// Convert Date cells to YYYY-MM-DD in place. Must run before transformMetaUid,
+// which JSON round-trips the sheets and would mangle Dates into full ISO
+// strings with a timezone offset baked in.
+function normalizeDateCells(xlsxParsed) {
+  for (const sheet of xlsxParsed) {
+    for (const row of sheet.data ?? []) {
+      for (let i = 0; i < row.length; i++) {
+        if (row[i] instanceof Date) {
+          row[i] = formatLocalDateOnly(row[i]);
+        }
+      }
+    }
+  }
+  return xlsxParsed;
+}
+
+function coerceCellForModel(modelClass, column, value) {
+  if (typeof value !== 'number') return value;
+  const meta = modelClass.rawAttributes[column];
+  const typeKey = meta?.type?.key;
+  if (DATE_TYPE_KEYS.has(typeKey)) {
+    // A bare number in a date column is an Excel date serial; interpreting it
+    // as-is would let Joi.date() treat it as a Unix timestamp and stage a
+    // wrong date. Values outside Date range fall through so Joi rejects them
+    // with row context.
+    return excelSerialToDateOnly(value) ?? value;
+  }
+  if (STRINGISH_TYPE_KEYS.has(typeKey)) {
+    return String(value);
+  }
+  return value;
+}
+
 /**
  * Parse an XLSX buffer into structured data for a V2 model.
  *
@@ -93,7 +171,11 @@ function naiveSingular(word) {
  */
 export function parseV2Xlsx(fileBuffer, model) {
   const schema = buildXlsSchema(model);
-  const xlsxParsed = transformMetaUid(xlsx.parse(fileBuffer));
+  // cellDates: true makes Excel-native date cells arrive as Date objects
+  // instead of raw serial numbers, so normalizeDateCells can format them.
+  const xlsxParsed = transformMetaUid(
+    normalizeDateCells(xlsx.parse(fileBuffer, { cellDates: true })),
+  );
 
   // Build a lookup: sheetName → { type: 'main' | 'child', childInfo? }
   const sheetLookup = {};
@@ -121,13 +203,19 @@ export function parseV2Xlsx(fileBuffer, model) {
     const match = sheetLookup[name];
     if (!match) continue;
 
+    const sheetModel = match.type === 'main' ? schema.model : match.child.model;
+
     const headerRow = data[0];
     const rows = data.slice(1).map((row) => {
       const obj = {};
       headerRow.forEach((col, i) => {
-        if (i >= row.length) return; // skip missing trailing cells
-        const val = row[i];
-        obj[col] = val === 'null' ? null : val;
+        // Missing/empty cells become explicit nulls so trailing columns are
+        // never silently dropped and validation sees the absent value.
+        const val = i >= row.length ? null : row[i];
+        obj[col] =
+          val === 'null' || val === undefined
+            ? null
+            : coerceCellForModel(sheetModel, col, val);
       });
       return obj;
     });
@@ -190,6 +278,11 @@ function buildSnakeToCamelMap(modelClass) {
  * name.  Accepts headers in either camelCase or snake_case.  Keys that don't
  * map to any known attribute are left as-is so they can be stripped later.
  *
+ * Blank cells become null. The parser reports a blank cell in a declared
+ * column as '', which would otherwise be staged as an empty string and read
+ * back as a value; null is what "no value supplied" means everywhere else,
+ * and it keeps a cleared field out of IS NOT NULL results downstream.
+ *
  * @param {Object} row
  * @param {import('sequelize').Model} modelClass
  * @returns {Object} row with normalized keys
@@ -199,7 +292,7 @@ export function normalizeCsvHeaders(row, modelClass) {
   const result = {};
   for (const [key, value] of Object.entries(row)) {
     const normalized = snakeToCamel.get(key) || key;
-    result[normalized] = value;
+    result[normalized] = value === '' ? null : value;
   }
   return result;
 }
@@ -234,13 +327,20 @@ export function toAttributeNames(row, modelClass) {
  * (generateChangeListFromStagedData → transformFullXslsToChangeList) expects
  * staging data to use snake_case field names, matching what the normal API
  * controllers produce.
+ *
+ * Array values are serialized to JSON strings, matching the REST controllers
+ * (e.g. project_sector: JSON.stringify([...])).  The commit pipeline's XLS
+ * transformation drops object-valued columns, so an array staged raw would be
+ * silently omitted from the on-chain record.
  */
 export function toDbFieldNames(row, modelClass) {
   const attrs = modelClass.rawAttributes;
   const result = {};
   for (const [key, value] of Object.entries(row)) {
     const attr = attrs[key];
-    result[attr && attr.field ? attr.field : key] = value;
+    result[attr && attr.field ? attr.field : key] = Array.isArray(value)
+      ? JSON.stringify(value)
+      : value;
   }
   return result;
 }
@@ -278,16 +378,13 @@ export function stripUnknownDbFields(dbRow, modelClass, logger = null) {
 /**
  * Validate that a camelCase row destined for INSERT contains all fields
  * marked `allowNull: false` in the model definition.  Skips fields that
- * are auto-managed (primary key, orgUid, timestamps) and any fields listed
- * in the optional `skipFields` set (e.g. `unitSerialId` when it can be
- * derived from other fields).
+ * are auto-managed (primary key, orgUid, timestamps).
  *
  * @param {Object} row - camelCase row to validate
  * @param {import('sequelize').Model} modelClass
- * @param {Set<string>} [skipFields] - attribute names to skip
  * @returns {string[]} array of missing field names (empty if valid)
  */
-export function validateRequiredFields(row, modelClass, skipFields = new Set()) {
+export function validateRequiredFields(row, modelClass) {
   const autoManaged = new Set([
     modelClass.primaryKeyAttribute,
     'orgUid',
@@ -301,7 +398,7 @@ export function validateRequiredFields(row, modelClass, skipFields = new Set()) 
 
   const missing = [];
   for (const [attrName, meta] of Object.entries(modelClass.rawAttributes)) {
-    if (meta.allowNull === false && !autoManaged.has(attrName) && !skipFields.has(attrName)) {
+    if (meta.allowNull === false && !autoManaged.has(attrName)) {
       const val = row[attrName];
       if (val === undefined || val === null || val === '') {
         missing.push(attrName);
@@ -463,6 +560,20 @@ export async function stageConsolidatedCsvRecord(
   transaction,
   { pendingRows } = {},
 ) {
+  // Staged records become on-chain DataLayer values verbatim, and a record
+  // missing a NOT NULL column halts sync for every subscriber. This is the
+  // last check on the bytes actually being written, independent of whatever
+  // the caller validated on its own copy of the record.
+  const missingNotNull = validateRequiredFields(
+    toAttributeNames(cleanedRecord, modelClass),
+    modelClass,
+  );
+  if (missingNotNull.length > 0) {
+    throw new Error(
+      `Record is missing required NOT NULL field(s): ${missingNotNull.join(', ')}`,
+    );
+  }
+
   // Callers pass an Array (possibly empty) when they already know the
   // pending INSERT/UPDATE rows. Anything else — undefined/null — means
   // "unknown, please scan". Guarding on Array.isArray avoids accidentally
@@ -528,8 +639,14 @@ export async function stageConsolidatedCsvRecord(
  * Parent rows and child rows each get their own staging entry, matching the
  * V2 architecture where every model has its own staging / changelist flow.
  *
+ * Every row must pass validateStagedRecord (the same Joi + FK + NOT NULL
+ * rules the REST API applies) before anything is staged — staged records
+ * become on-chain DataLayer values verbatim, and an incomplete record halts
+ * sync for every subscriber. See src/utils/v2-staging-validation.js.
+ *
  * @param {{ main: Object[], children: Object.<string, Object[]> }} parsedData
  * @param {import('sequelize').Model} model - Sequelize V2 model class
+ * @throws {Error} Aggregate row-level validation error; nothing is staged.
  */
 export async function stageV2XlsRecords(parsedData, model) {
   const schema = buildXlsSchema(model);
@@ -539,37 +656,86 @@ export async function stageV2XlsRecords(parsedData, model) {
 
   // The normal V2 API controllers inject org_uid from the home organization
   // into every staged record. The XLSX path must do the same so the data
-  // pushed to datalayer includes org_uid — otherwise sync-registries-v2
-  // fails with SequelizeUniqueConstraintError when upserting the record
-  // back (org_uid has allowNull: false on parent models).
+  // pushed to datalayer includes org_uid (allowNull: false on parent models).
   const homeOrg = await OrganizationsV2.getHomeOrg(false);
   if (!homeOrg) {
     throw new Error('Cannot stage XLSX records: no home organization found');
   }
   const orgUid = homeOrg.org_uid;
 
-  await sequelizeV2.transaction(async (transaction) => {
-    // Stage parent rows
-    for (const row of parsedData.main) {
+  // Phase 1: prepare all rows (merge with existing records, assign PKs)
+  // without writing anything.
+  const entries = [];
+
+  for (let i = 0; i < parsedData.main.length; i++) {
+    const row = parsedData.main[i];
+    if (isEmptyRow(row)) continue;
+
+    parseArrayFields(row);
+
+    // Let the model apply domain-specific transforms (e.g. derive unitSerialId)
+    if (typeof model.prepareXlsRow === 'function') {
+      model.prepareXlsRow(row);
+    }
+
+    const pkValue = row[schema.mainPK];
+    let existingRecord = null;
+    if (pkValue) {
+      existingRecord = await model.findByPk(pkValue);
+    }
+
+    const uuid = pkValue || uuidv4();
+
+    // Merge with existing record if updating
+    let stagedRecord;
+    if (existingRecord) {
+      stagedRecord = {
+        ...existingRecord.dataValues,
+        ...row,
+      };
+    } else {
+      stagedRecord = { ...row };
+      if (!stagedRecord[schema.mainPK]) {
+        stagedRecord[schema.mainPK] = uuid;
+      }
+    }
+
+    // Remove child array keys from parent staging data
+    for (const child of schema.children) {
+      delete stagedRecord[child.sheetName];
+    }
+
+    entries.push({
+      modelClass: model,
+      tableName: model.getTableName(),
+      sheetName: schema.mainSheetName,
+      rowNumber: i + 2, // 1-indexed + header row
+      uuid,
+      action: existingRecord ? 'UPDATE' : 'INSERT',
+      stagedRecord,
+      injectOrgUid: Boolean(model.rawAttributes.orgUid),
+      pk: stagedRecord[schema.mainPK],
+    });
+  }
+
+  for (const child of schema.children) {
+    const rows = parsedData.children[child.sheetName];
+    if (!rows || rows.length === 0) continue;
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
       if (isEmptyRow(row)) continue;
 
       parseArrayFields(row);
 
-      // Let the model apply domain-specific transforms (e.g. derive unitSerialId)
-      if (typeof model.prepareXlsRow === 'function') {
-        model.prepareXlsRow(row);
-      }
-
-      const pkValue = row[schema.mainPK];
+      const pkValue = row[child.primaryKey];
       let existingRecord = null;
       if (pkValue) {
-        existingRecord = await model.findByPk(pkValue);
+        existingRecord = await child.model.findByPk(pkValue);
       }
 
-      const exists = Boolean(existingRecord);
       const uuid = pkValue || uuidv4();
 
-      // Merge with existing record if updating
       let stagedRecord;
       if (existingRecord) {
         stagedRecord = {
@@ -578,77 +744,85 @@ export async function stageV2XlsRecords(parsedData, model) {
         };
       } else {
         stagedRecord = { ...row };
-        if (!stagedRecord[schema.mainPK]) {
-          stagedRecord[schema.mainPK] = uuid;
+        if (!stagedRecord[child.primaryKey]) {
+          stagedRecord[child.primaryKey] = uuid;
         }
       }
 
-      // Remove child array keys from parent staging data
-      for (const child of schema.children) {
-        delete stagedRecord[child.sheetName];
-      }
+      entries.push({
+        modelClass: child.model,
+        tableName: child.tableName,
+        sheetName: child.sheetName,
+        rowNumber: i + 2,
+        uuid,
+        action: existingRecord ? 'UPDATE' : 'INSERT',
+        stagedRecord,
+        injectOrgUid: false,
+        pk: stagedRecord[child.primaryKey],
+      });
+    }
+  }
 
-      const dbRecord = toDbFieldNames(stagedRecord, model);
+  // Phase 2: validate every row before staging anything. FKs may reference
+  // records staged in this same batch, so collect the batch PKs first.
+  const batchPks = {};
+  for (const entry of entries) {
+    if (!batchPks[entry.tableName]) {
+      batchPks[entry.tableName] = new Set();
+    }
+    batchPks[entry.tableName].add(entry.pk);
+  }
 
-      if (model.rawAttributes.orgUid) {
+  const validationErrors = [];
+  for (const entry of entries) {
+    // Validate a normalized copy: merged values from existing DB rows may
+    // hold JSON-array strings (e.g. projectSector) that the schema expects
+    // as arrays. Staged data itself is left untouched.
+    const validationRow = { ...entry.stagedRecord };
+    parseArrayFields(validationRow);
+
+    const rowErrors = await validateStagedRecord(
+      entry.modelClass,
+      validationRow,
+      { batchPks },
+    );
+    for (const message of rowErrors) {
+      validationErrors.push(
+        `[${entry.sheetName} row ${entry.rowNumber}] ${message}`,
+      );
+    }
+  }
+
+  if (validationErrors.length > 0) {
+    const MAX_REPORTED_ERRORS = 50;
+    const reported = validationErrors.slice(0, MAX_REPORTED_ERRORS);
+    const suffix =
+      validationErrors.length > MAX_REPORTED_ERRORS
+        ? `; …and ${validationErrors.length - MAX_REPORTED_ERRORS} more`
+        : '';
+    throw new Error(
+      `Import validation failed — nothing was staged. ${reported.join('; ')}${suffix}`,
+    );
+  }
+
+  // Phase 3: stage all rows
+  await sequelizeV2.transaction(async (transaction) => {
+    for (const entry of entries) {
+      const dbRecord = toDbFieldNames(entry.stagedRecord, entry.modelClass);
+
+      if (entry.injectOrgUid) {
         dbRecord.org_uid = orgUid;
       }
 
       await StagingV2.upsert(
         {
-          uuid,
-          action: exists ? 'UPDATE' : 'INSERT',
-          table: model.getTableName(),
+          uuid: entry.uuid,
+          action: entry.action,
+          table: entry.tableName,
           data: JSON.stringify([dbRecord]),
         },
         { transaction },
       );
-    }
-
-    // Stage child rows independently
-    for (const child of schema.children) {
-      const rows = parsedData.children[child.sheetName];
-      if (!rows || rows.length === 0) continue;
-
-      for (const row of rows) {
-        if (isEmptyRow(row)) continue;
-
-        parseArrayFields(row);
-
-        const pkValue = row[child.primaryKey];
-        let existingRecord = null;
-        if (pkValue) {
-          existingRecord = await child.model.findByPk(pkValue);
-        }
-
-        const exists = Boolean(existingRecord);
-        const uuid = pkValue || uuidv4();
-
-        let stagedRecord;
-        if (existingRecord) {
-          stagedRecord = {
-            ...existingRecord.dataValues,
-            ...row,
-          };
-        } else {
-          stagedRecord = { ...row };
-          if (!stagedRecord[child.primaryKey]) {
-            stagedRecord[child.primaryKey] = uuid;
-          }
-        }
-
-        const dbRecord = toDbFieldNames(stagedRecord, child.model);
-
-        await StagingV2.upsert(
-          {
-            uuid,
-            action: exists ? 'UPDATE' : 'INSERT',
-            table: child.tableName,
-            data: JSON.stringify([dbRecord]),
-          },
-          { transaction },
-        );
-      }
     }
   });
 }

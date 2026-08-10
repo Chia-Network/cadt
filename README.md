@@ -55,14 +55,6 @@ System recommendation:
    chia init
    ```
 
-1. Use testnet for development work (skip if this is your production setup).
-
-   ```bash
-   chia-tools network switch testneta
-   yq -y -i '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
-   sudo systemctl restart cadt@ubuntu chia-full-node@ubuntu chia-wallet@ubuntu chia-data-layer@ubuntu
-   ```
-
 1. Configure the Datalayer public directory.
 
    ```bash
@@ -79,6 +71,13 @@ System recommendation:
    sudo nginx -t && sudo systemctl restart nginx
    ```
 
+1. Start and enable Chia, CADT, and Nginx.
+
+   ```bash
+   sudo systemctl enable nginx cadt@ubuntu chia-full-node@ubuntu chia-wallet@ubuntu chia-data-layer@ubuntu
+   sudo systemctl start cadt@ubuntu chia-full-node@ubuntu chia-wallet@ubuntu chia-data-layer@ubuntu
+   ```
+
 1. Configure CADT with the Datalayer address.
 
    Please use a domain name if possible instead of the IP address. Replace the `curl` part in `()` with your domain name if you can. Otherwise this will automatically use the IP address. **Note this IP address *MUST* be a static IP**.
@@ -86,6 +85,7 @@ System recommendation:
    ```bash
    DATALAYER_FILE_SERVER_URL="http://$(curl -fsS https://ip.chia.net | tr -d '[:space:]')/data/"
    yq -y -i ".APP.DATALAYER_FILE_SERVER_URL = \"$DATALAYER_FILE_SERVER_URL\"" ~/.chia/mainnet/cadt/config.yaml
+   sudo systemctl restart cadt@ubuntu
    ```
 
 1. Set your API key.
@@ -94,13 +94,15 @@ System recommendation:
 
    ```bash
    KEY=$(openssl rand -hex 10) yq -yi ".V1.CADT_API_KEY = \"$KEY\" | .V2.CADT_API_KEY = \"$KEY\"" ~/.chia/mainnet/cadt/config.yaml
+   sudo systemctl restart cadt@ubuntu
    ```
 
-1. Start and enable Chia, CADT, and Nginx.
+1. Use testnet for development work (skip if this is your production setup).
 
    ```bash
-   sudo systemctl enable nginx cadt@ubuntu chia-full-node@ubuntu chia-wallet@ubuntu chia-data-layer@ubuntu
-   sudo systemctl start cadt@ubuntu chia-full-node@ubuntu chia-wallet@ubuntu chia-data-layer@ubuntu
+   chia-tools network switch testneta
+   yq -y -i '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
+   sudo systemctl restart cadt@ubuntu chia-full-node@ubuntu chia-wallet@ubuntu chia-data-layer@ubuntu
    ```
 
 1. Fund your Chia wallet (mainnet only).
@@ -239,7 +241,7 @@ In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), CADT will add
     * **PICKLIST_SYNC_TASK_INTERVAL**: Syncs picklist from the governance node. Default 120 seconds (2 minutes).
     * **MIRROR_CHECK_TASK_INTERVAL**: Checks if our DataLayer is advertising our `DATALAYER_FILE_SERVER_URL` as a mirror for all subscriptions when `AUTO_MIRROR_EXTERNAL_STORES` is true. Default 900 seconds (15 minutes).
     * **VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL**: Validates the organization table periodically. Default 1800 seconds (30 minutes).
-    * **COIN_MANAGEMENT_TASK_INTERVAL**: Splits wallet coins when usable coin count is low. Default 21600 seconds (6 hours).
+    * **COIN_MANAGEMENT_TASK_INTERVAL**: How often to check whether wallet coins need splitting. The check is a single lightweight wallet RPC; when the usable coin count falls below a low-water mark (6), the largest coin is split to refill the pool to 15 coins. Default 300 seconds (5 minutes).
   * **REQUEST_CONTENT_LIMITS**: Section for configuring request size limits to prevent denial-of-service attacks. These limits control the maximum array lengths in API requests.
     * **STAGING**:
       * **EDIT_DATA_LEN**: Maximum number of items in staging edit operations. Default 200.
@@ -524,6 +526,9 @@ npm run create-linux-x64-dist
 ```
 
 #### Connecting to Socket.IO
+
+> **Deprecated:** Socket.IO is legacy and unmaintained. It is no longer used and
+> can be skipped in testing and future maintenance.
 
 CADT exposes Socket.IO namespaces at `http://localhost:31310/v1/ws` and `http://localhost:31310/v2/ws`.
 
