@@ -257,14 +257,7 @@ describe('pushChangeListToDataLayer - error handling', function () {
     expect(clearPending.callCount).to.equal(1);
   });
 
-  it('should not let a sibling retry consume the first-sighting grace', async function () {
-    this.timeout(60000);
-
-    sinon.stub(wallet, 'getDLWalletId').resolves('2');
-    sinon.stub(wallet, 'getTransactionHealth').resolves(settledWallet());
-
-    // "Key already present" advances the shared attempt counter and clears
-    // pending roots on its own, so the grace period has to survive it.
+  it('should treat "Key already present" as success without discarding a root', async function () {
     const batchUpdate = superagentPostStub.withArgs(
       sinon.match(/batch_update/),
     );
@@ -274,13 +267,45 @@ describe('pushChangeListToDataLayer - error handling', function () {
         error: 'Key already present',
       }),
     );
-    batchUpdate.onCall(1).returns(
+
+    const clearPending = superagentPostStub
+      .withArgs(sinon.match(/clear_pending_roots/))
+      .returns(createSuperagentMock({ success: true }));
+
+    const result = await pushChangeListToDataLayer(testStoreId, testChangelist);
+
+    // clear_pending_roots is stubbed to succeed, so a discard would register
+    // here; zero calls pins that the branch returns without attempting one.
+    expect(result).to.be.true;
+    expect(clearPending.callCount).to.equal(0);
+    expect(batchUpdate.callCount).to.equal(1);
+  });
+
+  it('should treat "Key already present" as success when it follows a pending-root retry', async function () {
+    this.timeout(60000);
+
+    // Settled wallets would let the discard gate fire, so a clear here would be
+    // a real discard rather than a check that happened to fail.
+    sinon.stub(wallet, 'getDLWalletId').resolves('2');
+    sinon.stub(wallet, 'getTransactionHealth').resolves(settledWallet());
+
+    // Our root confirms, we retry, and by then a concurrent push has written
+    // our key -- so the retry is the call that reports it already present.
+    const batchUpdate = superagentPostStub.withArgs(
+      sinon.match(/batch_update/),
+    );
+    batchUpdate.onCall(0).returns(
       createSuperagentMock({
         success: false,
         error: 'Already have a pending root waiting for confirmation',
       }),
     );
-    batchUpdate.onCall(2).returns(createSuperagentMock({ success: true }));
+    batchUpdate.onCall(1).returns(
+      createSuperagentMock({
+        success: false,
+        error: 'Key already present',
+      }),
+    );
 
     const clearPending = superagentPostStub
       .withArgs(sinon.match(/clear_pending_roots/))
@@ -289,9 +314,8 @@ describe('pushChangeListToDataLayer - error handling', function () {
     const result = await pushChangeListToDataLayer(testStoreId, testChangelist);
 
     expect(result).to.be.true;
-    // Only the "Key already present" branch cleared; the pending root was on
-    // its first sighting and must have been left alone.
-    expect(clearPending.callCount).to.equal(1);
+    expect(clearPending.callCount).to.equal(0);
+    expect(batchUpdate.callCount).to.equal(2);
   });
 
   it('should leave a pending root alone when only the DataLayer wallet is unsettled', async function () {

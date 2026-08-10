@@ -747,8 +747,7 @@ class Organization extends Model {
    *
    * Interaction with pushChangeListToDataLayer's internal retry loop:
    *  - pushChangeListToDataLayer has its own bounded retry loop, but only
-   *    retries on "Already have a pending root" and "Key already present"
-   *    errors.
+   *    retries on "Already have a pending root" errors.
    *  - The target failure mode here ("Wallet needs to be fully synced")
    *    falls through to the final `return false` after a single attempt.
    *  - Because we've already waited for unconfirmed txs to clear in
