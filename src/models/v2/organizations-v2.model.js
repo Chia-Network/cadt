@@ -11,7 +11,8 @@ import * as simulator from '../../datalayer/simulator.js';
 import { loggerV2 } from '../../config/logger.js';
 import { getConfig, getConfigV2 } from '../../utils/config-loader';
 import { decodeHex, decodeDataLayerResponse } from '../../utils/datalayer-utils.js';
-const { USE_SIMULATOR, AUTO_SUBSCRIBE_FILESTORE } = getConfig().APP;
+const APP_CONFIG = getConfig().APP;
+const { USE_SIMULATOR, AUTO_SUBSCRIBE_FILESTORE } = APP_CONFIG;
 
 // Helper to get store data - returns raw format with keys_values for both modes
 // Uses simulator in simulator mode, otherwise uses persistance.getStoreData directly
@@ -76,6 +77,7 @@ import {
   clearCreationState,
   hasInProgressCreation,
   createIncrementalStateWriter,
+  getStoreCreationMinTotalMojos,
 } from '../../utils/organization-creation-state.js';
 import { createStoreWithRetryBudget } from '../../utils/store-creation-retry.js';
 
@@ -265,17 +267,21 @@ class OrganizationsV2 extends Model {
         });
       }
 
+      const storesToCreate = getStoresToCreate(state);
       // One coin is enough to start: with fewer coins than stores, the
       // parallel store creations serialize themselves, each retrying until
       // the previous spend's change confirms and frees a coin. The combined
-      // balance must still cover every store, or creation would spend part
-      // of the batch and then strand the org with orphaned stores.
+      // balance must still cover every store and configured mirror.
       const coinCheck = await wallet.waitForSpendableCoins(
         1,
         undefined,
         undefined,
         undefined,
-        getStoresToCreate(state).length * wallet.MIN_USABLE_COIN_SIZE,
+        getStoreCreationMinTotalMojos(
+          storesToCreate,
+          wallet.MIN_USABLE_COIN_SIZE,
+          APP_CONFIG,
+        ),
       );
       loggerV2.info(`[v2]: Proceeding with org creation, ${coinCheck.coinCount} coins available`);
 
@@ -330,17 +336,22 @@ class OrganizationsV2 extends Model {
       await saveCreationState(state, MetaV2);
     }
 
-    const neededCoins = getStoresToCreate(state).length;
+    const storesToCreate = getStoresToCreate(state);
+    const neededCoins = storesToCreate.length;
     if (neededCoins > 0) {
       // One coin is enough to resume; scarce coins serialize the remaining
       // store creations (see _createStoresInParallel). The combined balance
-      // must still cover every remaining store.
+      // must still cover every remaining store and configured mirror.
       const coinCheck = await wallet.waitForSpendableCoins(
         1,
         undefined,
         undefined,
         undefined,
-        neededCoins * wallet.MIN_USABLE_COIN_SIZE,
+        getStoreCreationMinTotalMojos(
+          storesToCreate,
+          wallet.MIN_USABLE_COIN_SIZE,
+          APP_CONFIG,
+        ),
       );
       loggerV2.info(`[v2]: Resuming org creation, ${coinCheck.coinCount} coins available (${neededCoins} stores to create)`);
     }

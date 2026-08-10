@@ -1,6 +1,9 @@
 import { expect } from 'chai';
 import { createStoreWithRetryBudget } from '../../../src/utils/store-creation-retry.js';
-import { ORG_CREATION_CONFIG } from '../../../src/utils/organization-creation-state.js';
+import {
+  ORG_CREATION_CONFIG,
+  getStoreCreationMinTotalMojos,
+} from '../../../src/utils/organization-creation-state.js';
 import wallet from '../../../src/datalayer/wallet.js';
 
 const { isCoinShortageError, isTransientWalletError } = wallet;
@@ -288,6 +291,47 @@ describe('Store creation retry budget', function () {
       );
 
       expect(result.sufficient).to.equal(true);
+    });
+
+    it('budgets one spend per store when mirrors are not configured', function () {
+      const result = getStoreCreationMinTotalMojos(
+        ['orgUid', 'registry', 'dataModelVersion', 'fileStore'],
+        MIN_USABLE_COIN_SIZE,
+        { DATALAYER_FILE_SERVER_URL: null },
+      );
+
+      expect(result).to.equal(4 * MIN_USABLE_COIN_SIZE);
+    });
+
+    it('budgets store and mirror spends when mirror creation uses the wallet', function () {
+      const result = getStoreCreationMinTotalMojos(
+        ['orgUid', 'registry', 'dataModelVersion', 'fileStore'],
+        MIN_USABLE_COIN_SIZE,
+        { DATALAYER_FILE_SERVER_URL: 'https://mirror.example.com' },
+      );
+
+      expect(result).to.equal(8 * MIN_USABLE_COIN_SIZE);
+    });
+
+    it('does not reserve mirror spends in simulator or development mode', function () {
+      for (const appConfig of [
+        {
+          DATALAYER_FILE_SERVER_URL: 'https://mirror.example.com',
+          USE_SIMULATOR: true,
+        },
+        {
+          DATALAYER_FILE_SERVER_URL: 'https://mirror.example.com',
+          USE_DEVELOPMENT_MODE: true,
+        },
+      ]) {
+        const result = getStoreCreationMinTotalMojos(
+          ['orgUid', 'registry'],
+          MIN_USABLE_COIN_SIZE,
+          appConfig,
+        );
+
+        expect(result).to.equal(2 * MIN_USABLE_COIN_SIZE);
+      }
     });
   });
 
