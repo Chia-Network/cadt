@@ -1,4 +1,6 @@
 import { expect } from 'chai';
+import supertest from 'supertest';
+import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
 
 describe('V2 Infrastructure - Isolated Smoke Test', function () {
@@ -287,6 +289,17 @@ describe('V2 Infrastructure - Isolated Smoke Test', function () {
 
       // Verify V2 database path is different (in test mode, both may be test files)
       expect(sequelizeV2.options.storage).to.not.equal(sequelize.options.storage);
+    });
+  });
+
+  describe('V2 API Routes', function () {
+    it('should have V2 health endpoint accessible', async function () {
+      const response = await supertest(app)
+        .get('/v2/health')
+        .expect(200);
+
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.include('V2');
     });
   });
 });

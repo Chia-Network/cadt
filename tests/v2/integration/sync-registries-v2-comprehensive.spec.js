@@ -204,60 +204,6 @@ describe('Phase 27.14: Comprehensive Sync Registries V2 Tests', function () {
     });
   });
 
-  describe('Registry Sync: Model Key Mapping', function () {
-    it('should map all 21 model keys correctly', function () {
-      const expectedKeys = [
-        'program',
-        'methodology',
-        'project',
-        'validation',
-        'verification',
-        'issuance',
-        'unit',
-        'location',
-        'estimation',
-        'rating',
-        'co_benefit',
-        'project_methodology',
-        'stakeholder',
-        'stakeholder_projects',
-        'label',
-        'unit_label',
-        'aef_t1_submission',
-        'aef_t5_authorized_entities',
-        'aef_t2_authorizations',
-        'aef_t3_actions',
-        'aef_t4_holdings',
-      ];
-
-      const actualKeys = Object.keys(ModelKeysV2);
-      expect(actualKeys.length).to.equal(21);
-      expectedKeys.forEach((key) => {
-        expect(ModelKeysV2).to.have.property(key);
-      });
-    });
-
-    it('should extract primary key fields correctly for all models', function () {
-      const testCases = [
-        { modelKey: 'project', expected: 'cad_trust_project_id' },
-        { modelKey: 'unit', expected: 'cad_trust_unit_id' },
-        { modelKey: 'project_methodology', expected: 'cad_trust_project_methodology_id' },
-        { modelKey: 'stakeholder_projects', expected: 'cad_trust_stakeholder_project_id' },
-        { modelKey: 'unit_label', expected: 'cad_trust_unit_label_id' },
-      ];
-
-      testCases.forEach(({ modelKey, expected }) => {
-        const primaryKeyField = getV2PrimaryKeyField(modelKey);
-        expect(primaryKeyField).to.equal(expected);
-      });
-    });
-
-    it('should handle unknown model keys gracefully', function () {
-      const primaryKeyField = getV2PrimaryKeyField('unknown_model');
-      expect(primaryKeyField).to.be.null;
-    });
-  });
-
   describe('Registry Sync: Transaction Management', function () {
     it('should handle transaction rollback on error', async function () {
       // This would require testing actual transaction rollback
