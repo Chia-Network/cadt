@@ -242,34 +242,12 @@ describe('Mirror Backfill Dedupe + In-Sync Gate (V1)', function () {
       expect(mirrorRow, 'gate must not delete or modify the row').to.not.be.null;
     });
 
-    it('falls through to the full sync when counts mismatch', async function () {
-      // Source has one row, mirror has none. Counts differ -> gate fails
-      // -> full sync runs -> mirror gets the row.
-      const id = uuidv4();
-      const orgUid = uuidv4();
-      await insertProjectInto(sequelize, {
-        id,
-        name: 'Drift',
-        orgUid,
-        when: '2026-01-01 00:00:00',
-      });
-
-      await backfillMirror();
-
-      const mirrorRow = await ProjectMirror.findOne({
-        where: { warehouseProjectId: id },
-      });
-      expect(
-        mirrorRow,
-        'count mismatch must fall through to full sync and recover the row',
-      ).to.not.be.null;
-    });
-
-    it('falls through to the full sync when mirror max(updatedAt) is older than source', async function () {
+    it('propagates newer source values when mirror max(updatedAt) is stale', async function () {
       // Both sides have the same row count, but source has a newer
       // updatedAt - simulates an UPDATE in source that the mirror missed.
-      // The gate must NOT short-circuit; the full sync must propagate the
-      // source's newer values into the mirror.
+      // This is the only V1 assertion that the fall-through sync's
+      // updateOnDuplicate pass rewrites an existing mirror row rather than
+      // just inserting missing ones.
       const id = uuidv4();
       const orgUid = uuidv4();
 

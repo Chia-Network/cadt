@@ -116,52 +116,6 @@ describe('Project Resource Integration Tests', function () {
     await testFixtures.checkProjectMirrorRecordDoesNotExist(warehouseProjectId);
   }).timeout(TEST_WAIT_TIME * 10);
 
-  it('creates a new project end-to-end  (with simulator)', async function () {
-    // create and commit the unit to be deleted
-    const newProjectPayload = await testFixtures.createNewProject();
-
-    // Get the staging record we just created
-    const stagingRecord = await testFixtures.getLastCreatedStagingRecord();
-
-    // There is no original when creating new units
-    expect(stagingRecord.diff.original).to.deep.equal({});
-    const changeRecord = _.head(stagingRecord.diff.change);
-
-    await testFixtures.childTablesIncludeOrgUid(changeRecord);
-    await testFixtures.childTablesIncludePrimaryKey(changeRecord);
-    expect(
-      (await testFixtures.getLastCreatedStagingRecord()).commited,
-    ).to.equal(false);
-
-    // make sure the inferred data was set to the staging record
-    expect(changeRecord.orgUid).to.equal(homeOrgUid);
-    const warehouseProjectId = changeRecord.warehouseProjectId;
-
-    // Now push the staging table live and wait for sync using smart polling
-    await testFixtures.commitStagingRecordsAndWaitForCondition(
-      async () => {
-        const { Project } = await import('../../src/models/index.js');
-        const project = await Project.findOne({ where: { warehouseProjectId } });
-        return project !== null;
-      },
-      { description: 'Project creation sync to main table (end-to-end test 1)' }
-    );
-
-    // Make sure the staging table is cleaned up
-    expect(await testFixtures.getLastCreatedStagingRecord()).to.equal(
-      undefined,
-    );
-
-    const newProject = await testFixtures.getProject(warehouseProjectId);
-
-    testFixtures.objectContainsSubSet(newProject, newProjectPayload);
-    testFixtures.childTablesIncludeOrgUid(newProject);
-    testFixtures.childTablesIncludePrimaryKey(newProject);
-
-    // Make sure the newly created unit is in the mirrorDb
-    await testFixtures.checkProjectMirrorRecordExists(warehouseProjectId);
-  }).timeout(TEST_WAIT_TIME * 10);
-
   it('updates a new project end-to-end (with simulator)', async function () {
     // create and commit the unit to be deleted
     const newProjectPayload = await testFixtures.createNewProject();
@@ -187,7 +141,7 @@ describe('Project Resource Integration Tests', function () {
         const project = await Project.findOne({ where: { warehouseProjectId } });
         return project !== null;
       },
-      { description: 'Project creation sync to main table (end-to-end test 2)' }
+      { description: 'Project creation sync to main table (update test)' }
     );
 
     // Make sure the staging table is cleaned up

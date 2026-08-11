@@ -1,6 +1,33 @@
 import supertest from 'supertest';
 import app from '../../src/server';
 import { Organization } from '../../src/models/organizations/index.js';
+import { getOrgLockStatus } from '../../src/utils/org-operation-lock.js';
+
+/**
+ * Wait for the global org-operation lock to be released.
+ * The org row is written before createHomeOrganization finishes and the lock
+ * is only released once it does, so polling for the row alone can return while
+ * a creation is still in flight. Any org endpoint hit in that window answers
+ * 409, which leaks into whichever spec runs next.
+ * Against the simulator a creation completes in well under a second, so a
+ * lock still held at the deadline means something is stuck; throw rather than
+ * let the caller proceed against half-created state.
+ * @param {number} maxAttempts - Maximum number of polling attempts
+ * @param {number} interval - Time between polling attempts in ms
+ */
+const waitForOrgLockRelease = async (maxAttempts = 240, interval = 250) => {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    if (!getOrgLockStatus()) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+  const status = getOrgLockStatus();
+  throw new Error(
+    `Org operation lock still held after ${(maxAttempts * interval) / 1000}s: ` +
+      `${status?.operation} (${status?.status})`,
+  );
+};
 
 /**
  * Wait for organization creation to complete by polling the database
@@ -25,6 +52,11 @@ const waitForOrgToExist = async (maxAttempts = 20, interval = 500) => {
 };
 
 export const createTestHomeOrg = async () => {
+  // An earlier spec's creation may still be running. Its PENDING placeholder
+  // row is flagged isHome, so the existence check below would otherwise match
+  // a half-created org, and a POST issued now would be rejected with a 409.
+  await waitForOrgLockRelease();
+
   // Check if org already exists
   const existingOrg = await Organization.findOne({ where: { isHome: true } });
   if (existingOrg) {
@@ -42,6 +74,7 @@ export const createTestHomeOrg = async () => {
   // Wait for org to actually be created (v1 creation is now async)
   if (response.body.success) {
     await waitForOrgToExist();
+    await waitForOrgLockRelease();
   }
 
   return response;
