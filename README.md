@@ -102,6 +102,8 @@ System recommendation:
    ```bash
    chia-tools network switch testneta
    yq -y -i '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
+   yq -y -i '.V1.GOVERNANCE.GOVERNANCE_BODY_ID = "1019153f631bb82e7fc4984dc1f0f2af9e95a7c29df743f7b4dcc2b975857409"' ~/.chia/mainnet/cadt/config.yaml
+   yq -y -i '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = "0f09798ab90a2fc9fe35e6b199295b137990cfeb07ea73eb697a2fe2b68951ef"' ~/.chia/mainnet/cadt/config.yaml
    sudo systemctl restart cadt@ubuntu chia-full-node@ubuntu chia-wallet@ubuntu chia-data-layer@ubuntu
    ```
 
@@ -373,6 +375,7 @@ CADT runs on a testnet called "testnetA" which is different than the main Chia t
    ```
 
 1. Update the `GOVERNANCE_BODY_ID` in the `V1` section of `~/.chia/mainnet/cadt/config.yaml` to be `1019153f631bb82e7fc4984dc1f0f2af9e95a7c29df743f7b4dcc2b975857409`.
+1. Update the `GOVERNANCE_BODY_ID` in the `V2` section of `~/.chia/mainnet/cadt/config.yaml` to be `0f09798ab90a2fc9fe35e6b199295b137990cfeb07ea73eb697a2fe2b68951ef`.
 1. If you already were running CADT on mainnet, delete the CADT database.
 
    ```bash
