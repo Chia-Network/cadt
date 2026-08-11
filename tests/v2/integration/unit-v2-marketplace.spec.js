@@ -524,6 +524,8 @@ describe('V2 Unit API - Marketplace Features', function () {
       }));
     });
 
+    // marketplace and marketplace_identifier are separate FTS5 columns, so
+    // each needs its own search to prove it is indexed.
     it('should search units by marketplace name', async function () {
       const res = await supertest(app)
         .get('/v2/unit?search=Demo Marketplace&page=1&limit=10')

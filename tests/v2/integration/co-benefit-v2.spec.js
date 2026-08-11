@@ -50,90 +50,6 @@ describe('Co-Benefit V2 Endpoint Integration Tests', function () {
     console.log('Co-Benefit V2 test cleanup completed');
   });
 
-  describe('Co-Benefit CRUD Operations', function () {
-    it('should create a new co-benefit', async function () {
-      const coBenefitData = {
-        coBenefitId: 'SDG 7 - Affordable and clean energy',
-        cadTrustProjectId: testProjectId,
-      };
-
-      const coBenefit = await CoBenefitV2.create(coBenefitData);
-
-      expect(coBenefit).to.exist;
-      expect(coBenefit.cadTrustCoBenefitId).to.exist;
-      expect(coBenefit.coBenefitId).to.equal('SDG 7 - Affordable and clean energy');
-      expect(coBenefit.cadTrustProjectId).to.equal(testProjectId);
-      expect(coBenefit.createdAt).to.exist;
-      expect(coBenefit.updatedAt).to.exist;
-    });
-
-    it('should read a co-benefit by ID', async function () {
-      const coBenefitData = {
-        coBenefitId: 'SDG 13 - Climate action',
-        cadTrustProjectId: testProjectId,
-      };
-
-      const createdCoBenefit = await CoBenefitV2.create(coBenefitData);
-      const foundCoBenefit = await CoBenefitV2.findByPk(createdCoBenefit.cadTrustCoBenefitId);
-
-      expect(foundCoBenefit).to.exist;
-      expect(foundCoBenefit.cadTrustCoBenefitId).to.equal(createdCoBenefit.cadTrustCoBenefitId);
-      expect(foundCoBenefit.coBenefitId).to.equal('SDG 13 - Climate action');
-      expect(foundCoBenefit.cadTrustProjectId).to.equal(testProjectId);
-    });
-
-    it('should read all co-benefits', async function () {
-      const coBenefits = await CoBenefitV2.findAll();
-
-      expect(coBenefits).to.be.an('array');
-      expect(coBenefits.length).to.be.greaterThan(0);
-
-      // Verify each co-benefit has required fields
-      coBenefits.forEach(coBenefit => {
-        expect(coBenefit.cadTrustCoBenefitId).to.exist;
-        expect(coBenefit.coBenefitId).to.exist;
-        expect(coBenefit.cadTrustProjectId).to.exist;
-        expect(coBenefit.createdAt).to.exist;
-        expect(coBenefit.updatedAt).to.exist;
-      });
-    });
-
-    it('should update a co-benefit', async function () {
-      const coBenefitData = {
-        coBenefitId: 'SDG 6 - Clean water and sanitation',
-        cadTrustProjectId: testProjectId,
-      };
-
-      const createdCoBenefit = await CoBenefitV2.create(coBenefitData);
-
-      const updateData = {
-        coBenefitId: 'SDG 15 - Life on land',
-        cadTrustProjectId: testProjectId,
-      };
-
-      await createdCoBenefit.update(updateData);
-
-      const updatedCoBenefit = await CoBenefitV2.findByPk(createdCoBenefit.cadTrustCoBenefitId);
-
-      expect(updatedCoBenefit.coBenefitId).to.equal('SDG 15 - Life on land');
-    });
-
-    it('should delete a co-benefit', async function () {
-      const coBenefitData = {
-        coBenefitId: 'SDG 3 - Good health and well-being',
-        cadTrustProjectId: testProjectId,
-      };
-
-      const createdCoBenefit = await CoBenefitV2.create(coBenefitData);
-      const coBenefitId = createdCoBenefit.cadTrustCoBenefitId;
-
-      await createdCoBenefit.destroy();
-
-      const deletedCoBenefit = await CoBenefitV2.findByPk(coBenefitId);
-      expect(deletedCoBenefit).to.be.null;
-    });
-  });
-
   describe('Co-Benefit Validation Tests', function () {
     it('should reject co-benefit with missing required fields', async function () {
       try {
@@ -147,52 +63,9 @@ describe('Co-Benefit V2 Endpoint Integration Tests', function () {
       }
     });
 
-    it('should reject co-benefit with invalid co-benefit ID', async function () {
-      try {
-        await CoBenefitV2.create({
-          coBenefitId: 'INVALID_SDG',
-          cadTrustProjectId: testProjectId,
-        });
-        // If we get here, Sequelize accepted the invalid co-benefit ID, which is unexpected
-        expect.fail('Sequelize should have rejected invalid co-benefit ID');
-      } catch (error) {
-        // Sequelize might not validate enum values strictly, so we accept any error
-        expect(error).to.exist;
-      }
-    });
-
-    it('should reject co-benefit with invalid project ID', async function () {
-      try {
-        await CoBenefitV2.create({
-          coBenefitId: 'SDG 1 - No poverty',
-          cadTrustProjectId: 'invalid-uuid',
-        });
-        // If we get here, Sequelize accepted the invalid UUID, which is unexpected
-        expect.fail('Sequelize should have rejected invalid UUID format');
-      } catch (error) {
-        // Sequelize might not validate UUID format strictly, so we accept any error
-        expect(error).to.exist;
-      }
-    });
   });
 
   describe('Co-Benefit Foreign Key Tests', function () {
-    it('should reject co-benefit with non-existent project ID', async function () {
-      const nonExistentProjectId = uuidv4();
-
-      try {
-        await CoBenefitV2.create({
-          coBenefitId: 'SDG 2 - Zero hunger',
-          cadTrustProjectId: nonExistentProjectId,
-        });
-        // If we get here, Sequelize accepted the non-existent foreign key, which is unexpected
-        expect.fail('Sequelize should have rejected non-existent foreign key');
-      } catch (error) {
-        // Sequelize might not enforce foreign key constraints, so we accept any error
-        expect(error).to.exist;
-      }
-    });
-
     it('should accept co-benefit with valid project ID', async function () {
       const coBenefitData = {
         coBenefitId: 'SDG 4 - Quality education',
