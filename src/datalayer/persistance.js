@@ -901,7 +901,11 @@ const pushChangeListToDataLayer = async (
           continue;
         }
 
-        await new Promise((resolve) => setTimeout(resolve, pendingRootGraceMs));
+        // Only worth waiting if another attempt remains; on the last sighting the
+        // loop exits immediately and the delay would just postpone the failure.
+        if (attempts < maxAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, pendingRootGraceMs));
+        }
         continue;
       }
 
