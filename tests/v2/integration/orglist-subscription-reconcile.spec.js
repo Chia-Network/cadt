@@ -41,6 +41,7 @@ import {
   markGovernanceReady,
   resetGovernanceReadiness,
 } from '../../../src/utils/governance-readiness.js';
+import { withConfigOverride } from '../utils/v2-test-helpers.js';
 import { v4 as uuidv4 } from 'uuid';
 
 const GOVERNANCE_BODY_ID = defaultConfig.V2.GOVERNANCE.GOVERNANCE_BODY_ID;
@@ -108,6 +109,12 @@ describe('orglist-subscription-reconcile (V2)', function () {
     await MetaV2.destroy({ where: {} });
     resetOrgListReconcileState();
     resetGovernanceReadiness();
+  });
+
+  // A test aborted by timeout never reaches its own restore, which would leave
+  // a stub installed for the rest of the file.
+  afterEach(function () {
+    sinon.restore();
   });
 
   describe('buildOrgListAllowSet', function () {
@@ -996,6 +1003,106 @@ describe('orglist-subscription-reconcile (V2)', function () {
       await GovernanceV2.sync();
 
       expect(isGovernanceReady('v2')).to.equal(true);
+    });
+
+    it('should expire V2 governance readiness once the last confirmed-good sync is stale', function () {
+      const clock = sinon.useFakeTimers({ now: Date.now(), toFake: ['Date'] });
+
+      try {
+        markGovernanceReady('v2');
+        expect(isGovernanceReady('v2')).to.equal(true);
+
+        // Readiness holds for five default 120s sync intervals, so a handful of
+        // failed syncs does not gate the purge off.
+        clock.tick(9 * 60 * 1000);
+        expect(isGovernanceReady('v2')).to.equal(true);
+
+        clock.tick(2 * 60 * 1000);
+        expect(isGovernanceReady('v2')).to.equal(false);
+      } finally {
+        clock.restore();
+      }
+    });
+
+    // A 300s interval puts the window (5 intervals = 25 minutes) strictly
+    // between the 10-minute floor and the 60-minute ceiling, so these
+    // assertions fail if the window stops tracking the configured interval.
+    it('should scale the readiness window with the configured sync interval', async function () {
+      await withConfigOverride(
+        async () => {
+          const clock = sinon.useFakeTimers({ now: Date.now(), toFake: ['Date'] });
+
+          try {
+            markGovernanceReady('v2');
+
+            clock.tick(24 * 60 * 1000);
+            expect(isGovernanceReady('v2')).to.equal(true);
+
+            clock.tick(2 * 60 * 1000);
+            expect(isGovernanceReady('v2')).to.equal(false);
+          } finally {
+            clock.restore();
+          }
+        },
+        { APP: { TASKS: { GOVERNANCE_SYNC_TASK_INTERVAL: 300 } } },
+      );
+    });
+
+    // An interval longer than the ceiling must still leave readiness alive
+    // past the next scheduled sync, or the purge would be disabled outright
+    // rather than gated.
+    it('should keep the readiness window above the sync interval when the interval exceeds the ceiling', async function () {
+      await withConfigOverride(
+        async () => {
+          const clock = sinon.useFakeTimers({ now: Date.now(), toFake: ['Date'] });
+
+          try {
+            markGovernanceReady('v2');
+
+            clock.tick(3 * 60 * 60 * 1000);
+            expect(isGovernanceReady('v2')).to.equal(true);
+
+            clock.tick(2 * 60 * 60 * 1000);
+            expect(isGovernanceReady('v2')).to.equal(false);
+          } finally {
+            clock.restore();
+          }
+        },
+        { APP: { TASKS: { GOVERNANCE_SYNC_TASK_INTERVAL: 7200 } } },
+      );
+    });
+
+    it('should keep V2 governance readiness while a sync is in flight', async function () {
+      markGovernanceReady('v2');
+
+      let releaseUpsert;
+      const upsertGate = new Promise((resolve) => {
+        releaseUpsert = resolve;
+      });
+      let upsertStarted;
+      const upsertReached = new Promise((resolve) => {
+        upsertStarted = resolve;
+      });
+
+      const upsertStub = sinon.stub(GovernanceV2, 'upsert').callsFake(async () => {
+        upsertStarted();
+        await upsertGate;
+      });
+
+      try {
+        const syncPromise = GovernanceV2.sync();
+        await upsertReached;
+
+        // A sync that has started but not finished must not lower readiness:
+        // the purge gate is polled by a task on the same interval, so it would
+        // read the cleared value for the whole cycle.
+        expect(isGovernanceReady('v2')).to.equal(true);
+
+        releaseUpsert();
+        await syncPromise;
+      } finally {
+        upsertStub.restore();
+      }
     });
 
     it('should default ONLY_CADT_SUBSCRIPTIONS to true', function () {
