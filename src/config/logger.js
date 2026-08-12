@@ -5,8 +5,30 @@ import os from 'os';
 import path from 'path';
 import packageJson from '../../package.json' with { type: 'json' };
 import { getConfig } from '../utils/config-loader.js';
+import { redactHeaders } from '../utils/log-redaction.js';
 
 const { format, transports, createLogger } = winston;
+
+// Strip credential values from a record's top-level `headers` field before any
+// transport sees it. Only the `info.headers` and `info.metadata.headers` shapes
+// are covered — a header map nested deeper than that still reaches the log
+// stream. Both shapes are handled so this stays correct wherever it sits in the
+// chain relative to format.metadata(), which relocates extra fields under
+// info.metadata.
+const redactSensitiveFields = format((info) => {
+  if (info.headers) {
+    info.headers = redactHeaders(info.headers);
+  }
+  if (info.metadata?.headers) {
+    // Copy rather than assign into info.metadata: when this format runs before
+    // format.metadata(), info.metadata is still the caller's own object.
+    info.metadata = {
+      ...info.metadata,
+      headers: redactHeaders(info.metadata.headers),
+    };
+  }
+  return info;
+});
 
 const getChiaRoot = () => {
   let chiaRoot;
@@ -121,6 +143,7 @@ const createVersionLogger = (version) => {
   const versionLogger = createLogger({
     level: getConfig().APP.LOG_LEVEL || 'info',
     format: format.combine(
+      redactSensitiveFields(),
       logFormat,
       format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
       format.metadata({ fillExcept: ['message', 'level', 'timestamp'] }),

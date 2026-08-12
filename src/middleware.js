@@ -20,6 +20,7 @@ import { Organization } from './models';
 import { OrganizationsV2 } from './models/v2/index.js';
 import { logger } from './config/logger.js';
 import { sendReadOnlyError } from './utils/read-only-response.js';
+import { redactHeaders } from './utils/log-redaction.js';
 import { getRateLimitRetryAfterSeconds } from './utils/rate-limit.js';
 import { resolveTrustProxyHops } from './utils/trust-proxy.js';
 import {
@@ -150,7 +151,7 @@ app.use((req, res, next) => {
   logger.verbose(`Received request: ${req.method} ${req.originalUrl}`, {
     method: req.method,
     url: req.originalUrl,
-    headers: req.headers,
+    headers: redactHeaders(req.headers),
     timestamp: new Date().toISOString(),
   });
 
