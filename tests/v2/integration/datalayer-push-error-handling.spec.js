@@ -35,6 +35,10 @@ describe('pushChangeListToDataLayer - error handling', function () {
     { action: 'insert', key: '0xabc', value: '0xdef' },
   ];
 
+  // The production grace period between pending-root sightings is measured in tens
+  // of seconds. Shorten it so retry paths don't dominate the suite's runtime.
+  const testOptions = { pendingRootGraceMs: 10 };
+
   beforeEach(function () {
     // Stub wallet so it doesn't actually wait for transactions
     walletWaitStub = sinon.stub(wallet, 'waitForAllTransactionsToConfirm').resolves();
@@ -54,7 +58,7 @@ describe('pushChangeListToDataLayer - error handling', function () {
     const mock = createSuperagentMock({ success: true });
     superagentPostStub.returns(mock);
 
-    const result = await pushChangeListToDataLayer(testStoreId, testChangelist);
+    const result = await pushChangeListToDataLayer(testStoreId, testChangelist, testOptions);
 
     expect(result).to.be.true;
   });
@@ -67,7 +71,7 @@ describe('pushChangeListToDataLayer - error handling', function () {
     });
     superagentPostStub.returns(mock);
 
-    const result = await pushChangeListToDataLayer(testStoreId, testChangelist);
+    const result = await pushChangeListToDataLayer(testStoreId, testChangelist, testOptions);
 
     expect(result).to.be.true;
   });
@@ -79,7 +83,7 @@ describe('pushChangeListToDataLayer - error handling', function () {
     });
     superagentPostStub.returns(mock);
 
-    const result = await pushChangeListToDataLayer(testStoreId, testChangelist);
+    const result = await pushChangeListToDataLayer(testStoreId, testChangelist, testOptions);
 
     expect(result).to.be.true;
   });
@@ -91,7 +95,7 @@ describe('pushChangeListToDataLayer - error handling', function () {
     });
     superagentPostStub.returns(mock);
 
-    const result = await pushChangeListToDataLayer(testStoreId, testChangelist);
+    const result = await pushChangeListToDataLayer(testStoreId, testChangelist, testOptions);
 
     expect(result).to.be.false;
   });
@@ -103,7 +107,7 @@ describe('pushChangeListToDataLayer - error handling', function () {
     });
     superagentPostStub.returns(mock);
 
-    const result = await pushChangeListToDataLayer(testStoreId, testChangelist);
+    const result = await pushChangeListToDataLayer(testStoreId, testChangelist, testOptions);
 
     expect(result).to.be.false;
   });
@@ -117,7 +121,7 @@ describe('pushChangeListToDataLayer - error handling', function () {
     };
     superagentPostStub.returns(mock);
 
-    const result = await pushChangeListToDataLayer(testStoreId, testChangelist);
+    const result = await pushChangeListToDataLayer(testStoreId, testChangelist, testOptions);
 
     expect(result).to.be.false;
   });
@@ -136,7 +140,7 @@ describe('pushChangeListToDataLayer - error handling', function () {
       .onFirstCall().returns(pendingMock)
       .onSecondCall().returns(successMock);
 
-    const result = await pushChangeListToDataLayer(testStoreId, testChangelist);
+    const result = await pushChangeListToDataLayer(testStoreId, testChangelist, testOptions);
 
     expect(result).to.be.true;
     // Should have called post twice (initial + retry)
@@ -202,7 +206,7 @@ describe('pushChangeListToDataLayer - error handling', function () {
 
     const { batchUpdate, clearPending } = stubPendingRootThenSuccess();
 
-    const result = await pushChangeListToDataLayer(testStoreId, testChangelist);
+    const result = await pushChangeListToDataLayer(testStoreId, testChangelist, testOptions);
 
     expect(result).to.be.true;
     expect(clearPending.callCount).to.equal(1);
@@ -219,10 +223,32 @@ describe('pushChangeListToDataLayer - error handling', function () {
     // concurrent-push case that must not lose data.
     const { clearPending } = stubPendingRootThenSuccess({ succeedOnCall: 2 });
 
-    const result = await pushChangeListToDataLayer(testStoreId, testChangelist);
+    const result = await pushChangeListToDataLayer(testStoreId, testChangelist, testOptions);
 
     expect(result).to.be.true;
     expect(clearPending.callCount).to.equal(0);
+  });
+
+  it('should wait the grace period before a pending root can be cleared', async function () {
+    this.timeout(60000);
+
+    sinon.stub(wallet, 'getDLWalletId').resolves('2');
+    sinon.stub(wallet, 'getTransactionHealth').resolves(settledWallet());
+
+    const { clearPending } = stubPendingRootThenSuccess();
+
+    // Elapsed time is the only thing protecting a concurrent push that has staged
+    // a root but not yet published it, so the delay must survive refactoring.
+    const graceMs = 300;
+    const startedAt = Date.now();
+    const result = await pushChangeListToDataLayer(testStoreId, testChangelist, {
+      pendingRootGraceMs: graceMs,
+    });
+    const elapsed = Date.now() - startedAt;
+
+    expect(result).to.be.true;
+    expect(clearPending.callCount).to.equal(1);
+    expect(elapsed).to.be.at.least(graceMs);
   });
 
   it('should leave a pending root alone while a transaction is still unconfirmed', async function () {
@@ -235,7 +261,7 @@ describe('pushChangeListToDataLayer - error handling', function () {
 
     const { clearPending } = stubPendingRootThenSuccess();
 
-    const result = await pushChangeListToDataLayer(testStoreId, testChangelist);
+    const result = await pushChangeListToDataLayer(testStoreId, testChangelist, testOptions);
 
     expect(result).to.be.true;
     expect(clearPending.callCount).to.equal(0);
@@ -249,7 +275,7 @@ describe('pushChangeListToDataLayer - error handling', function () {
 
     const { clearPending } = stubPendingRootThenSuccess();
 
-    const result = await pushChangeListToDataLayer(testStoreId, testChangelist);
+    const result = await pushChangeListToDataLayer(testStoreId, testChangelist, testOptions);
 
     // A rejected transaction can never confirm the root, so it is not a reason
     // to keep it.
@@ -272,7 +298,7 @@ describe('pushChangeListToDataLayer - error handling', function () {
       .withArgs(sinon.match(/clear_pending_roots/))
       .returns(createSuperagentMock({ success: true }));
 
-    const result = await pushChangeListToDataLayer(testStoreId, testChangelist);
+    const result = await pushChangeListToDataLayer(testStoreId, testChangelist, testOptions);
 
     // clear_pending_roots is stubbed to succeed, so a discard would register
     // here; zero calls pins that the branch returns without attempting one.
@@ -311,7 +337,7 @@ describe('pushChangeListToDataLayer - error handling', function () {
       .withArgs(sinon.match(/clear_pending_roots/))
       .returns(createSuperagentMock({ success: true }));
 
-    const result = await pushChangeListToDataLayer(testStoreId, testChangelist);
+    const result = await pushChangeListToDataLayer(testStoreId, testChangelist, testOptions);
 
     expect(result).to.be.true;
     expect(clearPending.callCount).to.equal(0);
@@ -328,7 +354,7 @@ describe('pushChangeListToDataLayer - error handling', function () {
 
     const { clearPending } = stubPendingRootThenSuccess();
 
-    const result = await pushChangeListToDataLayer(testStoreId, testChangelist);
+    const result = await pushChangeListToDataLayer(testStoreId, testChangelist, testOptions);
 
     expect(result).to.be.true;
     expect(clearPending.callCount).to.equal(0);
@@ -342,7 +368,7 @@ describe('pushChangeListToDataLayer - error handling', function () {
 
     const { clearPending } = stubPendingRootThenSuccess();
 
-    const result = await pushChangeListToDataLayer(testStoreId, testChangelist);
+    const result = await pushChangeListToDataLayer(testStoreId, testChangelist, testOptions);
 
     expect(result).to.be.true;
     expect(clearPending.callCount).to.equal(0);
@@ -358,7 +384,7 @@ describe('pushChangeListToDataLayer - error handling', function () {
 
     const { clearPending } = stubPendingRootThenSuccess();
 
-    const result = await pushChangeListToDataLayer(testStoreId, testChangelist);
+    const result = await pushChangeListToDataLayer(testStoreId, testChangelist, testOptions);
 
     expect(result).to.be.true;
     expect(clearPending.callCount).to.equal(0);
@@ -375,7 +401,7 @@ describe('pushChangeListToDataLayer - error handling', function () {
       succeedOnCall: 99,
     });
 
-    const result = await pushChangeListToDataLayer(testStoreId, testChangelist);
+    const result = await pushChangeListToDataLayer(testStoreId, testChangelist, testOptions);
 
     expect(result).to.be.false;
     expect(clearPending.callCount).to.equal(1);
@@ -394,7 +420,7 @@ describe('pushChangeListToDataLayer - error handling', function () {
       clearSucceeds: false,
     });
 
-    const result = await pushChangeListToDataLayer(testStoreId, testChangelist);
+    const result = await pushChangeListToDataLayer(testStoreId, testChangelist, testOptions);
 
     expect(result).to.be.true;
     // Nothing was discarded, so the one-per-push cap does not apply.
@@ -415,7 +441,7 @@ describe('pushChangeListToDataLayer - error handling', function () {
     // the push that the clear unblocked still has to be tried.
     clearPending.onCall(3).returns(createSuperagentMock({ success: true }));
 
-    const result = await pushChangeListToDataLayer(testStoreId, testChangelist);
+    const result = await pushChangeListToDataLayer(testStoreId, testChangelist, testOptions);
 
     expect(result).to.be.true;
     expect(clearPending.callCount).to.equal(4);
@@ -435,7 +461,7 @@ describe('pushChangeListToDataLayer - error handling', function () {
     superagentPostStub.returns(mock);
 
     try {
-      await pushChangeListToDataLayer(testStoreId, testChangelist);
+      await pushChangeListToDataLayer(testStoreId, testChangelist, testOptions);
       expect.fail('Should have thrown a permanent error');
     } catch (error) {
       expect(error.message).to.include('not owned');
