@@ -773,10 +773,19 @@ const getRoots = async (storeIds) => {
   }
 };
 
+// Grace period between pending-root sightings. A concurrent push that has staged a
+// root but has not yet published it is invisible to the wallet check in
+// clearOrphanedPendingRoot, so elapsed time is the only thing keeping its changelist
+// from being discarded. Must stay well inside the maxAttempts budget below.
+const PENDING_ROOT_GRACE_MS = 45000;
+
 const pushChangeListToDataLayer = async (
   storeId,
   changelist,
-  { skipTransactionWait = false } = {},
+  {
+    skipTransactionWait = false,
+    pendingRootGraceMs = PENDING_ROOT_GRACE_MS,
+  } = {},
 ) => {
   let attempts = 0;
   let pendingRootSightings = 0;
@@ -892,7 +901,7 @@ const pushChangeListToDataLayer = async (
           continue;
         }
 
-        await new Promise((resolve) => setTimeout(resolve, 10000));
+        await new Promise((resolve) => setTimeout(resolve, pendingRootGraceMs));
         continue;
       }
 
