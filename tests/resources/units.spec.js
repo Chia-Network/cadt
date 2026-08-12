@@ -24,13 +24,14 @@ describe('Units Resource CRUD', function () {
   });
 
   describe('GET Units', function () {
-    describe('error states', function () {
-      it('errors if there if there is no connection to the datalayer', function () {});
-    });
-
     describe('success states', function () {
       let response;
-      beforeEach(async function () {
+
+      // Read-only tests share one seeded unit. This hook runs ahead of the
+      // suite-level beforeEach for the first test, so it clears staging
+      // itself before staging the unit.
+      before(async function () {
+        await Staging.destroy({ truncate: true });
         await testFixtures.createTestHomeOrg();
         await testFixtures.getHomeOrgId();
         await testFixtures.createNewUnit();
@@ -47,20 +48,13 @@ describe('Units Resource CRUD', function () {
         );
 
         // Clean up committed staging records so assertNoPendingCommits
-        // doesn't block subsequent unit creations within the test body
+        // doesn't block subsequent unit creations within the test bodies
         await Staging.destroy({ where: { commited: true } });
 
         const result = await supertest(app)
           .get('/v1/units')
           .query({ page: 1, limit: 100 });
         response = result.body.data[0];
-      });
-
-      afterEach(async function () {
-        await supertest(app).delete('/v1/units').send({
-          warehouseUnitId: newUnit.warehouseUnitId,
-        });
-        await supertest(app).post('/v1/staging/commit');
       });
 
       it('gets all the units available', async function () {
@@ -81,6 +75,9 @@ describe('Units Resource CRUD', function () {
         // ?orgUid=XXXX
       }).timeout(TEST_WAIT_TIME * 10);
 
+      // Declaration order matters from here down: this test adds two more
+      // units to the shared fixture and does not remove them, so any test
+      // asserting an exact unit count has to run above it.
       it('orders by serial number', async function () {
         const newUnit1 = _.cloneDeep(newUnit);
         newUnit1.unitBlockStart = 'AAAAA1';
@@ -93,8 +90,8 @@ describe('Units Resource CRUD', function () {
         await testFixtures.createNewUnit(newUnit2);
 
         // Wait for units to sync to main table using smart polling.
-        // When run in the full suite, prior afterEach commits may leave
-        // pending datalayer generations that the sync task must drain before
+        // When run in the full suite, earlier specs may leave pending
+        // datalayer generations that the sync task must drain before
         // reaching this commit's generation, so allow extra attempts.
         await testFixtures.commitStagingRecordsAndWaitForCondition(
           async () => {
@@ -180,7 +177,6 @@ describe('Units Resource CRUD', function () {
           'No Home organization found, please create an organization to write data',
         );
       }).timeout(TEST_WAIT_TIME * 10);
-      it('errors if there is a current set of pending commits', async function () {});
       it('errors if there if there is no connection to the datalayer', async function () {
         await testFixtures.createTestHomeOrg();
         sinon.stub(datalayer, 'dataLayerAvailable').resolves(false);
@@ -212,54 +208,4 @@ describe('Units Resource CRUD', function () {
     });
   });
 
-  describe('PUT Units - Update', function () {
-    describe('error states', function () {
-      it('errors if no home organization exists', function () {});
-      it('errors if there is a current set of pending commits', function () {});
-      it('errors if there if there is no connection to the datalayer', function () {});
-      it('errors if the warehouseUnitId is not in the payload', function () {});
-      it('errors if the warehouseUnitId is an existing record', function () {});
-      it('errors if trying to update a child table that is not an existing record', function () {});
-      it('errors if the orgUid of the unit does not equal the home organization', function () {});
-    });
-
-    describe('success states', function () {
-      it('updates a new unit with no child tables', function () {});
-      it('updates a new unit with all child tables', function () {});
-    });
-  });
-
-  describe('DELETE Units - Delete', function () {
-    describe('error states', function () {
-      it('errors if no home organization exists', function () {});
-      it('errors if there is a current set of pending commits', function () {});
-      it('errors if there if there is no connection to the datalayer', function () {});
-      it('errors if the warehouseUnitId is not in the payload', function () {});
-      it('errors if the warehouseUnitId is an existing record', function () {});
-      it('errors if the orgUid of the unit does not equal the home organization', function () {});
-    });
-
-    describe('success states', function () {
-      it('updates a new unit with no child tables', function () {});
-      it('updates a new unit with all child tables', function () {});
-    });
-  });
-
-  describe('PUT - Split Units', function () {
-    describe('error states', function () {
-      it('errors if no home organization exists', function () {});
-      it('errors if there is a current set of pending commits', function () {});
-      it('errors if there if there is no connection to the datalayer', function () {});
-      it('errors if the orgUid of the unit does not equal the home organization', function () {});
-      it('errors if the unit split does not add up correctly', function () {});
-    });
-
-    describe('success states', function () {
-      it('properly splits the unit', function () {});
-    });
-  });
-
-  describe('websocket', function () {
-    it('flags a change when units are updated', function () {});
-  });
 });

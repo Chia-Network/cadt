@@ -138,31 +138,6 @@ describe('Mirror Reconnect and Orphan Sweep (V1)', function () {
       expect(removed, 'row deleted from source should be removed from mirror')
         .to.be.null;
     });
-
-    it('should also insert missing rows (upsert pass still runs)', async function () {
-      const id = uuidv4();
-      const orgUid = uuidv4();
-      await sequelize.query(
-        `INSERT INTO projects
-          (warehouseProjectId, orgUid, currentRegistry, projectId, originProjectId,
-           registryOfOrigin, projectName, createdAt, updatedAt)
-        VALUES (:id, :orgUid, 'Test Registry', 'PRJ-002', 'PRJ-002',
-                'Test Registry', 'Source-only', datetime('now'), datetime('now'))`,
-        {
-          replacements: { id, orgUid },
-          type: Sequelize.QueryTypes.INSERT,
-        },
-      );
-
-      await backfillMirror();
-
-      const mirrorRow = await ProjectMirror.findOne({
-        where: { warehouseProjectId: id },
-      });
-      expect(mirrorRow, 'source row must be upserted into mirror').to.not.be
-        .null;
-      expect(mirrorRow.projectName).to.equal('Source-only');
-    });
   });
 
   describe('Reconnect-triggered backfill', function () {

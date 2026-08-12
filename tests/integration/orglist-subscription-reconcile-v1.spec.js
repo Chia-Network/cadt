@@ -24,6 +24,36 @@ const GOVERNANCE_BODY_ID = defaultConfig.V1.GOVERNANCE.GOVERNANCE_BODY_ID;
 const ORG_A = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 const ORG_C = 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc';
 
+const V1_FIELD_NAMES = {
+  orgUid: 'orgUid',
+  isHome: 'isHome',
+  subscribed: 'subscribed',
+};
+
+const silentLogger = { info: () => {}, warn: () => {}, debug: () => {} };
+
+// Runs one reconcile cycle against the V1 wiring. `orgList` drives both the
+// raw list and the derived allow set; every other collaborator has a
+// no-op/permissive default that tests override only where they assert on it.
+const reconcile = ({ orgList = [{ orgUid: ORG_A }], ...overrides } = {}) => {
+  // Derive from the effective list so an override of either key can't leave
+  // the allow set describing a different org list than defaultOrgList.
+  const effectiveOrgList = overrides.defaultOrgList ?? orgList;
+  return removeOrgsNotInOrgList({
+    defaultOrgList: effectiveOrgList,
+    allowSet: buildOrgListAllowSet(effectiveOrgList, GOVERNANCE_BODY_ID),
+    organizationModel: Organization,
+    fieldNames: V1_FIELD_NAMES,
+    unsubscribeFromOrganizationStores: async () => {},
+    isStoreUnsubscribed: async () => true,
+    deleteAllOrganizationData: async () => {},
+    logger: silentLogger,
+    apiVersionLabel: 'v1',
+    graceCycles: 1,
+    ...overrides,
+  });
+};
+
 describe('orglist-subscription-reconcile (V1)', function () {
   this.timeout(30000);
 
@@ -62,67 +92,40 @@ describe('orglist-subscription-reconcile (V1)', function () {
 
     const unsubscribed = [];
     const deleted = [];
-    const defaultOrgList = [{ orgUid: ORG_A }];
-    await removeOrgsNotInOrgList({
-      defaultOrgList,
-      allowSet: buildOrgListAllowSet(defaultOrgList, GOVERNANCE_BODY_ID),
-      organizationModel: Organization,
-      fieldNames: { orgUid: 'orgUid', isHome: 'isHome', subscribed: 'subscribed' },
+    const trackUnsubscribe = async (org) => {
+      unsubscribed.push(org.orgUid);
+    };
+    const trackDelete = async (orgUid) => {
+      deleted.push(orgUid);
+      await Organization.destroy({ where: { orgUid } });
+    };
+
+    await reconcile({
       unsubscribeFromOrganizationStores: async (org) => {
-        unsubscribed.push(org.orgUid);
+        await trackUnsubscribe(org);
         await Organization.update(
           { subscribed: false },
           { where: { orgUid: org.orgUid } },
         );
       },
-      isStoreUnsubscribed: async () => true,
-      deleteAllOrganizationData: async (orgUid) => {
-        deleted.push(orgUid);
-        await Organization.destroy({ where: { orgUid } });
-      },
-      logger: { info: () => {}, warn: () => {} },
-      apiVersionLabel: 'v1',
+      deleteAllOrganizationData: trackDelete,
       graceCycles: 2,
     });
 
     expect(unsubscribed).to.deep.equal([ORG_C]);
     expect(deleted).to.deep.equal([]);
 
-    await removeOrgsNotInOrgList({
-      defaultOrgList,
-      allowSet: buildOrgListAllowSet(defaultOrgList, GOVERNANCE_BODY_ID),
-      organizationModel: Organization,
-      fieldNames: { orgUid: 'orgUid', isHome: 'isHome', subscribed: 'subscribed' },
-      unsubscribeFromOrganizationStores: async (org) => {
-        unsubscribed.push(org.orgUid);
-      },
-      isStoreUnsubscribed: async () => true,
-      deleteAllOrganizationData: async (orgUid) => {
-        deleted.push(orgUid);
-        await Organization.destroy({ where: { orgUid } });
-      },
-      logger: { info: () => {}, warn: () => {} },
-      apiVersionLabel: 'v1',
+    await reconcile({
+      unsubscribeFromOrganizationStores: trackUnsubscribe,
+      deleteAllOrganizationData: trackDelete,
       graceCycles: 2,
     });
 
     expect(deleted).to.deep.equal([]);
 
-    await removeOrgsNotInOrgList({
-      defaultOrgList,
-      allowSet: buildOrgListAllowSet(defaultOrgList, GOVERNANCE_BODY_ID),
-      organizationModel: Organization,
-      fieldNames: { orgUid: 'orgUid', isHome: 'isHome', subscribed: 'subscribed' },
-      unsubscribeFromOrganizationStores: async (org) => {
-        unsubscribed.push(org.orgUid);
-      },
-      isStoreUnsubscribed: async () => true,
-      deleteAllOrganizationData: async (orgUid) => {
-        deleted.push(orgUid);
-        await Organization.destroy({ where: { orgUid } });
-      },
-      logger: { info: () => {}, warn: () => {} },
-      apiVersionLabel: 'v1',
+    await reconcile({
+      unsubscribeFromOrganizationStores: trackUnsubscribe,
+      deleteAllOrganizationData: trackDelete,
       graceCycles: 2,
     });
 
@@ -152,19 +155,9 @@ describe('orglist-subscription-reconcile (V1)', function () {
       projectName: 'Removed Org Project',
     });
 
-    const defaultOrgList = [{ orgUid: ORG_A }];
-    await removeOrgsNotInOrgList({
-      defaultOrgList,
-      allowSet: buildOrgListAllowSet(defaultOrgList, GOVERNANCE_BODY_ID),
-      organizationModel: Organization,
-      fieldNames: { orgUid: 'orgUid', isHome: 'isHome', subscribed: 'subscribed' },
-      unsubscribeFromOrganizationStores: async () => {},
-      isStoreUnsubscribed: async () => true,
+    await reconcile({
       deleteAllOrganizationData: (orgUid) =>
         Organization.deleteAllOrganizationData(orgUid, { skipStagingTruncate: true }),
-      logger: { info: () => {}, warn: () => {} },
-      apiVersionLabel: 'v1',
-      graceCycles: 1,
     });
 
     const orgC = await Organization.findOne({ where: { orgUid: ORG_C }, raw: true });
@@ -190,19 +183,9 @@ describe('orglist-subscription-reconcile (V1)', function () {
       data: '{}',
     });
 
-    const defaultOrgList = [{ orgUid: ORG_A }];
-    await removeOrgsNotInOrgList({
-      defaultOrgList,
-      allowSet: buildOrgListAllowSet(defaultOrgList, GOVERNANCE_BODY_ID),
-      organizationModel: Organization,
-      fieldNames: { orgUid: 'orgUid', isHome: 'isHome', subscribed: 'subscribed' },
-      unsubscribeFromOrganizationStores: async () => {},
-      isStoreUnsubscribed: async () => true,
+    await reconcile({
       deleteAllOrganizationData: (orgUid) =>
         Organization.deleteAllOrganizationData(orgUid, { skipStagingTruncate: true }),
-      logger: { info: () => {}, warn: () => {} },
-      apiVersionLabel: 'v1',
-      graceCycles: 1,
     });
 
     const stagingRows = await Staging.findAll({ raw: true });
@@ -244,20 +227,10 @@ describe('orglist-subscription-reconcile (V1)', function () {
     });
 
     const deleted = [];
-    const defaultOrgList = [{ orgUid: ORG_A }];
-    await removeOrgsNotInOrgList({
-      defaultOrgList,
-      allowSet: buildOrgListAllowSet(defaultOrgList, GOVERNANCE_BODY_ID),
-      organizationModel: Organization,
-      fieldNames: { orgUid: 'orgUid', isHome: 'isHome', subscribed: 'subscribed' },
-      unsubscribeFromOrganizationStores: async () => {},
-      isStoreUnsubscribed: async () => true,
+    await reconcile({
       deleteAllOrganizationData: async (orgUid) => {
         deleted.push(orgUid);
       },
-      logger: { info: () => {}, warn: () => {} },
-      apiVersionLabel: 'v1',
-      graceCycles: 1,
     });
 
     expect(deleted).to.deep.equal([]);
@@ -278,23 +251,14 @@ describe('orglist-subscription-reconcile (V1)', function () {
 
     const unsubscribed = [];
     const deleted = [];
-    const defaultOrgList = [{ orgUid: ORG_A }];
-    await removeOrgsNotInOrgList({
-      defaultOrgList,
-      allowSet: buildOrgListAllowSet(defaultOrgList, GOVERNANCE_BODY_ID),
-      organizationModel: Organization,
-      fieldNames: { orgUid: 'orgUid', isHome: 'isHome', subscribed: 'subscribed' },
+    await reconcile({
       unsubscribeFromOrganizationStores: async (org) => {
         unsubscribed.push(org.orgUid);
       },
-      isStoreUnsubscribed: async () => true,
       deleteAllOrganizationData: async (orgUid) => {
         deleted.push(orgUid);
         await Organization.destroy({ where: { orgUid } });
       },
-      logger: { info: () => {}, warn: () => {} },
-      apiVersionLabel: 'v1',
-      graceCycles: 1,
     });
 
     // Already unsubscribed -> DataLayer unsubscribe is skipped, but data is purged.
@@ -314,20 +278,11 @@ describe('orglist-subscription-reconcile (V1)', function () {
     });
 
     const deleted = [];
-    const defaultOrgList = [{ orgUid: ORG_A }];
-    await removeOrgsNotInOrgList({
-      defaultOrgList,
-      allowSet: buildOrgListAllowSet(defaultOrgList, GOVERNANCE_BODY_ID),
-      organizationModel: Organization,
-      fieldNames: { orgUid: 'orgUid', isHome: 'isHome', subscribed: 'subscribed' },
-      unsubscribeFromOrganizationStores: async () => {},
+    await reconcile({
       isStoreUnsubscribed: async () => false,
       deleteAllOrganizationData: async (orgUid) => {
         deleted.push(orgUid);
       },
-      logger: { info: () => {}, warn: () => {} },
-      apiVersionLabel: 'v1',
-      graceCycles: 1,
     });
 
     expect(deleted).to.deep.equal([]);
@@ -347,51 +302,23 @@ describe('orglist-subscription-reconcile (V1)', function () {
     });
 
     const deleted = [];
-    await removeOrgsNotInOrgList({
-      defaultOrgList: [{ orgUid: ORG_A }],
-      allowSet: buildOrgListAllowSet([{ orgUid: ORG_A }], GOVERNANCE_BODY_ID),
-      organizationModel: Organization,
-      fieldNames: { orgUid: 'orgUid', isHome: 'isHome', subscribed: 'subscribed' },
-      unsubscribeFromOrganizationStores: async () => {},
-      isStoreUnsubscribed: async () => true,
-      deleteAllOrganizationData: async (orgUid) => {
-        deleted.push(orgUid);
-      },
-      logger: { info: () => {}, warn: () => {}, debug: () => {} },
-      apiVersionLabel: 'v1',
+    const trackDelete = async (orgUid) => {
+      deleted.push(orgUid);
+    };
+
+    await reconcile({
+      deleteAllOrganizationData: trackDelete,
       graceCycles: 2,
     });
 
-    await removeOrgsNotInOrgList({
-      defaultOrgList: [{ orgUid: ORG_A }, { orgUid: ORG_C }],
-      allowSet: buildOrgListAllowSet(
-        [{ orgUid: ORG_A }, { orgUid: ORG_C }],
-        GOVERNANCE_BODY_ID,
-      ),
-      organizationModel: Organization,
-      fieldNames: { orgUid: 'orgUid', isHome: 'isHome', subscribed: 'subscribed' },
-      unsubscribeFromOrganizationStores: async () => {},
-      isStoreUnsubscribed: async () => true,
-      deleteAllOrganizationData: async (orgUid) => {
-        deleted.push(orgUid);
-      },
-      logger: { info: () => {}, warn: () => {}, debug: () => {} },
-      apiVersionLabel: 'v1',
+    await reconcile({
+      orgList: [{ orgUid: ORG_A }, { orgUid: ORG_C }],
+      deleteAllOrganizationData: trackDelete,
       graceCycles: 2,
     });
 
-    await removeOrgsNotInOrgList({
-      defaultOrgList: [{ orgUid: ORG_A }],
-      allowSet: buildOrgListAllowSet([{ orgUid: ORG_A }], GOVERNANCE_BODY_ID),
-      organizationModel: Organization,
-      fieldNames: { orgUid: 'orgUid', isHome: 'isHome', subscribed: 'subscribed' },
-      unsubscribeFromOrganizationStores: async () => {},
-      isStoreUnsubscribed: async () => true,
-      deleteAllOrganizationData: async (orgUid) => {
-        deleted.push(orgUid);
-      },
-      logger: { info: () => {}, warn: () => {}, debug: () => {} },
-      apiVersionLabel: 'v1',
+    await reconcile({
+      deleteAllOrganizationData: trackDelete,
       graceCycles: 2,
     });
 
@@ -412,13 +339,8 @@ describe('orglist-subscription-reconcile (V1)', function () {
     const deleted = [];
     let isUnsubscribed = true;
     let confirmationError = null;
-    const reconcile = () =>
-      removeOrgsNotInOrgList({
-        defaultOrgList: [{ orgUid: ORG_A }],
-        allowSet: buildOrgListAllowSet([{ orgUid: ORG_A }], GOVERNANCE_BODY_ID),
-        organizationModel: Organization,
-        fieldNames: { orgUid: 'orgUid', isHome: 'isHome', subscribed: 'subscribed' },
-        unsubscribeFromOrganizationStores: async () => {},
+    const cycle = () =>
+      reconcile({
         isStoreUnsubscribed: async () => {
           if (confirmationError) {
             throw confirmationError;
@@ -428,31 +350,29 @@ describe('orglist-subscription-reconcile (V1)', function () {
         deleteAllOrganizationData: async (orgUid) => {
           deleted.push(orgUid);
         },
-        logger: { info: () => {}, warn: () => {}, debug: () => {} },
-        apiVersionLabel: 'v1',
         graceCycles: 2,
       });
 
-    await reconcile();
+    await cycle();
     expect(deleted).to.deep.equal([]);
 
     confirmationError = new Error('datalayer unreachable');
-    await reconcile();
+    await cycle();
     expect(deleted).to.deep.equal([]);
 
     confirmationError = null;
-    await reconcile();
+    await cycle();
     expect(deleted).to.deep.equal([]);
 
     isUnsubscribed = false;
-    await reconcile();
+    await cycle();
     expect(deleted).to.deep.equal([]);
 
     isUnsubscribed = true;
-    await reconcile();
+    await cycle();
     expect(deleted).to.deep.equal([]);
 
-    await reconcile();
+    await cycle();
     expect(deleted).to.deep.equal([ORG_C]);
   });
 

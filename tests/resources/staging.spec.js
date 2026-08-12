@@ -383,15 +383,9 @@ describe('Staging Resource CRUD', function () {
   });
 
   describe('POST - Commit Records to datalayer', function () {
-    it('Sends the staging table to the datalayer', function () {});
-    it('Sets the committed flag to true when sent to the datalayer', function () {});
-    it('Staging record is removed when Insert records propagate through the datalayer', function () {});
-    it('Staging record is removed when Update records propagate through the datalayer', function () {});
-    it('Staging record is removed when Delete records propagate through the datalayer', function () {});
     it('can commit just the project staging records optionally', async function () {
       await supertest(app).post('/v1/projects').send(newProject);
     });
-    it('can commit just the unit staging records optionally', function () {});
   });
 
   describe('DELETE - Delete a single staging record', function () {
@@ -417,9 +411,5 @@ describe('Staging Resource CRUD', function () {
       /// const response = await supertest(app).get('/v1/staging');
       // expect(response.body).to.deep.equal(0);
     });
-  });
-
-  describe('websocket', function () {
-    it('flags a change when staging is updated', function () {});
   });
 });
