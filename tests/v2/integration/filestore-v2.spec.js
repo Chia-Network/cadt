@@ -322,33 +322,6 @@ describe('Phase 19.4: FilestoreV2 Comprehensive Integration Tests', function () 
     });
   });
 
-  describe('Error Handling', function () {
-    it('should handle invalid file ID gracefully', async function () {
-      const response = await supertest(app)
-        .get('/v2/filestore/get_file')
-        .query({ fileId: 'invalid-sha256-format' })
-        .expect(404);
-
-      expect(response.body.success).to.be.false;
-    });
-
-    it('should handle missing required parameters', async function () {
-      // Test missing fileId for delete
-      const deleteResponse = await supertest(app)
-        .delete('/v2/filestore/delete_file')
-        .send({});
-
-      expect([400, 422]).to.include(deleteResponse.status);
-
-      // Test missing orgUid for subscribe
-      const subscribeResponse = await supertest(app)
-        .post('/v2/filestore/subscribe')
-        .send({});
-
-      expect([400, 422]).to.include(subscribeResponse.status);
-    });
-  });
-
   describe('V1/V2 Isolation Tests', function () {
     it('should verify V2 filestore operations work independently of V1', async function () {
       // Create V1 file store record

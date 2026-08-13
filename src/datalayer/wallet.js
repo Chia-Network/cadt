@@ -220,9 +220,12 @@ const waitForAllTransactionsToConfirm = async (startTime = null, maxWaitMs = 180
 
   try {
     const anyUnconfirmed = await hasAnyUnconfirmedTransactions();
-    await new Promise((resolve) => setTimeout(resolve, 15000));
 
     if (anyUnconfirmed) {
+      // Poll interval before re-checking. It must stay inside this branch: a settled wallet
+      // has nothing to wait for, and delaying here puts a 15s floor under every caller.
+      await new Promise((resolve) => setTimeout(resolve, 15000));
+
       const elapsedAfterSleep = Date.now() - startTime;
       if (elapsedAfterSleep > 300000 && elapsedAfterSleep % 60000 < 15000) {
         try {

@@ -253,55 +253,10 @@ describe('Project Resource CRUD', function () {
 
         expect(response.statusCode).to.equal(400);
 
-        await supertest(app).post(`/v1/organizations`).send({
-          name: 'Test',
-          icon: 'https://www.chia.net/wp-content/uploads/2023/01/chia-logo-dark.svg',
-        });
+        // Restore the home org for later specs, and wait for the async
+        // creation to finish so it doesn't hold the org lock past this file.
+        await testFixtures.createTestHomeOrg();
       }).timeout(TEST_WAIT_TIME * 10);
-
-      it('errors if there is a current set of pending commits', function () {});
-
-      it('errors if there if there is no connection to the datalayer', function () {});
-
-      it('errors if the warehouseProjectId is not in the payload', function () {});
-
-      it('errors if the warehouseProjectId is an existing record', function () {});
-
-      it('errors if trying to update a child table that is not an existing record', function () {});
-
-      it('errors if the orgUid of the project does not equal the home organization', function () {});
     });
-
-    describe('success states', function () {
-      it('updates a new project with no child tables', function () {});
-
-      it('updates a new project with all child tables', function () {});
-    });
-  });
-
-  describe('DELETE Projects - Delete', function () {
-    describe('error states', function () {
-      it('errors if no home organization exists', function () {});
-
-      it('errors if there is a current set of pending commits', function () {});
-
-      it('errors if there if there is no connection to the datalayer', function () {});
-
-      it('errors if the warehouseProjectId is not in the payload', function () {});
-
-      it('errors if the warehouseProjectId is an existing record', function () {});
-
-      it('errors if the orgUid of the project does not equal the home organization', function () {});
-    });
-
-    describe('success states', function () {
-      it('updates a new project with no child tables', function () {});
-
-      it('updates a new project with all child tables', function () {});
-    });
-  });
-
-  describe('websocket', function () {
-    it('flags a change when projects are updated', function () {});
   });
 });

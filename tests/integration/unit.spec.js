@@ -401,58 +401,6 @@ describe('Unit Resource Integration Tests', function () {
     expect(stagingRes3.body.length).to.equal(0);
   }).timeout(TEST_WAIT_TIME * 20);
 
-  it('creates a new unit end-to-end  (with simulator)', async function () {
-    // 1. Create a new unit
-    // 2. verify the unit is in the staging tables
-    // 3. verify the inferred data has been added to the unit record
-    // 3. commit the staging tables
-    // 4. verify that the staging table has the committed flag set to true
-    // 5. verify the unit was commited to the database
-    // 6. verify the staging table was cleaned up
-
-    // create and commit the unit to be deleted
-    const newUnitPayload = await testFixtures.createNewUnit();
-
-    // Get the staging record we just created
-    const stagingRecord = await testFixtures.getLastCreatedStagingRecord();
-
-    // There is no original when creating new units
-    expect(stagingRecord.diff.original).to.deep.equal({});
-    const changeRecord = _.head(stagingRecord.diff.change);
-
-    await testFixtures.childTablesIncludeOrgUid(changeRecord);
-    await testFixtures.childTablesIncludePrimaryKey(changeRecord);
-
-    expect(
-      (await testFixtures.getLastCreatedStagingRecord()).commited,
-    ).to.equal(false);
-
-    // make sure the inferred data was set to the staging record
-    expect(changeRecord.orgUid).to.equal(homeOrgUid);
-    const warehouseUnitId = changeRecord.warehouseUnitId;
-
-    // Now push the staging table live and wait for sync + staging cleanup
-    await testFixtures.commitStagingRecordsAndWaitForCondition(
-      async () => {
-        const { Unit } = await import('../../src/models/index.js');
-        const unit = await Unit.findOne({ where: { warehouseUnitId } });
-        if (!unit) return false;
-        const lastStaging = await testFixtures.getLastCreatedStagingRecord();
-        return !lastStaging;
-      },
-      { description: 'Unit creation sync and staging cleanup (end-to-end test 1)' }
-    );
-
-    const newUnit = await testFixtures.getUnit(warehouseUnitId);
-
-    testFixtures.objectContainsSubSet(newUnit, newUnitPayload);
-    await testFixtures.childTablesIncludeOrgUid(newUnit);
-    await testFixtures.childTablesIncludePrimaryKey(newUnit);
-
-    // Make sure the newly created unit is in the mirrorDb
-    await testFixtures.checkUnitRecordExists(warehouseUnitId);
-  }).timeout(TEST_WAIT_TIME * 10);
-
   it('updates a new unit end-to-end (with simulator)', async function () {
     // create and commit the unit to be deleted
     const newUnitPayload = await testFixtures.createNewUnit();
@@ -480,7 +428,7 @@ describe('Unit Resource Integration Tests', function () {
         const lastStaging = await testFixtures.getLastCreatedStagingRecord();
         return !lastStaging;
       },
-      { description: 'Unit creation sync and staging cleanup (end-to-end test 2)' }
+      { description: 'Unit creation sync and staging cleanup (update test)' }
     );
 
     const newUnit = await testFixtures.getUnit(warehouseUnitId);

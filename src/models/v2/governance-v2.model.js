@@ -465,7 +465,8 @@ class GovernanceV2 extends Model {
    */
   static async sync() {
     loggerV2.debug('[v2]: running V2 governance model sync()');
-    markGovernanceNotReady('v2');
+    // Readiness is a freshness timestamp, not a sync-in-progress flag; do not
+    // clear it here. See utils/governance-readiness.js.
 
     const { USE_SIMULATOR, USE_DEVELOPMENT_MODE } = getConfig().APP;
 
@@ -556,6 +557,10 @@ class GovernanceV2 extends Model {
         }
         if (hasOrgList) {
           markGovernanceReady('v2');
+        } else {
+          // A download carrying no orgList cannot vouch for the cached one, so
+          // revoke readiness instead of letting the purge run against it.
+          markGovernanceNotReady('v2');
         }
         return;
       }
@@ -622,6 +627,10 @@ class GovernanceV2 extends Model {
       }
       if (hasOrgList) {
         markGovernanceReady('v2');
+      } else {
+        // A download carrying no orgList cannot vouch for the cached one, so
+        // revoke readiness instead of letting the purge run against it.
+        markGovernanceNotReady('v2');
       }
     } catch (error) {
       loggerV2.error(

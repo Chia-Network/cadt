@@ -102,6 +102,8 @@ System recommendation:
    ```bash
    chia-tools network switch testneta
    yq -y -i '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
+   yq -y -i '.V1.GOVERNANCE.GOVERNANCE_BODY_ID = "1019153f631bb82e7fc4984dc1f0f2af9e95a7c29df743f7b4dcc2b975857409"' ~/.chia/mainnet/cadt/config.yaml
+   yq -y -i '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = "0f09798ab90a2fc9fe35e6b199295b137990cfeb07ea73eb697a2fe2b68951ef"' ~/.chia/mainnet/cadt/config.yaml
    sudo systemctl restart cadt@ubuntu chia-full-node@ubuntu chia-wallet@ubuntu chia-data-layer@ubuntu
    ```
 
@@ -233,10 +235,10 @@ In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), CADT will add
   * **DATALAYER_FILE_SERVER_URL**: Publicly available URL and port where Chia Datalayer [files are served](#datalayer-http-file-serving), including schema (http:// or https://). If serving DataLayer files from S3, this would be the public URL of the S3 bucket. Port can be omitted if using standard ports for http or https requests.
   * **AUTO_SUBSCRIBE_FILESTORE**: Subscribing to the filestore for any organization is optional. To automatically subscribe and sync the filestore to every organization you subscribe to, set this to `true`.
   * **AUTO_MIRROR_EXTERNAL_STORES**: When set to true (the default), CADT will automatically create mirrors for each store you are subscribed to. Mirroring all subscriptions using the `DATALAYER_FILE_SERVER_URL` will make the entire CADT network more resilient and distributed. Note: `DATALAYER_FILE_SERVER_URL` must also be set to a valid URL or IP address for mirrors to be created. Both settings are required for external store mirroring to function.
-  * **ONLY_CADT_SUBSCRIPTIONS**: When `true` (the default), CADT keeps DataLayer subscriptions aligned with the governance **orgList** in both directions. Organizations removed from the orgList are first unsubscribed from DataLayer, then removed from this node after unsubscribe is confirmed and the purge grace period has elapsed — the organization record and **all** of its local data (projects, units, and every related record it created) are deleted from the database. The deletion is unconditional: it does **not** check whether another organization references that data. Organizations on the orgList that are not subscribed are subscribed (including orgs re-added after a prior removal, including orgs previously removed via the API delete flow). The home organization and governance body store are never auto-removed. Reconciliation runs only after a successful governance sync provides a non-empty **orgList**; empty or stale cached governance data does not trigger removals. Set to `false` to disable orglist-driven subscribe/remove reconciliation. While enabled, a manual unsubscribe of an org still listed on the orgList will be reverted on the next sync cycle.
+  * **ONLY_CADT_SUBSCRIPTIONS**: When `true` (the default), CADT keeps DataLayer subscriptions aligned with the governance **orgList** in both directions. Organizations removed from the orgList are first unsubscribed from DataLayer, then removed from this node after unsubscribe is confirmed and the purge grace period has elapsed — the organization record and **all** of its local data (projects, units, and every related record it created) are deleted from the database. The deletion is unconditional: it does **not** check whether another organization references that data. Organizations on the orgList that are not subscribed are subscribed (including orgs re-added after a prior removal, including orgs previously removed via the API delete flow). The home organization and governance body store are never auto-removed. Reconciliation runs only while a recent governance sync has confirmed a non-empty **orgList**; empty or stale cached governance data does not trigger removals. "Recent" means within five `GOVERNANCE_SYNC_TASK_INTERVAL` periods (clamped to between 10 and 60 minutes), so a node whose governance sync has been failing stops removing organizations until it recovers. Set to `false` to disable orglist-driven subscribe/remove reconciliation. While enabled, a manual unsubscribe of an org still listed on the orgList will be reverted on the next sync cycle.
   * **LOG_LEVEL**: Controls verbosity of logging. Common settings are `info` and `debug`. Setting to `silly` will log all queries.
   * **TASKS**: Section for configuring sync intervals.
-    * **GOVERNANCE_SYNC_TASK_INTERVAL**: Syncs picklist, orgList, and glossary from the governance node. Default 120 seconds (2 minutes).
+    * **GOVERNANCE_SYNC_TASK_INTERVAL**: Syncs picklist, orgList, and glossary from the governance node. Default 120 seconds (2 minutes). Also sets how long a successful sync keeps the `ONLY_CADT_SUBSCRIPTIONS` reconciliation eligible to run — see that setting for details.
     * **ORGANIZATION_META_SYNC_TASK_INTERVAL**: Subscribes to default organizations and refreshes metadata for already-imported organizations. Default 120 seconds (2 minutes).
     * **PICKLIST_SYNC_TASK_INTERVAL**: Syncs picklist from the governance node. Default 120 seconds (2 minutes).
     * **MIRROR_CHECK_TASK_INTERVAL**: Checks if our DataLayer is advertising our `DATALAYER_FILE_SERVER_URL` as a mirror for all subscriptions when `AUTO_MIRROR_EXTERNAL_STORES` is true. Default 900 seconds (15 minutes).
@@ -373,6 +375,7 @@ CADT runs on a testnet called "testnetA" which is different than the main Chia t
    ```
 
 1. Update the `GOVERNANCE_BODY_ID` in the `V1` section of `~/.chia/mainnet/cadt/config.yaml` to be `1019153f631bb82e7fc4984dc1f0f2af9e95a7c29df743f7b4dcc2b975857409`.
+1. Update the `GOVERNANCE_BODY_ID` in the `V2` section of `~/.chia/mainnet/cadt/config.yaml` to be `0f09798ab90a2fc9fe35e6b199295b137990cfeb07ea73eb697a2fe2b68951ef`.
 1. If you already were running CADT on mainnet, delete the CADT database.
 
    ```bash

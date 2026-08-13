@@ -8,10 +8,7 @@ import {
 import { getConfig } from '../utils/config-loader';
 import { logger } from '../config/logger.js';
 import { Organization } from '../models';
-import {
-  markGovernanceNotReady,
-  markGovernanceReady,
-} from '../utils/governance-readiness.js';
+import { markGovernanceReady } from '../utils/governance-readiness.js';
 
 const CONFIG = getConfig();
 
@@ -27,7 +24,8 @@ const task = new Task('sync-governance-meta', async () => {
       return;
     }
 
-    markGovernanceNotReady('v1');
+    // Readiness is a freshness timestamp, not a sync-in-progress flag; do not
+    // clear it here. See utils/governance-readiness.js.
     await assertDataLayerAvailable();
     await assertWalletIsSynced();
 

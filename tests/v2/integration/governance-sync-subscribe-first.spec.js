@@ -3,9 +3,15 @@ import sinon from 'sinon';
 
 import { prepareDb } from '../../../src/database/index.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
+import datalayer from '../../../src/datalayer/index.js';
 import { GovernanceV2 } from '../../../src/models/v2/index.js';
 import TaskManager from '../../../src/tasks/index.js';
 import { withConfigOverride } from '../utils/v2-test-helpers.js';
+import {
+  isGovernanceReady,
+  markGovernanceReady,
+  resetGovernanceReadiness,
+} from '../../../src/utils/governance-readiness.js';
 
 /**
  * Regression test: governance sync must subscribe to the body store BEFORE
@@ -46,6 +52,7 @@ describe('GovernanceV2.sync subscribe-first ordering', function () {
   });
 
   beforeEach(function () {
+    resetGovernanceReadiness();
     // The test runner sets USE_SIMULATOR=true, which still overrides YAML.
     // Delete it so withConfigOverride({ APP: { USE_SIMULATOR: false } }) sticks.
     originalUseSimulator = process.env.USE_SIMULATOR;
@@ -321,6 +328,35 @@ describe('GovernanceV2.sync subscribe-first ordering', function () {
           false,
           'upsertGovernanceDownload must not run when versioned subscribe fails',
         );
+      },
+      {
+        APP: { USE_SIMULATOR: false, USE_DEVELOPMENT_MODE: false },
+        V2: { GOVERNANCE: { GOVERNANCE_BODY_ID } },
+      },
+    );
+  });
+
+  it('revokes governance readiness when a download carries no orgList', async function () {
+    await withConfigOverride(
+      async () => {
+        sinon
+          .stub(datalayer, 'subscribeToStoreOnDataLayer')
+          .resolves(true);
+        sinon
+          .stub(datalayer, 'getDataLayerStoreSyncStatus')
+          .resolves({ sync_status: { generation: 1, target_generation: 1 } });
+        // No versioned pointer key, so sync() takes the legacy path and
+        // upsertGovernanceDownload runs for real against this payload.
+        sinon
+          .stub(datalayer, 'getSubscribedStoreData')
+          .resolves({ glossary: '[]', pickList: '[]' });
+
+        markGovernanceReady('v2');
+        expect(isGovernanceReady('v2')).to.equal(true);
+
+        await GovernanceV2.sync();
+
+        expect(isGovernanceReady('v2')).to.equal(false);
       },
       {
         APP: { USE_SIMULATOR: false, USE_DEVELOPMENT_MODE: false },

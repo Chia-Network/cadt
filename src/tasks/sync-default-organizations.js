@@ -110,10 +110,14 @@ const task = new Task('sync-default-organizations', async () => {
         }
       });
 
+      // Read once: readiness is time-based, so two separate calls could
+      // straddle its expiry and leave neither branch taken.
+      const governanceReady = isGovernanceReady('v1');
+
       if (
         onlyCadtSubscriptions &&
         defaultOrgRecords.length > 0 &&
-        isGovernanceReady('v1')
+        governanceReady
       ) {
         const { GOVERNANCE_BODY_ID } = CONFIG.GOVERNANCE;
         const allowSet = buildOrgListAllowSet(defaultOrgRecords, GOVERNANCE_BODY_ID);
@@ -145,10 +149,10 @@ const task = new Task('sync-default-organizations', async () => {
       } else if (
         onlyCadtSubscriptions &&
         defaultOrgRecords.length > 0 &&
-        !isGovernanceReady('v1')
+        !governanceReady
       ) {
         logger.debug(
-          '[v1]: ONLY_CADT_SUBSCRIPTIONS: skipping off-orglist purge until governance sync completes',
+          '[v1]: ONLY_CADT_SUBSCRIPTIONS: skipping off-orglist purge until a recent governance sync confirms the orgList is fresh',
         );
       }
     }
