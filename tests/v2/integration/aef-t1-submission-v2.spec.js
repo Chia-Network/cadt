@@ -19,6 +19,25 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
     console.log('AEF-T1-Submission V2 test cleanup completed');
   });
 
+  describe('AEF-T1-Submission Validation Tests', function () {
+    // The model's aefT1SubmissionSubmissionDate setter rejects non-ISO input before
+    // Sequelize parses it. Joi's date().iso() does not cover the non-API write paths.
+    it('should reject AEF-T1-Submission with invalid date format', async function () {
+      try {
+        await AefT1SubmissionV2.create({
+          aefT1SubmissionParty: 'Test Party',
+          aefT1SubmissionVersion: '1.0',
+          aefT1SubmissionReportYear: 2024,
+          aefT1SubmissionSubmissionDate: 'invalid-date',
+        });
+        expect.fail('Should have rejected invalid date format');
+      } catch (error) {
+        expect(error).to.exist;
+        expect(error.message).to.include('ISO format');
+      }
+    });
+  });
+
   describe('POST /v2/aef-t1-submission (Create)', function () {
     it('should create a new AEF-T1-Submission record via API', async function () {
       const aefT1SubmissionData = {
