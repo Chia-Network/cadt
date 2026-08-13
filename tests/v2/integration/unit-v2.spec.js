@@ -16,6 +16,7 @@ import {
   addUuidIfNeeded,
   createV2TestProgramChain,
 } from '../utils/v2-test-helpers.js';
+import { runCrudStagingSuite } from '../utils/crud-suite-factory.js';
 
 describe('V2 Unit API - Basic CRUD Tests', function () {
   this.timeout(30000);
@@ -151,46 +152,123 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
     await resetV2StagingTable();
   });
 
-  describe('POST /v2/unit (Create)', function () {
-    it('should create a new unit record', async function () {
-      const unitData = {
-        unitSerialId: 'TEST-UNIT-001',
+  runCrudStagingSuite({
+    resource: 'unit',
+    label: 'Unit',
+    pk: 'cadTrustUnitId',
+    pkColumn: 'cad_trust_unit_id',
+    missingId: '99999',
+    requiredFields: [
+      'unitCount',
+      'unitType',
+      'unitStatus',
+      'unitStatusReason',
+      'unitMetric',
+      'unitSerialId',
+      'unitStartBlock',
+      'unitEndBlock',
+      'unitVintageYear',
+      'cadTrustIssuanceId',
+    ],
+    forbiddenFields: [
+      { field: 'createdAt', message: 'createdAt" is not allowed' },
+      { field: 'updatedAt', message: 'updatedAt" is not allowed' },
+    ],
+    picklists: [
+      {
+        field: 'unitType',
+        invalid: 'Invalid Unit Type',
+        invalidMessage: 'Unit Type does not include a valid option',
+        valid: 'Avoidance - nature',
+      },
+      {
+        field: 'unitStatus',
+        invalid: 'Invalid Status',
+        invalidMessage: 'Unit Status does not include a valid option',
+        valid: 'Issued',
+      },
+      {
+        field: 'unitMetric',
+        invalid: 'Invalid Metric',
+        invalidMessage: 'Unit Metric does not include a valid option',
+        valid: 'tCO2e',
+      },
+    ],
+    context: () => ({ testIssuance }),
+    validPayload: (ctx) => ({
+      unitSerialId: 'TEST-UNIT-001',
+      unitStartBlock: '1000',
+      unitEndBlock: '2000',
+      unitCount: 100.5,
+      unitType: 'Avoidance - nature',
+      unitVintageYear: 2024,
+      unitStatus: 'Issued',
+      unitStatusReason: 'Issued and active',
+      unitStatusDate: '2024-01-01',
+      unitRetirementDetail: 'Retired for compliance',
+      unitRetirementBeneficiary: 'Test Beneficiary',
+      unitRetirementBeneficiaryId: 'BEN-001',
+      unitLink: 'https://example.com/unit',
+      unitMetric: 'tCO2e',
+      unitCurrentOwner: 'Test Owner',
+      unitItmosReferenceId: 'ITMO-001',
+      cadTrustIssuanceId: ctx.testIssuance.cadTrustIssuanceId,
+    }),
+    list: {
+      seed: async (ctx) =>
+        UnitV2.create(addUuidIfNeeded('UnitV2', {
+          unitSerialId: 'TEST-UNIT-DB-001',
+          unitStartBlock: '1000',
+          unitEndBlock: '2000',
+          unitVintageYear: 2024,
+          cadTrustIssuanceId: ctx.testIssuance.cadTrustIssuanceId,
+          orgUid: await getV2HomeOrgId(),
+        })),
+      expectRow: (row) => {
+        expect(row.unitSerialId).to.equal('TEST-UNIT-DB-001');
+      },
+    },
+    seed: async (ctx) =>
+      UnitV2.create(addUuidIfNeeded('UnitV2', {
+        unitSerialId: 'TEST-UNIT-UPDATE-001',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
-        unitCount: 100.5,
-        unitType: 'Avoidance - nature',
         unitVintageYear: 2024,
-        unitStatus: 'Issued',
-        unitStatusReason: 'Issued and active',
-        unitStatusDate: '2024-01-01',
-        unitRetirementDetail: 'Retired for compliance',
-        unitRetirementBeneficiary: 'Test Beneficiary',
-        unitRetirementBeneficiaryId: 'BEN-001',
-        unitLink: 'https://example.com/unit',
-        unitMetric: 'tCO2e',
-        unitCurrentOwner: 'Test Owner',
-        unitItmosReferenceId: 'ITMO-001',
-        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
-      };
+        cadTrustIssuanceId: ctx.testIssuance.cadTrustIssuanceId,
+        orgUid: await getV2HomeOrgId(),
+      })),
+    updatePayload: (ctx) => ({
+      unitSerialId: 'UPDATED-UNIT-001',
+      unitStartBlock: '1000',
+      unitEndBlock: '2000',
+      unitCount: 100,
+      unitType: 'Avoidance - nature',
+      unitVintageYear: 2024,
+      unitStatus: 'Issued',
+      unitStatusReason: 'Test reason',
+      unitMetric: 'tCO2e',
+      cadTrustIssuanceId: ctx.testIssuance.cadTrustIssuanceId,
+    }),
+    // Omits required fields such as unitCount: the 404 only comes back if the
+    // controller looks the record up before validating.
+    notFoundPayload: (ctx) => ({
+      unitSerialId: 'UPDATED-UNIT-001',
+      unitStartBlock: '1000',
+      unitEndBlock: '2000',
+      unitVintageYear: 2024,
+      cadTrustIssuanceId: ctx.testIssuance.cadTrustIssuanceId,
+    }),
+    expectStagedUpdate: async (staged) => {
+      // Verify staged update data includes org_uid from home organization
+      expect(staged).to.have.property('org_uid');
+      expect(staged.org_uid).to.equal(await getV2HomeOrgId());
+    },
+    expectDeleteResponse: (body) => {
+      expect(body.stagedChildDeletes).to.equal(0);
+    },
+  });
 
-      const response = await supertest(app)
-        .post('/v2/unit')
-        .send(unitData)
-        .expect(200);
-
-      expect(response.body.success).to.be.true;
-      expect(response.body.message).to.equal('Unit staged successfully');
-      expect(response.body.uuid).to.exist;
-
-      // Verify the record was staged
-      const stagingRecord = await StagingV2.findOne({
-        where: { uuid: response.body.uuid },
-      });
-      expect(stagingRecord).to.exist;
-      expect(stagingRecord.table).to.equal('unit');
-      expect(stagingRecord.action).to.equal('INSERT');
-    });
-
+  describe('POST /v2/unit (Create)', function () {
     it('should create unit with all required data', async function () {
       const unitData = {
         unitSerialId: 'TEST-UNIT-MINIMAL',
@@ -212,208 +290,6 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
 
       expect(response.body.success).to.be.true;
       expect(response.body.message).to.equal('Unit staged successfully');
-    });
-
-    it('should reject unit without required unitCount', async function () {
-      const unitData = {
-        unitSerialId: 'TEST-UNIT-NOCOUNT',
-        unitStartBlock: '1000',
-        unitEndBlock: '2000',
-        unitType: 'Avoidance - nature',
-        unitVintageYear: 2024,
-        unitStatus: 'Issued',
-        unitStatusReason: 'Test reason',
-        unitMetric: 'tCO2e',
-        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/unit')
-        .send(unitData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('unitCount');
-    });
-
-    it('should reject unit without required unitType', async function () {
-      const unitData = {
-        unitSerialId: 'TEST-UNIT-NOTYPE',
-        unitStartBlock: '1000',
-        unitEndBlock: '2000',
-        unitCount: 100,
-        unitVintageYear: 2024,
-        unitStatus: 'Issued',
-        unitStatusReason: 'Test reason',
-        unitMetric: 'tCO2e',
-        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/unit')
-        .send(unitData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('unitType');
-    });
-
-    it('should reject unit without required unitStatus', async function () {
-      const unitData = {
-        unitSerialId: 'TEST-UNIT-NOSTATUS',
-        unitStartBlock: '1000',
-        unitEndBlock: '2000',
-        unitCount: 100,
-        unitType: 'Avoidance - nature',
-        unitVintageYear: 2024,
-        unitStatusReason: 'Test reason',
-        unitMetric: 'tCO2e',
-        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/unit')
-        .send(unitData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('unitStatus');
-    });
-
-    it('should reject unit without required unitStatusReason', async function () {
-      const unitData = {
-        unitSerialId: 'TEST-UNIT-NOREASON',
-        unitStartBlock: '1000',
-        unitEndBlock: '2000',
-        unitCount: 100,
-        unitType: 'Avoidance - nature',
-        unitVintageYear: 2024,
-        unitStatus: 'Issued',
-        unitMetric: 'tCO2e',
-        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/unit')
-        .send(unitData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('unitStatusReason');
-    });
-
-    it('should reject unit without required unitMetric', async function () {
-      const unitData = {
-        unitSerialId: 'TEST-UNIT-NOMETRIC',
-        unitStartBlock: '1000',
-        unitEndBlock: '2000',
-        unitCount: 100,
-        unitType: 'Avoidance - nature',
-        unitVintageYear: 2024,
-        unitStatus: 'Issued',
-        unitStatusReason: 'Test reason',
-        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/unit')
-        .send(unitData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('unitMetric');
-    });
-
-    it('should reject unit without required unitSerialId', async function () {
-      const unitData = {
-        unitStartBlock: '1000',
-        unitEndBlock: '2000',
-        unitVintageYear: 2024,
-        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/unit')
-        .send(unitData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('unitSerialId');
-    });
-
-    it('should reject unit without required unitStartBlock', async function () {
-      const unitData = {
-        unitSerialId: 'TEST-UNIT-001',
-        unitEndBlock: '2000',
-        unitVintageYear: 2024,
-        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/unit')
-        .send(unitData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('unitStartBlock');
-    });
-
-    it('should reject unit without required unitEndBlock', async function () {
-      const unitData = {
-        unitSerialId: 'TEST-UNIT-001',
-        unitStartBlock: '1000',
-        unitVintageYear: 2024,
-        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/unit')
-        .send(unitData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('unitEndBlock');
-    });
-
-    it('should reject unit without required unitVintageYear', async function () {
-      const unitData = {
-        unitSerialId: 'TEST-UNIT-001',
-        unitStartBlock: '1000',
-        unitEndBlock: '2000',
-        unitCount: 100,
-        unitType: 'Avoidance - nature',
-        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/unit')
-        .send(unitData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('unitVintageYear');
-    });
-
-    it('should reject unit without required cadTrustIssuanceId', async function () {
-      const unitData = {
-        unitSerialId: 'TEST-UNIT-001',
-        unitStartBlock: '1000',
-        unitEndBlock: '2000',
-        unitCount: 100,
-        unitType: 'Avoidance - nature',
-        unitVintageYear: 2024,
-        unitStatus: 'Issued',
-        unitStatusReason: 'Test reason',
-        unitMetric: 'tCO2e',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/unit')
-        .send(unitData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('cadTrustIssuanceId');
     });
 
     it('should reject unit with invalid cadTrustIssuanceId (non-existent)', async function () {
@@ -482,187 +358,6 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
 
       expect(response.body.success).to.be.false;
       expect(response.body.error).to.include('unitStatusDate');
-    });
-
-    it('should reject unit with invalid unitType (not in V2 picklist)', async function () {
-      const unitData = {
-        unitSerialId: 'TEST-UNIT-001',
-        unitStartBlock: '1000',
-        unitEndBlock: '2000',
-        unitCount: 100,
-        unitType: 'Invalid Unit Type',
-        unitVintageYear: 2024,
-        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/unit')
-        .send(unitData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('Unit Type does not include a valid option');
-    });
-
-    it('should accept unit with valid V2 unitType', async function () {
-      const unitData = {
-        unitSerialId: 'TEST-UNIT-VALID-TYPE',
-        unitStartBlock: '1000',
-        unitEndBlock: '2000',
-        unitCount: 100,
-        unitType: 'Avoidance - nature',
-        unitVintageYear: 2024,
-        unitStatus: 'Issued',
-        unitStatusReason: 'Test reason',
-        unitMetric: 'tCO2e',
-        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/unit')
-        .send(unitData)
-        .expect(200);
-
-      expect(response.body.success).to.be.true;
-      expect(response.body.message).to.equal('Unit staged successfully');
-    });
-
-    it('should reject unit with invalid unitStatus (not in V2 picklist)', async function () {
-      const unitData = {
-        unitSerialId: 'TEST-UNIT-001',
-        unitStartBlock: '1000',
-        unitEndBlock: '2000',
-        unitCount: 100,
-        unitType: 'Avoidance - nature',
-        unitVintageYear: 2024,
-        unitStatus: 'Invalid Status',
-        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/unit')
-        .send(unitData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('Unit Status does not include a valid option');
-    });
-
-    it('should accept unit with valid V2 unitStatus', async function () {
-      const unitData = {
-        unitSerialId: 'TEST-UNIT-VALID-STATUS',
-        unitStartBlock: '1000',
-        unitEndBlock: '2000',
-        unitCount: 100,
-        unitType: 'Avoidance - nature',
-        unitVintageYear: 2024,
-        unitStatus: 'Issued',
-        unitStatusReason: 'Test reason',
-        unitMetric: 'tCO2e',
-        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/unit')
-        .send(unitData)
-        .expect(200);
-
-      expect(response.body.success).to.be.true;
-      expect(response.body.message).to.equal('Unit staged successfully');
-    });
-
-    it('should reject unit with invalid unitMetric (not in V2 picklist)', async function () {
-      const unitData = {
-        unitSerialId: 'TEST-UNIT-001',
-        unitStartBlock: '1000',
-        unitEndBlock: '2000',
-        unitCount: 100,
-        unitType: 'Avoidance - nature',
-        unitVintageYear: 2024,
-        unitStatus: 'Issued',
-        unitStatusReason: 'Test reason',
-        unitMetric: 'Invalid Metric',
-        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/unit')
-        .send(unitData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('Unit Metric does not include a valid option');
-    });
-
-    it('should accept unit with valid V2 unitMetric', async function () {
-      const unitData = {
-        unitSerialId: 'TEST-UNIT-VALID-METRIC',
-        unitStartBlock: '1000',
-        unitEndBlock: '2000',
-        unitCount: 100,
-        unitType: 'Avoidance - nature',
-        unitVintageYear: 2024,
-        unitStatus: 'Issued',
-        unitStatusReason: 'Test reason',
-        unitMetric: 'tCO2e',
-        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/unit')
-        .send(unitData)
-        .expect(200);
-
-      expect(response.body.success).to.be.true;
-      expect(response.body.message).to.equal('Unit staged successfully');
-    });
-
-    it('should reject unit with forbidden createdAt field', async function () {
-      const unitData = {
-        unitSerialId: 'TEST-UNIT-001',
-        unitStartBlock: '1000',
-        unitEndBlock: '2000',
-        unitCount: 100,
-        unitType: 'Avoidance - nature',
-        unitVintageYear: 2024,
-        unitStatus: 'Issued',
-        unitStatusReason: 'Test reason',
-        unitMetric: 'tCO2e',
-        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
-        createdAt: '2024-01-01T00:00:00Z',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/unit')
-        .send(unitData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('createdAt" is not allowed');
-    });
-
-    it('should reject unit with forbidden updatedAt field', async function () {
-      const unitData = {
-        unitSerialId: 'TEST-UNIT-001',
-        unitStartBlock: '1000',
-        unitEndBlock: '2000',
-        unitCount: 100,
-        unitType: 'Avoidance - nature',
-        unitVintageYear: 2024,
-        unitStatus: 'Issued',
-        unitStatusReason: 'Test reason',
-        unitMetric: 'tCO2e',
-        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
-        updatedAt: '2024-01-01T00:00:00Z',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/unit')
-        .send(unitData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('updatedAt" is not allowed');
     });
 
     it('should reject unit with forbidden orgUid field', async function () {
@@ -772,50 +467,7 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
     });
   });
 
-  describe('GET /v2/unit (List)', function () {
-    it('should return empty array when no units exist', async function () {
-      const response = await supertest(app)
-        .get('/v2/unit')
-        .query({ page: 1, limit: 10 })
-        .expect(200);
-
-      expect(response.body.data).to.be.an('array');
-      expect(response.body.data).to.have.length(0);
-    });
-
-    it('should return units from database', async function () {
-      // Create a unit directly in the database
-      const homeOrgId = await getV2HomeOrgId();
-      const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
-        unitSerialId: 'TEST-UNIT-DB-001',
-        unitStartBlock: '1000',
-        unitEndBlock: '2000',
-        unitVintageYear: 2024,
-        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
-        orgUid: homeOrgId,
-      }));
-
-      const response = await supertest(app)
-        .get('/v2/unit')
-        .query({ page: 1, limit: 10 })
-        .expect(200);
-
-      expect(response.body.data).to.be.an('array');
-      expect(response.body.data).to.have.length(1);
-      expect(response.body.data[0].unitSerialId).to.equal('TEST-UNIT-DB-001');
-    });
-  });
-
   describe('GET /v2/unit/:id (Get One)', function () {
-    it('should return 404 for non-existent unit', async function () {
-      const response = await supertest(app)
-        .get('/v2/unit/99999')
-        .expect(404);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.message).to.equal('Unit not found');
-    });
-
     it('should return unit by ID', async function () {
       // Create a unit directly in the database
       const homeOrgId = await getV2HomeOrgId();
@@ -838,74 +490,6 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
   });
 
   describe('PUT /v2/unit/:id (Update)', function () {
-    it('should return 404 for non-existent unit', async function () {
-      const updateData = {
-        unitSerialId: 'UPDATED-UNIT-001',
-        unitStartBlock: '1000',
-        unitEndBlock: '2000',
-        unitVintageYear: 2024,
-        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
-      };
-
-      const response = await supertest(app)
-        .put('/v2/unit/99999')
-        .send(updateData)
-        .expect(404);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.message).to.equal('Unit not found');
-    });
-
-    it('should stage unit update', async function () {
-      // Create a unit directly in the database
-      const homeOrgId = await getV2HomeOrgId();
-      const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
-        unitSerialId: 'TEST-UNIT-UPDATE-001',
-        unitStartBlock: '1000',
-        unitEndBlock: '2000',
-        unitVintageYear: 2024,
-        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
-        orgUid: homeOrgId,
-      }));
-
-      const updateData = {
-        unitSerialId: 'UPDATED-UNIT-001',
-        unitStartBlock: '1000',
-        unitEndBlock: '2000',
-        unitCount: 100,
-        unitType: 'Avoidance - nature',
-        unitVintageYear: 2024,
-        unitStatus: 'Issued',
-        unitStatusReason: 'Test reason',
-        unitMetric: 'tCO2e',
-        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
-      };
-
-      const response = await supertest(app)
-        .put(`/v2/unit/${unit.cadTrustUnitId}`)
-        .send(updateData)
-        .expect(200);
-
-      expect(response.body.success).to.be.true;
-      expect(response.body.message).to.equal('Unit update staged successfully');
-
-      // Verify the update was staged
-      const stagingRecord = await StagingV2.findOne({
-        where: {
-          table: 'unit',
-          action: 'UPDATE',
-        },
-      });
-      expect(stagingRecord).to.exist;
-
-      // Verify staged update data includes org_uid from home organization
-      const stagedData = JSON.parse(stagingRecord.data);
-      expect(stagedData[0]).to.have.property('org_uid');
-      // Verify org_uid matches the actual home organization
-      const actualHomeOrgId = await getV2HomeOrgId();
-      expect(stagedData[0].org_uid).to.equal(actualHomeOrgId);
-    });
-
     it('should reject unit update with forbidden orgUid field', async function () {
       const homeOrgId = await getV2HomeOrgId();
       const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
@@ -990,45 +574,6 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
   });
 
   describe('DELETE /v2/unit/:id (Delete)', function () {
-    it('should return 404 for non-existent unit', async function () {
-      const response = await supertest(app)
-        .delete('/v2/unit/99999')
-        .expect(404);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.message).to.equal('Unit not found');
-    });
-
-    it('should stage unit deletion', async function () {
-      // Create a unit directly in the database
-      const homeOrgId = await getV2HomeOrgId();
-      const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
-        unitSerialId: 'TEST-UNIT-DELETE-001',
-        unitStartBlock: '1000',
-        unitEndBlock: '2000',
-        unitVintageYear: 2024,
-        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
-        orgUid: homeOrgId,
-      }));
-
-      const response = await supertest(app)
-        .delete(`/v2/unit/${unit.cadTrustUnitId}`)
-        .expect(200);
-
-      expect(response.body.success).to.be.true;
-      expect(response.body.message).to.equal('Unit delete staged successfully');
-      expect(response.body.stagedChildDeletes).to.equal(0);
-
-      // Verify the delete was staged
-      const stagingRecord = await StagingV2.findOne({
-        where: {
-          table: 'unit',
-          action: 'DELETE',
-        },
-      });
-      expect(stagingRecord).to.exist;
-    });
-
     it('should cascade-stage unit_label deletes when deleting a unit', async function () {
       const homeOrgId = await getV2HomeOrgId();
       const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {

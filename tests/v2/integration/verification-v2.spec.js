@@ -12,6 +12,7 @@ import {
   getV2HomeOrgId,
   addUuidIfNeeded,
 } from '../utils/v2-test-helpers.js';
+import { runCrudStagingSuite } from '../utils/crud-suite-factory.js';
 
 describe('V2 Verification API - Basic CRUD Tests', function () {
   this.timeout(30000);
@@ -88,51 +89,84 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
     }));
   });
 
-  describe('POST /v2/verification (Create)', function () {
-    it('should create a new verification record', async function () {
-      const verificationData = {
-        verificationId: 'TEST-VERIFICATION-001',
-        verificationStartDate: '2024-01-01',
-        verificationEndDate: '2024-12-31',
+  runCrudStagingSuite({
+    resource: 'verification',
+    label: 'Verification',
+    pk: 'cadTrustVerificationId',
+    pkColumn: 'cad_trust_verification_id',
+    missingId: '999999',
+    requiredFields: ['verificationBody', 'verificationId', 'cadTrustProjectId'],
+    picklists: [
+      {
+        field: 'verificationBody',
+        invalid: 'InvalidBody',
+        valid: 'AENOR International S.A.U.',
+      },
+    ],
+    context: () => ({ testProject, testValidation }),
+    validPayload: (ctx) => ({
+      verificationId: 'TEST-VERIFICATION-001',
+      verificationStartDate: '2024-01-01',
+      verificationEndDate: '2024-12-31',
+      verificationBody: 'AENOR International S.A.U.',
+      cadTrustProjectId: ctx.testProject.cadTrustProjectId,
+      cadTrustValidationId: ctx.testValidation.cadTrustValidationId,
+    }),
+    expectStagedInsert: (staged, ctx) => {
+      expect(staged.verification_id).to.equal('TEST-VERIFICATION-001');
+      expect(staged.verification_start_date).to.equal('2024-01-01');
+      expect(staged.verification_end_date).to.equal('2024-12-31');
+      expect(staged.verification_body).to.equal('AENOR International S.A.U.');
+      expect(staged.cad_trust_project_id).to.equal(ctx.testProject.cadTrustProjectId);
+      expect(staged.cad_trust_validation_id).to.equal(ctx.testValidation.cadTrustValidationId);
+    },
+    list: {
+      title: 'should return verifications from database with project and validation associations',
+      query: { columns: 'project,validation' },
+      seed: (ctx) =>
+        VerificationV2.create(addUuidIfNeeded('VerificationV2', {
+          verificationId: 'Database Verification',
+          verificationBody: 'AENOR International S.A.U.',
+          cadTrustProjectId: ctx.testProject.cadTrustProjectId,
+          cadTrustValidationId: ctx.testValidation.cadTrustValidationId,
+        })),
+      expectRow: (row) => {
+        expect(row.verificationId).to.equal('Database Verification');
+        expect(row.verificationBody).to.equal('AENOR International S.A.U.');
+        expect(row.project).to.exist;
+        expect(row.project.projectName).to.equal('Test Project for Verification');
+        expect(row.validation).to.exist;
+        expect(row.validation.validationId).to.equal('TEST-VALIDATION-001');
+      },
+    },
+    seed: (ctx) =>
+      VerificationV2.create(addUuidIfNeeded('VerificationV2', {
+        verificationId: 'Original ID',
         verificationBody: 'AENOR International S.A.U.',
-        cadTrustProjectId: testProject.cadTrustProjectId,
-        cadTrustValidationId: testValidation.cadTrustValidationId,
-      };
+        cadTrustProjectId: ctx.testProject.cadTrustProjectId,
+        cadTrustValidationId: ctx.testValidation.cadTrustValidationId,
+      })),
+    updatePayload: (ctx) => ({
+      verificationId: 'Updated ID',
+      verificationStartDate: '2024-02-01',
+      verificationEndDate: '2024-11-30',
+      verificationBody: 'AENOR International S.A.U.',
+      cadTrustProjectId: ctx.testProject.cadTrustProjectId,
+      cadTrustValidationId: ctx.testValidation.cadTrustValidationId,
+    }),
+    expectStagedUpdate: (staged, ctx) => {
+      expect(staged.verification_id).to.equal('Updated ID');
+      expect(staged.verification_start_date).to.equal('2024-02-01');
+      expect(staged.verification_end_date).to.equal('2024-11-30');
+      expect(staged.cad_trust_project_id).to.equal(ctx.testProject.cadTrustProjectId);
+      expect(staged.cad_trust_validation_id).to.equal(ctx.testValidation.cadTrustValidationId);
+    },
+    expectDeleteResponse: (body) => {
+      expect(body.stagedChildDeletes).to.equal(0);
+    },
+  });
 
-      const response = await supertest(app)
-        .post('/v2/verification')
-        .send(verificationData);
-
-      if (response.status !== 200) {
-        console.log('Error response:', response.body);
-      }
-
-      expect(response.status).to.equal(200);
-      expect(response.body).to.have.property('message');
-      expect(response.body.message).to.equal('Verification staged successfully');
-      expect(response.body).to.have.property('uuid');
-      expect(response.body).to.have.property('success', true);
-
-      // Verify record was staged
-      expect(response.body).to.have.property('uuid');
-      const stagingRecord = await StagingV2.findOne({
-        where: { uuid: response.body.uuid },
-      });
-      expect(stagingRecord).to.exist;
-      expect(stagingRecord.table).to.equal('verification');
-      expect(stagingRecord.action).to.equal('INSERT');
-      expect(stagingRecord.committed).to.be.false;
-
-      // Verify staged data
-      const stagedData = JSON.parse(stagingRecord.data);
-      expect(stagedData[0].verification_id).to.equal('TEST-VERIFICATION-001');
-      expect(stagedData[0].verification_start_date).to.equal('2024-01-01');
-      expect(stagedData[0].verification_end_date).to.equal('2024-12-31');
-      expect(stagedData[0].verification_body).to.equal('AENOR International S.A.U.');
-      expect(stagedData[0].cad_trust_project_id).to.equal(testProject.cadTrustProjectId);
-      expect(stagedData[0].cad_trust_validation_id).to.equal(testValidation.cadTrustValidationId);
-    });
-
+  describe('POST /v2/verification (Create)', function () {
     it('should create verification with all required data', async function () {
       const minimalData = {
         verificationId: 'MIN-VERIFICATION-001',
@@ -147,52 +181,6 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
 
       expect(response.body.success).to.be.true;
       expect(response.body.uuid).to.exist;
-    });
-
-    it('should reject verification without required verificationBody', async function () {
-      const invalidData = {
-        verificationId: 'MISSING-BODY-001',
-        cadTrustProjectId: testProject.cadTrustProjectId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/verification')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('verificationBody');
-    });
-
-    // Validation tests
-    it('should reject verification without required verificationId', async function () {
-      const invalidData = {
-        verificationBody: 'AENOR International S.A.U.',
-        cadTrustProjectId: testProject.cadTrustProjectId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/verification')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('verificationId');
-    });
-
-    it('should reject verification without required cadTrustProjectId', async function () {
-      const invalidData = {
-        verificationId: 'MISSING-FK',
-        verificationBody: 'AENOR International S.A.U.',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/verification')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('cadTrustProjectId');
     });
 
     it('should reject verification with invalid verificationStartDate format', async function () {
@@ -227,38 +215,6 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
 
       expect(response.body.success).to.be.false;
       expect(response.body.error).to.include('verificationEndDate');
-    });
-
-    // Picklist validation tests
-    it('should reject verification with invalid verificationBody (not in V2 picklist)', async function () {
-      const invalidData = {
-        verificationId: 'INVALID-BODY',
-        cadTrustProjectId: testProject.cadTrustProjectId,
-        verificationBody: 'InvalidBody',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/verification')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('verificationBody');
-    });
-
-    it('should accept verification with valid V2 verificationBody', async function () {
-      const validData = {
-        verificationId: 'VALID-BODY',
-        cadTrustProjectId: testProject.cadTrustProjectId,
-        verificationBody: 'AENOR International S.A.U.',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/verification')
-        .send(validData)
-        .expect(200);
-
-      expect(response.body.success).to.be.true;
     });
 
     // Foreign key validation tests
@@ -328,87 +284,9 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
       expect(response.body.success).to.be.true;
     });
 
-    it('should reject verification with forbidden createdAt field', async function () {
-      const invalidData = {
-        verificationId: 'FORBIDDEN-FIELD',
-        verificationBody: 'AENOR International S.A.U.',
-        cadTrustProjectId: testProject.cadTrustProjectId,
-        createdAt: '2024-01-01T00:00:00Z',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/verification')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('createdAt');
-    });
-
-    it('should reject verification with forbidden updatedAt field', async function () {
-      const invalidData = {
-        verificationId: 'FORBIDDEN-FIELD',
-        verificationBody: 'AENOR International S.A.U.',
-        cadTrustProjectId: testProject.cadTrustProjectId,
-        updatedAt: '2024-01-01T00:00:00Z',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/verification')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('updatedAt');
-    });
-  });
-
-  describe('GET /v2/verification (List)', function () {
-    it('should return empty array when no verifications exist', async function () {
-      const response = await supertest(app)
-        .get('/v2/verification')
-        .query({ page: 1, limit: 10 })
-        .expect(200);
-
-      expect(response.body.data).to.be.an('array');
-      expect(response.body.data).to.have.length(0);
-    });
-
-    it('should return verifications from database with project and validation associations', async function () {
-      // Create a verification directly in database
-      const verification = await VerificationV2.create(addUuidIfNeeded('VerificationV2', {
-        verificationId: 'Database Verification',
-        verificationBody: 'AENOR International S.A.U.',
-        cadTrustProjectId: testProject.cadTrustProjectId,
-        cadTrustValidationId: testValidation.cadTrustValidationId,
-      }));
-
-      const response = await supertest(app)
-        .get('/v2/verification')
-        .query({ page: 1, limit: 10, columns: 'project,validation' })
-        .expect(200);
-
-      expect(response.body.data).to.be.an('array');
-      expect(response.body.data).to.have.length(1);
-      expect(response.body.data[0].verificationId).to.equal('Database Verification');
-      expect(response.body.data[0].verificationBody).to.equal('AENOR International S.A.U.');
-      expect(response.body.data[0].project).to.exist;
-      expect(response.body.data[0].project.projectName).to.equal('Test Project for Verification');
-      expect(response.body.data[0].validation).to.exist;
-      expect(response.body.data[0].validation.validationId).to.equal('TEST-VALIDATION-001');
-    });
   });
 
   describe('GET /v2/verification/:id (Get One)', function () {
-    it('should return 404 for non-existent verification', async function () {
-      const response = await supertest(app)
-        .get('/v2/verification/999999')
-        .expect(404);
-
-      expect(response.body.message).to.equal('Verification not found');
-      expect(response.body.success).to.be.false;
-    });
-
     it('should return verification by ID with project and validation associations', async function () {
       // Create a verification directly in database
       const verification = await VerificationV2.create(addUuidIfNeeded('VerificationV2', {
@@ -431,114 +309,7 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
     });
   });
 
-  describe('PUT /v2/verification/:id (Update)', function () {
-    it('should return 404 for non-existent verification', async function () {
-      const updateData = {
-        verificationId: 'Updated ID',
-        verificationBody: 'AENOR International S.A.U.',
-        cadTrustProjectId: testProject.cadTrustProjectId,
-      };
-
-      const response = await supertest(app)
-        .put('/v2/verification/999999')
-        .send(updateData)
-        .expect(404);
-
-      expect(response.body.message).to.equal('Verification not found');
-      expect(response.body.success).to.be.false;
-    });
-
-    it('should stage verification update', async function () {
-      // Create a verification directly in database
-      const verification = await VerificationV2.create(addUuidIfNeeded('VerificationV2', {
-        verificationId: 'Original ID',
-        verificationBody: 'AENOR International S.A.U.',
-        cadTrustProjectId: testProject.cadTrustProjectId,
-        cadTrustValidationId: testValidation.cadTrustValidationId,
-      }));
-
-      const updateData = {
-        verificationId: 'Updated ID',
-        verificationStartDate: '2024-02-01',
-        verificationEndDate: '2024-11-30',
-        verificationBody: 'AENOR International S.A.U.',
-        cadTrustProjectId: testProject.cadTrustProjectId,
-        cadTrustValidationId: testValidation.cadTrustValidationId,
-      };
-
-      const response = await supertest(app)
-        .put(`/v2/verification/${verification.cadTrustVerificationId}`)
-        .send(updateData);
-
-      if (response.status !== 200) {
-        console.log('Error response:', response.body);
-      }
-
-      expect(response.status).to.equal(200);
-      expect(response.body.message).to.equal('Verification update staged successfully');
-      expect(response.body.success).to.be.true;
-
-      // Verify update was staged
-      const stagingRecord = await StagingV2.findOne({
-        where: {
-          table: 'verification',
-          action: 'UPDATE',
-        },
-      });
-      expect(stagingRecord).to.exist;
-      expect(stagingRecord.committed).to.be.false;
-
-      // Verify staged update data
-      const stagedData = JSON.parse(stagingRecord.data);
-      expect(stagedData[0].cad_trust_verification_id).to.equal(verification.cadTrustVerificationId);
-      expect(stagedData[0].verification_id).to.equal('Updated ID');
-      expect(stagedData[0].verification_start_date).to.equal('2024-02-01');
-      expect(stagedData[0].verification_end_date).to.equal('2024-11-30');
-      expect(stagedData[0].cad_trust_project_id).to.equal(testProject.cadTrustProjectId);
-      expect(stagedData[0].cad_trust_validation_id).to.equal(testValidation.cadTrustValidationId);
-    });
-  });
-
   describe('DELETE /v2/verification/:id (Delete)', function () {
-    it('should return 404 for non-existent verification', async function () {
-      const response = await supertest(app)
-        .delete('/v2/verification/999999')
-        .expect(404);
-
-      expect(response.body.message).to.equal('Verification not found');
-      expect(response.body.success).to.be.false;
-    });
-
-    it('should stage verification deletion', async function () {
-      // Create a verification directly in database
-      const verification = await VerificationV2.create(addUuidIfNeeded('VerificationV2', {
-        verificationId: 'To Be Deleted',
-        cadTrustProjectId: testProject.cadTrustProjectId,
-      }));
-
-      const response = await supertest(app)
-        .delete(`/v2/verification/${verification.cadTrustVerificationId}`)
-        .expect(200);
-
-      expect(response.body.message).to.equal('Verification delete staged successfully');
-      expect(response.body.success).to.be.true;
-      expect(response.body.stagedChildDeletes).to.equal(0);
-
-      // Verify deletion was staged
-      const stagingRecord = await StagingV2.findOne({
-        where: {
-          table: 'verification',
-          action: 'DELETE',
-        },
-      });
-      expect(stagingRecord).to.exist;
-      expect(stagingRecord.committed).to.be.false;
-
-      // Verify staged deletion data
-      const stagedData = JSON.parse(stagingRecord.data);
-      expect(stagedData[0].cad_trust_verification_id).to.equal(verification.cadTrustVerificationId);
-    });
-
     it('should cascade-stage issuance, unit, and unit_label deletes when deleting a verification', async function () {
       const homeOrgId = await getV2HomeOrgId();
 

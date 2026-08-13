@@ -13,6 +13,7 @@ import {
   getV2HomeOrgId,
   addUuidIfNeeded,
 } from '../utils/v2-test-helpers.js';
+import { runCrudStagingSuite } from '../utils/crud-suite-factory.js';
 
 describe('V2 Issuance API - Basic CRUD Tests', function () {
   this.timeout(30000);
@@ -130,47 +131,29 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
     }));
   });
 
+  runCrudStagingSuite({
+    resource: 'issuance',
+    label: 'Issuance',
+    pk: 'cadTrustIssuanceId',
+    pkColumn: 'cad_trust_issuance_id',
+    missingId: '999999',
+    requiredFields: ['issuanceId', 'cadTrustVerificationId', 'cadTrustProjectMethodologyId'],
+    context: () => ({ testVerification, testProjectMethodology }),
+    validPayload: (ctx) => ({
+      issuanceId: 'TEST-ISSUANCE-001',
+      issuanceDate: '2024-01-01',
+      cadTrustVerificationId: ctx.testVerification.cadTrustVerificationId,
+      cadTrustProjectMethodologyId: ctx.testProjectMethodology.cadTrustProjectMethodologyId,
+    }),
+    expectStagedInsert: (staged, ctx) => {
+      expect(staged.issuance_id).to.equal('TEST-ISSUANCE-001');
+      expect(staged.issuance_date).to.equal('2024-01-01');
+      expect(staged.cad_trust_verification_id).to.equal(ctx.testVerification.cadTrustVerificationId);
+      expect(staged.cad_trust_project_methodology_id).to.equal(ctx.testProjectMethodology.cadTrustProjectMethodologyId);
+    },
+  });
+
   describe('POST /v2/issuance (Create)', function () {
-    it('should create a new issuance record', async function () {
-      const issuanceData = {
-        issuanceId: 'TEST-ISSUANCE-001',
-        issuanceDate: '2024-01-01',
-        cadTrustVerificationId: testVerification.cadTrustVerificationId,
-        cadTrustProjectMethodologyId: testProjectMethodology.cadTrustProjectMethodologyId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/issuance')
-        .send(issuanceData);
-
-      if (response.status !== 200) {
-        console.log('Error response:', response.body);
-      }
-
-      expect(response.status).to.equal(200);
-      expect(response.body).to.have.property('message');
-      expect(response.body.message).to.equal('Issuance staged successfully');
-      expect(response.body).to.have.property('uuid');
-      expect(response.body).to.have.property('success', true);
-
-      // Verify record was staged
-      expect(response.body).to.have.property('uuid');
-      const stagingRecord = await StagingV2.findOne({
-        where: { uuid: response.body.uuid },
-      });
-      expect(stagingRecord).to.exist;
-      expect(stagingRecord.table).to.equal('issuance');
-      expect(stagingRecord.action).to.equal('INSERT');
-      expect(stagingRecord.committed).to.be.false;
-
-      // Verify staged data
-      const stagedData = JSON.parse(stagingRecord.data);
-      expect(stagedData[0].issuance_id).to.equal('TEST-ISSUANCE-001');
-      expect(stagedData[0].issuance_date).to.equal('2024-01-01');
-      expect(stagedData[0].cad_trust_verification_id).to.equal(testVerification.cadTrustVerificationId);
-      expect(stagedData[0].cad_trust_project_methodology_id).to.equal(testProjectMethodology.cadTrustProjectMethodologyId);
-    });
-
     it('should create issuance with minimal required data', async function () {
       const minimalData = {
         issuanceId: 'MIN-ISSUANCE-001',
@@ -185,52 +168,6 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
 
       expect(response.body.success).to.be.true;
       expect(response.body.uuid).to.exist;
-    });
-
-    // Validation tests
-    it('should reject issuance without required issuanceId', async function () {
-      const invalidData = {
-        cadTrustVerificationId: testVerification.cadTrustVerificationId,
-        cadTrustProjectMethodologyId: testProjectMethodology.cadTrustProjectMethodologyId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/issuance')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('issuanceId');
-    });
-
-    it('should reject issuance without required cadTrustVerificationId', async function () {
-      const invalidData = {
-        issuanceId: 'MISSING-VERIFICATION-FK',
-        cadTrustProjectMethodologyId: testProjectMethodology.cadTrustProjectMethodologyId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/issuance')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('cadTrustVerificationId');
-    });
-
-    it('should reject issuance without required cadTrustProjectMethodologyId', async function () {
-      const invalidData = {
-        issuanceId: 'MISSING-PROJECT-METHODOLOGY-FK',
-        cadTrustVerificationId: testVerification.cadTrustVerificationId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/issuance')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('cadTrustProjectMethodologyId');
     });
 
     it('should reject issuance with invalid issuanceDate format', async function () {
@@ -315,92 +252,9 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
       expect(response.body.success).to.be.true;
     });
 
-    it('should reject issuance with forbidden createdAt field', async function () {
-      const invalidData = {
-        issuanceId: 'FORBIDDEN-FIELD',
-        cadTrustVerificationId: testVerification.cadTrustVerificationId,
-        cadTrustProjectMethodologyId: testProjectMethodology.cadTrustProjectMethodologyId,
-        createdAt: '2024-01-01T00:00:00Z',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/issuance')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('createdAt');
-    });
-
-    it('should reject issuance with forbidden updatedAt field', async function () {
-      const invalidData = {
-        issuanceId: 'FORBIDDEN-FIELD',
-        cadTrustVerificationId: testVerification.cadTrustVerificationId,
-        cadTrustProjectMethodologyId: testProjectMethodology.cadTrustProjectMethodologyId,
-        updatedAt: '2024-01-01T00:00:00Z',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/issuance')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('updatedAt');
-    });
-  });
-
-  describe('GET /v2/issuance (List)', function () {
-    it('should return empty array when no issuances exist', async function () {
-      const response = await supertest(app)
-        .get('/v2/issuance')
-        .query({ page: 1, limit: 10 })
-        .expect(200);
-
-      expect(response.body.data).to.be.an('array');
-      expect(response.body.data).to.have.length(0);
-    });
-  });
-
-  describe('GET /v2/issuance/:id (Get One)', function () {
-    it('should return 404 for non-existent issuance', async function () {
-      const response = await supertest(app)
-        .get('/v2/issuance/999999')
-        .expect(404);
-
-      expect(response.body.message).to.equal('Issuance not found');
-      expect(response.body.success).to.be.false;
-    });
-  });
-
-  describe('PUT /v2/issuance/:id (Update)', function () {
-    it('should return 404 for non-existent issuance', async function () {
-      const updateData = {
-        issuanceId: 'Updated ID',
-        cadTrustVerificationId: testVerification.cadTrustVerificationId,
-        cadTrustProjectMethodologyId: testProjectMethodology.cadTrustProjectMethodologyId,
-      };
-
-      const response = await supertest(app)
-        .put('/v2/issuance/999999')
-        .send(updateData)
-        .expect(404);
-
-      expect(response.body.message).to.equal('Issuance not found');
-      expect(response.body.success).to.be.false;
-    });
   });
 
   describe('DELETE /v2/issuance/:id (Delete)', function () {
-    it('should return 404 for non-existent issuance', async function () {
-      const response = await supertest(app)
-        .delete('/v2/issuance/999999')
-        .expect(404);
-
-      expect(response.body.message).to.equal('Issuance not found');
-      expect(response.body.success).to.be.false;
-    });
-
     it('should stage issuance deletion with no children', async function () {
       await waitForV2DataLayerSync();
       const issuance = await IssuanceV2.create(addUuidIfNeeded('IssuanceV2', {

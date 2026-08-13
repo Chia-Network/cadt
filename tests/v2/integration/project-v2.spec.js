@@ -17,6 +17,7 @@ import {
   pauseSchedulerTasks,
   resumeSchedulerTasks,
 } from '../utils/v2-test-helpers.js';
+import { runCrudStagingSuite } from '../utils/crud-suite-factory.js';
 
 describe('V2 Project API - Basic CRUD Tests', function () {
   this.timeout(30000);
@@ -63,57 +64,132 @@ describe('V2 Project API - Basic CRUD Tests', function () {
     });
   });
 
-  describe('POST /v2/project (Create)', function () {
-    it('should create a new project record', async function () {
-      const projectData = {
-        projectRegistryName: 'Test Registry',
-        projectId: 'TEST-PROJECT-001',
-        projectCreditingProgram: 'Test Crediting Program',
-        projectName: 'Test Project',
-        projectLink: 'https://example.com/project',
-        projectDescription: 'Test project description',
+  runCrudStagingSuite({
+    resource: 'project',
+    label: 'Project',
+    pk: 'cadTrustProjectId',
+    pkColumn: 'cad_trust_project_id',
+    missingId: '999999',
+    requiredFields: [
+      'projectLink',
+      'projectSector',
+      'projectType',
+      'projectStatus',
+      'projectStatusDate',
+      'projectUnitMetric',
+      'projectRegistryName',
+      'projectId',
+      'projectName',
+    ],
+    picklists: [
+      {
+        field: 'projectSector',
+        invalid: ['InvalidSector'],
+        valid: ['Agriculture'],
+        validTitle: 'should accept project with valid V2 projectSector array',
+      },
+      {
+        field: 'projectType',
+        invalid: ['InvalidType'],
+        valid: ['Landfill gas'],
+        validTitle: 'should accept project with valid V2 projectType array',
+      },
+      { field: 'projectStatus', invalid: 'InvalidStatus', valid: 'Listed' },
+      { field: 'projectUnitMetric', invalid: 'InvalidMetric', valid: 'tCO2e' },
+    ],
+    context: () => ({ testProgram }),
+    validPayload: (ctx) => ({
+      projectRegistryName: 'Test Registry',
+      projectId: 'TEST-PROJECT-001',
+      projectCreditingProgram: 'Test Crediting Program',
+      projectName: 'Test Project',
+      projectLink: 'https://example.com/project',
+      projectDescription: 'Test project description',
+      projectSector: ['Agriculture'],
+      projectType: ['Landfill gas'],
+      projectSubtype: 'Test Subtype',
+      projectStatus: 'Listed',
+      projectStatusDate: '2024-01-01',
+      projectUnitMetric: 'tCO2e',
+      cadTrustReferenceProjectId: 'REF-001',
+      cadTrustProgramId: ctx.testProgram.cadTrustProgramId,
+    }),
+    expectStagedInsert: (staged, ctx) => {
+      expect(staged.project_name).to.equal('Test Project');
+      expect(staged.project_registry_name).to.equal('Test Registry');
+      expect(JSON.parse(staged.project_sector)).to.deep.equal(['Agriculture']);
+      expect(staged.cad_trust_program_id).to.equal(ctx.testProgram.cadTrustProgramId);
+    },
+    list: {
+      title: 'should return projects from database with program association',
+      query: { columns: 'program' },
+      seed: async (ctx) =>
+        ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+          projectRegistryName: 'Database Registry',
+          projectId: 'DB-PROJECT-001',
+          projectName: 'Database Project',
+          projectSector: ['Agriculture'],
+          projectType: ['Landfill gas'],
+          projectStatus: 'Listed',
+          projectUnitMetric: 'tCO2e',
+          cadTrustProgramId: ctx.testProgram.cadTrustProgramId,
+          orgUid: await getV2HomeOrgId(),
+        })),
+      expectRow: (row) => {
+        expect(row.projectName).to.equal('Database Project');
+        expect(row.projectRegistryName).to.equal('Database Registry');
+        expect(row.projectSector).to.deep.equal(['Agriculture']);
+        expect(row.program).to.exist;
+        expect(row.program.programName).to.equal('Test Program for Project');
+        expect(row.program.createdAt).to.exist;
+        expect(row.program.updatedAt).to.exist;
+        expect(row.program).to.not.have.property('created_at');
+        expect(row.program).to.not.have.property('updated_at');
+      },
+    },
+    seed: async () =>
+      ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+        projectRegistryName: 'Original Registry',
+        projectId: 'ORIGINAL-001',
+        projectName: 'Original Name',
         projectSector: ['Agriculture'],
-        projectType: ['Landfill gas'],
-        projectSubtype: 'Test Subtype',
-        projectStatus: 'Listed',
-        projectStatusDate: '2024-01-01',
-        projectUnitMetric: 'tCO2e',
-        cadTrustReferenceProjectId: 'REF-001',
-        cadTrustProgramId: testProgram.cadTrustProgramId,
-      };
+        orgUid: await getV2HomeOrgId(),
+      })),
+    updatePayload: (ctx) => ({
+      projectRegistryName: 'Updated Registry',
+      projectId: 'UPDATED-001',
+      projectCreditingProgram: 'Updated Crediting Program',
+      projectName: 'Updated Name',
+      projectLink: 'https://example.com/updated',
+      projectDescription: 'Updated description',
+      projectSector: ['Energy industries (renewable-/ non renewable sources)'],
+      projectType: ['Wind'],
+      projectSubtype: 'Updated Subtype',
+      projectStatus: 'Registered',
+      projectStatusDate: '2024-02-01',
+      projectUnitMetric: 'gCO2eq/kWh',
+      cadTrustReferenceProjectId: 'UPDATED-REF-001',
+      cadTrustProgramId: ctx.testProgram.cadTrustProgramId,
+    }),
+    // Omits required fields such as projectLink: the 404 only comes back if the
+    // controller looks the record up before validating.
+    notFoundPayload: () => ({
+      projectRegistryName: 'Updated Registry',
+      projectId: 'UPDATED-001',
+      projectName: 'Updated Name',
+    }),
+    expectStagedUpdate: async (staged, ctx) => {
+      expect(staged.project_name).to.equal('Updated Name');
+      expect(staged.project_registry_name).to.equal('Updated Registry');
+      expect(JSON.parse(staged.project_sector)).to.deep.equal(['Energy industries (renewable-/ non renewable sources)']);
+      expect(staged.cad_trust_program_id).to.equal(ctx.testProgram.cadTrustProgramId);
+      // Verify org_uid is automatically set in update
+      expect(staged).to.have.property('org_uid');
+      expect(staged.org_uid).to.equal(await getV2HomeOrgId());
+    },
+  });
 
-      const response = await supertest(app)
-        .post('/v2/project')
-        .send(projectData);
-
-      if (response.status !== 200) {
-        console.log('Error response:', response.body);
-      }
-
-      expect(response.status).to.equal(200);
-      expect(response.body).to.have.property('message');
-      expect(response.body.message).to.equal('Project staged successfully');
-      expect(response.body).to.have.property('uuid');
-      expect(response.body).to.have.property('success', true);
-
-      // Verify record was staged
-      expect(response.body).to.have.property('uuid');
-      const stagingRecord = await StagingV2.findOne({
-        where: { uuid: response.body.uuid },
-      });
-      expect(stagingRecord).to.exist;
-      expect(stagingRecord.table).to.equal('project');
-      expect(stagingRecord.action).to.equal('INSERT');
-      expect(stagingRecord.committed).to.be.false;
-
-      // Verify staged data
-      const stagedData = JSON.parse(stagingRecord.data);
-      expect(stagedData[0].project_name).to.equal('Test Project');
-      expect(stagedData[0].project_registry_name).to.equal('Test Registry');
-      expect(JSON.parse(stagedData[0].project_sector)).to.deep.equal(['Agriculture']);
-      expect(stagedData[0].cad_trust_program_id).to.equal(testProgram.cadTrustProgramId);
-    });
-
+  describe('POST /v2/project (Create)', function () {
     it('should create project with all required data', async function () {
       const minimalData = {
         projectRegistryName: 'Minimal Registry',
@@ -134,178 +210,6 @@ describe('V2 Project API - Basic CRUD Tests', function () {
 
       expect(response.body.success).to.be.true;
       expect(response.body.uuid).to.exist;
-    });
-
-    it('should reject project without required projectLink', async function () {
-      const invalidData = {
-        projectRegistryName: 'MISSING-LINK',
-        projectId: 'MISSING-LINK-001',
-        projectName: 'Missing Link Project',
-        projectSector: ['Agriculture'],
-        projectType: ['Landfill gas'],
-        projectStatus: 'Listed',
-        projectStatusDate: '2024-01-01',
-        projectUnitMetric: 'tCO2e',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/project')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('projectLink');
-    });
-
-    it('should reject project without required projectSector', async function () {
-      const invalidData = {
-        projectRegistryName: 'MISSING-SECTOR',
-        projectId: 'MISSING-SECTOR-001',
-        projectName: 'Missing Sector Project',
-        projectLink: 'https://example.com/project',
-        projectType: ['Landfill gas'],
-        projectStatus: 'Listed',
-        projectStatusDate: '2024-01-01',
-        projectUnitMetric: 'tCO2e',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/project')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('projectSector');
-    });
-
-    it('should reject project without required projectType', async function () {
-      const invalidData = {
-        projectRegistryName: 'MISSING-TYPE',
-        projectId: 'MISSING-TYPE-001',
-        projectName: 'Missing Type Project',
-        projectLink: 'https://example.com/project',
-        projectSector: ['Agriculture'],
-        projectStatus: 'Listed',
-        projectStatusDate: '2024-01-01',
-        projectUnitMetric: 'tCO2e',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/project')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('projectType');
-    });
-
-    it('should reject project without required projectStatus', async function () {
-      const invalidData = {
-        projectRegistryName: 'MISSING-STATUS',
-        projectId: 'MISSING-STATUS-001',
-        projectName: 'Missing Status Project',
-        projectLink: 'https://example.com/project',
-        projectSector: ['Agriculture'],
-        projectType: ['Landfill gas'],
-        projectStatusDate: '2024-01-01',
-        projectUnitMetric: 'tCO2e',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/project')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('projectStatus');
-    });
-
-    it('should reject project without required projectStatusDate', async function () {
-      const invalidData = {
-        projectRegistryName: 'MISSING-STATUSDATE',
-        projectId: 'MISSING-STATUSDATE-001',
-        projectName: 'Missing StatusDate Project',
-        projectLink: 'https://example.com/project',
-        projectSector: ['Agriculture'],
-        projectType: ['Landfill gas'],
-        projectStatus: 'Listed',
-        projectUnitMetric: 'tCO2e',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/project')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('projectStatusDate');
-    });
-
-    it('should reject project without required projectUnitMetric', async function () {
-      const invalidData = {
-        projectRegistryName: 'MISSING-UNITMETRIC',
-        projectId: 'MISSING-UNITMETRIC-001',
-        projectName: 'Missing UnitMetric Project',
-        projectLink: 'https://example.com/project',
-        projectSector: ['Agriculture'],
-        projectType: ['Landfill gas'],
-        projectStatus: 'Listed',
-        projectStatusDate: '2024-01-01',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/project')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('projectUnitMetric');
-    });
-
-    // Validation tests
-    it('should reject project without required projectRegistryName', async function () {
-      const invalidData = {
-        projectId: 'MISSING-REGISTRY',
-        projectName: 'Missing Registry Project',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/project')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('projectRegistryName');
-    });
-
-    it('should reject project without required projectId', async function () {
-      const invalidData = {
-        projectRegistryName: 'MISSING-ID',
-        projectName: 'Missing ID Project',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/project')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('projectId');
-    });
-
-    it('should reject project without required projectName', async function () {
-      const invalidData = {
-        projectRegistryName: 'MISSING-NAME',
-        projectId: 'MISSING-NAME-001',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/project')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('projectName');
     });
 
     it('should reject project with invalid projectLink format', async function () {
@@ -346,46 +250,6 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       expect(response.body.error).to.include('projectStatusDate');
     });
 
-    // Picklist validation tests
-    it('should reject project with invalid projectSector (not in V2 picklist)', async function () {
-      const invalidData = {
-        projectRegistryName: 'INVALID-SECTOR',
-        projectId: 'INVALID-SECTOR-001',
-        projectName: 'Invalid Sector Project',
-        projectLink: 'https://example.com/project',
-        projectSector: ['InvalidSector'],
-      };
-
-      const response = await supertest(app)
-        .post('/v2/project')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('projectSector');
-    });
-
-    it('should accept project with valid V2 projectSector array', async function () {
-      const validData = {
-        projectRegistryName: 'VALID-SECTOR',
-        projectId: 'VALID-SECTOR-001',
-        projectName: 'Valid Sector Project',
-        projectLink: 'https://example.com/project',
-        projectSector: ['Agriculture'],
-        projectType: ['Landfill gas'],
-        projectStatus: 'Listed',
-        projectStatusDate: '2024-01-01',
-        projectUnitMetric: 'tCO2e',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/project')
-        .send(validData)
-        .expect(200);
-
-      expect(response.body.success).to.be.true;
-    });
-
     it('should accept project with multiple valid V2 projectSectors', async function () {
       const validData = {
         projectRegistryName: 'VALID-MULTI-SECTOR',
@@ -393,46 +257,6 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectName: 'Valid Multi-Sector Project',
         projectLink: 'https://example.com/project',
         projectSector: ['Agriculture', 'Energy demand'],
-        projectType: ['Landfill gas'],
-        projectStatus: 'Listed',
-        projectStatusDate: '2024-01-01',
-        projectUnitMetric: 'tCO2e',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/project')
-        .send(validData)
-        .expect(200);
-
-      expect(response.body.success).to.be.true;
-    });
-
-    it('should reject project with invalid projectType (not in V2 picklist)', async function () {
-      const invalidData = {
-        projectRegistryName: 'INVALID-TYPE',
-        projectId: 'INVALID-TYPE-001',
-        projectName: 'Invalid Type Project',
-        projectLink: 'https://example.com/project',
-        projectSector: ['Agriculture'],
-        projectType: ['InvalidType'],
-      };
-
-      const response = await supertest(app)
-        .post('/v2/project')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('projectType');
-    });
-
-    it('should accept project with valid V2 projectType array', async function () {
-      const validData = {
-        projectRegistryName: 'VALID-TYPE',
-        projectId: 'VALID-TYPE-001',
-        projectName: 'Valid Type Project',
-        projectLink: 'https://example.com/project',
-        projectSector: ['Agriculture'],
         projectType: ['Landfill gas'],
         projectStatus: 'Listed',
         projectStatusDate: '2024-01-01',
@@ -455,90 +279,6 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectLink: 'https://example.com/project',
         projectSector: ['Agriculture'],
         projectType: ['Landfill gas', 'Solar', 'Wind'],
-        projectStatus: 'Listed',
-        projectStatusDate: '2024-01-01',
-        projectUnitMetric: 'tCO2e',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/project')
-        .send(validData)
-        .expect(200);
-
-      expect(response.body.success).to.be.true;
-    });
-
-    it('should reject project with invalid projectStatus (not in V2 picklist)', async function () {
-      const invalidData = {
-        projectRegistryName: 'INVALID-STATUS',
-        projectId: 'INVALID-STATUS-001',
-        projectName: 'Invalid Status Project',
-        projectLink: 'https://example.com/project',
-        projectSector: ['Agriculture'],
-        projectType: ['Solar'],
-        projectStatus: 'InvalidStatus',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/project')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('projectStatus');
-    });
-
-    it('should accept project with valid V2 projectStatus', async function () {
-      const validData = {
-        projectRegistryName: 'VALID-STATUS',
-        projectId: 'VALID-STATUS-001',
-        projectName: 'Valid Status Project',
-        projectLink: 'https://example.com/project',
-        projectSector: ['Agriculture'],
-        projectType: ['Landfill gas'],
-        projectStatus: 'Listed',
-        projectStatusDate: '2024-01-01',
-        projectUnitMetric: 'tCO2e',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/project')
-        .send(validData)
-        .expect(200);
-
-      expect(response.body.success).to.be.true;
-    });
-
-    it('should reject project with invalid projectUnitMetric (not in V2 picklist)', async function () {
-      const invalidData = {
-        projectRegistryName: 'INVALID-METRIC',
-        projectId: 'INVALID-METRIC-001',
-        projectName: 'Invalid Metric Project',
-        projectLink: 'https://example.com/project',
-        projectSector: ['Agriculture'],
-        projectType: ['Solar'],
-        projectStatus: 'Listed',
-        projectStatusDate: '2024-01-01',
-        projectUnitMetric: 'InvalidMetric',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/project')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('projectUnitMetric');
-    });
-
-    it('should accept project with valid V2 projectUnitMetric', async function () {
-      const validData = {
-        projectRegistryName: 'VALID-METRIC',
-        projectId: 'VALID-METRIC-001',
-        projectName: 'Valid Metric Project',
-        projectLink: 'https://example.com/project',
-        projectSector: ['Agriculture'],
-        projectType: ['Landfill gas'],
         projectStatus: 'Listed',
         projectStatusDate: '2024-01-01',
         projectUnitMetric: 'tCO2e',
@@ -599,52 +339,6 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       expect(response.body.success).to.be.true;
     });
 
-    it('should reject project with forbidden createdAt field', async function () {
-      const invalidData = {
-        projectRegistryName: 'FORBIDDEN-FIELD',
-        projectId: 'FORBIDDEN-FIELD-001',
-        projectName: 'Forbidden Field Project',
-        projectLink: 'https://example.com/project',
-        projectSector: ['Agriculture'],
-        projectType: ['Solar'],
-        projectStatus: 'Listed',
-        projectStatusDate: '2024-01-01',
-        projectUnitMetric: 'tCO2e',
-        createdAt: '2024-01-01T00:00:00Z',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/project')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('createdAt');
-    });
-
-    it('should reject project with forbidden updatedAt field', async function () {
-      const invalidData = {
-        projectRegistryName: 'FORBIDDEN-FIELD',
-        projectId: 'FORBIDDEN-FIELD-002',
-        projectName: 'Forbidden Field Project',
-        projectLink: 'https://example.com/project',
-        projectSector: ['Agriculture'],
-        projectType: ['Solar'],
-        projectStatus: 'Listed',
-        projectStatusDate: '2024-01-01',
-        projectUnitMetric: 'tCO2e',
-        updatedAt: '2024-01-01T00:00:00Z',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/project')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('updatedAt');
-    });
-
     it('should reject project with forbidden orgUid field', async function () {
       const invalidData = {
         projectRegistryName: 'FORBIDDEN-ORGUID',
@@ -703,61 +397,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
     });
   });
 
-  describe('GET /v2/project (List)', function () {
-    it('should return empty array when no projects exist', async function () {
-      const response = await supertest(app)
-        .get('/v2/project')
-        .query({ page: 1, limit: 10 })
-        .expect(200);
-
-      expect(response.body.data).to.be.an('array');
-      expect(response.body.data).to.have.length(0);
-    });
-
-    it('should return projects from database with program association', async function () {
-      // Create a project directly in database
-      const homeOrgId = await getV2HomeOrgId();
-      const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
-        projectRegistryName: 'Database Registry',
-        projectId: 'DB-PROJECT-001',
-        projectName: 'Database Project',
-        projectSector: ['Agriculture'],
-        projectType: ['Landfill gas'],
-        projectStatus: 'Listed',
-        projectUnitMetric: 'tCO2e',
-        cadTrustProgramId: testProgram.cadTrustProgramId,
-        orgUid: homeOrgId,
-      }));
-
-      const response = await supertest(app)
-        .get('/v2/project')
-        .query({ page: 1, limit: 10, columns: 'program' })
-        .expect(200);
-
-      expect(response.body.data).to.be.an('array');
-      expect(response.body.data).to.have.length(1);
-      expect(response.body.data[0].projectName).to.equal('Database Project');
-      expect(response.body.data[0].projectRegistryName).to.equal('Database Registry');
-      expect(response.body.data[0].projectSector).to.deep.equal(['Agriculture']);
-      expect(response.body.data[0].program).to.exist;
-      expect(response.body.data[0].program.programName).to.equal('Test Program for Project');
-      expect(response.body.data[0].program.createdAt).to.exist;
-      expect(response.body.data[0].program.updatedAt).to.exist;
-      expect(response.body.data[0].program).to.not.have.property('created_at');
-      expect(response.body.data[0].program).to.not.have.property('updated_at');
-    });
-  });
-
   describe('GET /v2/project/:id (Get One)', function () {
-    it('should return 404 for non-existent project', async function () {
-      const response = await supertest(app)
-        .get('/v2/project/999999')
-        .expect(404);
-
-      expect(response.body.message).to.equal('Project not found');
-      expect(response.body.success).to.be.false;
-    });
-
     it('should return project by ID with program association', async function () {
       // Create a project directly in database
       const homeOrgId = await getV2HomeOrgId();
@@ -787,85 +427,6 @@ describe('V2 Project API - Basic CRUD Tests', function () {
   });
 
   describe('PUT /v2/project/:id (Update)', function () {
-    it('should return 404 for non-existent project', async function () {
-      const updateData = {
-        projectRegistryName: 'Updated Registry',
-        projectId: 'UPDATED-001',
-        projectName: 'Updated Name',
-      };
-
-      const response = await supertest(app)
-        .put('/v2/project/999999')
-        .send(updateData)
-        .expect(404);
-
-      expect(response.body.message).to.equal('Project not found');
-      expect(response.body.success).to.be.false;
-    });
-
-    it('should stage project update', async function () {
-      // Create a project directly in database
-      const homeOrgId = await getV2HomeOrgId();
-      const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
-        projectRegistryName: 'Original Registry',
-        projectId: 'ORIGINAL-001',
-        projectName: 'Original Name',
-        projectSector: ['Agriculture'],
-        orgUid: homeOrgId,
-      }));
-
-      const updateData = {
-        projectRegistryName: 'Updated Registry',
-        projectId: 'UPDATED-001',
-        projectCreditingProgram: 'Updated Crediting Program',
-        projectName: 'Updated Name',
-        projectLink: 'https://example.com/updated',
-        projectDescription: 'Updated description',
-        projectSector: ['Energy industries (renewable-/ non renewable sources)'],
-        projectType: ['Wind'],
-        projectSubtype: 'Updated Subtype',
-        projectStatus: 'Registered',
-        projectStatusDate: '2024-02-01',
-        projectUnitMetric: 'gCO2eq/kWh',
-        cadTrustReferenceProjectId: 'UPDATED-REF-001',
-        cadTrustProgramId: testProgram.cadTrustProgramId,
-      };
-
-      const response = await supertest(app)
-        .put(`/v2/project/${project.cadTrustProjectId}`)
-        .send(updateData);
-
-      if (response.status !== 200) {
-        console.log('Error response:', response.body);
-      }
-
-      expect(response.status).to.equal(200);
-      expect(response.body.message).to.equal('Project update staged successfully');
-      expect(response.body.success).to.be.true;
-
-      // Verify update was staged
-      const stagingRecord = await StagingV2.findOne({
-        where: {
-          table: 'project',
-          action: 'UPDATE',
-        },
-      });
-      expect(stagingRecord).to.exist;
-      expect(stagingRecord.committed).to.be.false;
-
-      // Verify staged update data
-      const stagedData = JSON.parse(stagingRecord.data);
-      expect(stagedData[0].cad_trust_project_id).to.equal(project.cadTrustProjectId);
-      expect(stagedData[0].project_name).to.equal('Updated Name');
-      expect(stagedData[0].project_registry_name).to.equal('Updated Registry');
-      expect(JSON.parse(stagedData[0].project_sector)).to.deep.equal(['Energy industries (renewable-/ non renewable sources)']);
-      expect(stagedData[0].cad_trust_program_id).to.equal(testProgram.cadTrustProgramId);
-      // Verify org_uid is automatically set in update
-      expect(stagedData[0]).to.have.property('org_uid');
-      const actualHomeOrgId = await getV2HomeOrgId();
-      expect(stagedData[0].org_uid).to.equal(actualHomeOrgId);
-    });
-
     it('should reject update for a project owned by another organization', async function () {
       const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
         projectRegistryName: 'Other Registry',
@@ -1027,47 +588,6 @@ describe('V2 Project API - Basic CRUD Tests', function () {
   });
 
   describe('DELETE /v2/project/:id (Delete)', function () {
-    it('should return 404 for non-existent project', async function () {
-      const response = await supertest(app)
-        .delete('/v2/project/999999')
-        .expect(404);
-
-      expect(response.body.message).to.equal('Project not found');
-      expect(response.body.success).to.be.false;
-    });
-
-    it('should stage project deletion', async function () {
-      // Create a project directly in database
-      const homeOrgId = await getV2HomeOrgId();
-      const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
-        projectRegistryName: 'To Be Deleted',
-        projectId: 'DELETE-001',
-        projectName: 'To Be Deleted Project',
-        orgUid: homeOrgId,
-      }));
-
-      const response = await supertest(app)
-        .delete(`/v2/project/${project.cadTrustProjectId}`)
-        .expect(200);
-
-      expect(response.body.message).to.equal('Project delete staged successfully');
-      expect(response.body.success).to.be.true;
-
-      // Verify deletion was staged
-      const stagingRecord = await StagingV2.findOne({
-        where: {
-          table: 'project',
-          action: 'DELETE',
-        },
-      });
-      expect(stagingRecord).to.exist;
-      expect(stagingRecord.committed).to.be.false;
-
-      // Verify staged deletion data
-      const stagedData = JSON.parse(stagingRecord.data);
-      expect(stagedData[0].cad_trust_project_id).to.equal(project.cadTrustProjectId);
-    });
-
     it('should reject delete for a project owned by another organization', async function () {
       const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
         projectRegistryName: 'Other Registry',
