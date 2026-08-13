@@ -147,14 +147,18 @@ const loadConfigForVersion = (dataModelVersion) => {
     );
   }
 
-  // Handle USE_SIMULATOR environment variable override
+  // Env override: "true" enables simulator mode; any other set value disables
+  // it. Unset leaves the YAML/default value unchanged.
   if (typeof process.env.USE_SIMULATOR === 'string') {
-    mergedConfig.APP.USE_SIMULATOR = true;
-    mergedConfig.APP.CHIA_NETWORK = 'testnet';
-    if (mergedConfig.APP.TASKS) {
-      mergedConfig.APP.TASKS.AUDIT_SYNC_TASK_INTERVAL = 30;
+    const useSimulator = process.env.USE_SIMULATOR === 'true';
+    mergedConfig.APP.USE_SIMULATOR = useSimulator;
+    if (useSimulator) {
+      mergedConfig.APP.CHIA_NETWORK = 'testnet';
+      if (mergedConfig.APP.TASKS) {
+        mergedConfig.APP.TASKS.AUDIT_SYNC_TASK_INTERVAL = 30;
+      }
+      console.log(`ENV FILE OVERRIDE: RUNNING IN SIMULATOR MODE`);
     }
-    console.log(`ENV FILE OVERRIDE: RUNNING IN SIMULATOR MODE`);
   }
 
   return mergedConfig;

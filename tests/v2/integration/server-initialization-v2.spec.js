@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import { sequelizeV2 } from '../../../src/database/v2/index.js';
 import { GovernanceV2 } from '../../../src/models/v2/index.js';
 import { pullPickListValuesV2 } from '../../../src/utils/v2-data-loaders.js';
+import { getConfig, getConfigV2 } from '../../../src/utils/config-loader.js';
 
 /**
  * Server Initialization Order Tests
@@ -23,6 +24,11 @@ describe('V2 Server Initialization Order Tests', function () {
   let originalUseSimulator;
   let originalUseDevelopmentMode;
 
+  const clearConfigCaches = () => {
+    getConfig.cache?.clear();
+    getConfigV2.cache?.clear();
+  };
+
   before(async function () {
     // Save original config values
     originalUseSimulator = process.env.USE_SIMULATOR;
@@ -41,6 +47,7 @@ describe('V2 Server Initialization Order Tests', function () {
     } else {
       delete process.env.USE_DEVELOPMENT_MODE;
     }
+    clearConfigCaches();
 
     // Clean up - ensure migrations run so other tests can use the database
     const { prepareV2Db } = await import('../../../src/database/v2/index.js');
@@ -52,6 +59,8 @@ describe('V2 Server Initialization Order Tests', function () {
     // This is the critical test that would catch the original bug
     process.env.USE_SIMULATOR = 'false';
     process.env.USE_DEVELOPMENT_MODE = 'false';
+    clearConfigCaches();
+    expect(getConfig().APP.USE_SIMULATOR).to.equal(false);
 
     // Drop tables to simulate fresh install
     try {
@@ -103,6 +112,8 @@ describe('V2 Server Initialization Order Tests', function () {
 
     process.env.USE_SIMULATOR = 'false';
     process.env.USE_DEVELOPMENT_MODE = 'false';
+    clearConfigCaches();
+    expect(getConfig().APP.USE_SIMULATOR).to.equal(false);
 
     // Simulate the server initialization path:
     // 1. Authenticate
@@ -127,6 +138,8 @@ describe('V2 Server Initialization Order Tests', function () {
     // (simulating a server restart scenario)
     process.env.USE_SIMULATOR = 'true';
     process.env.USE_DEVELOPMENT_MODE = 'false';
+    clearConfigCaches();
+    expect(getConfig().APP.USE_SIMULATOR).to.equal(true);
 
     // Ensure tables exist
     const { prepareV2Db } = await import('../../../src/database/v2/index.js');
