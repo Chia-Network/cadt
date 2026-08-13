@@ -60,6 +60,21 @@ export const ORG_CREATION_CONFIG = {
   // bound changes.
   DATA_PUSH_WALLET_SYNC_WAIT_MS: 2 * 60 * 1000, // 2 minutes
   MAX_DATA_PUSH_SYNC_RETRIES: 3,
+
+  // Store-creation retry budgets. Coin shortages get a time budget: with
+  // fewer spendable coins than stores, the parallel creations serialize one
+  // block confirmation apart, so the budget must cover several confirmations
+  // rather than a fixed attempt count. Other transient wallet errors keep the
+  // attempt-based budget.
+  //
+  // The deadline is checked between attempts, so an attempt that blocks on
+  // confirmation waits can overrun it; the deadline bounds when new attempts
+  // start, not total wall time. It also counts against the same
+  // STORE_CONFIRMATION_TIMEOUT_MS window as the data pushes above, so keep
+  // it well under that bound.
+  STORE_CREATE_RETRY_DELAY_MS: 30 * 1000, // 30 seconds
+  STORE_CREATE_MAX_ATTEMPTS: 10,
+  COIN_SHORTAGE_RETRY_DEADLINE_MS: 15 * 60 * 1000, // 15 minutes
 };
 
 /**
@@ -195,8 +210,29 @@ export const allDataWritten = (state) => {
  */
 export const getStoresToCreate = (state) => {
   return Object.entries(state.stores)
-    .filter(([_, store]) => store.id === null)
+    .filter(([, store]) => store.id === null)
     .map(([type]) => type);
+};
+
+/**
+ * Minimum combined wallet balance needed to create the remaining org stores.
+ * A configured mirror adds one extra wallet spend after each store creation.
+ * @param {string[]} storesToCreate - Store types that still need creation
+ * @param {number} minUsableCoinSize - Coin size that funds one wallet spend
+ * @param {Object} appConfig - APP config values that affect mirror spending
+ * @returns {number}
+ */
+export const getStoreCreationMinTotalMojos = (
+  storesToCreate,
+  minUsableCoinSize,
+  appConfig = {},
+) => {
+  const mirrorRequiresSpend = Boolean(appConfig.DATALAYER_FILE_SERVER_URL) &&
+    !appConfig.USE_SIMULATOR &&
+    !appConfig.USE_DEVELOPMENT_MODE;
+  const spendsPerStore = mirrorRequiresSpend ? 2 : 1;
+
+  return storesToCreate.length * minUsableCoinSize * spendsPerStore;
 };
 
 /**
@@ -206,7 +242,7 @@ export const getStoresToCreate = (state) => {
  */
 export const getStoresAwaitingConfirmation = (state) => {
   return Object.entries(state.stores)
-    .filter(([_, store]) => store.id !== null && !store.confirmed)
+    .filter(([, store]) => store.id !== null && !store.confirmed)
     .map(([type]) => type);
 };
 

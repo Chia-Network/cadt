@@ -563,17 +563,51 @@ const splitCoins = async (targetCoinId, numberOfCoins, amountPerCoin, fee = 0) =
  * @param {number} minMojosPerCoin - Minimum mojos per coin (default: DEFAULT_COIN_AMOUNT + DEFAULT_FEE, must cover operation and fee)
  * @param {number} maxWaitMs - Maximum wait time in milliseconds (default: 5 minutes)
  * @param {number} pollIntervalMs - Polling interval in milliseconds (default: 10 seconds)
+ * @param {number} minTotalMojos - Minimum combined amount across usable coins (default: 0). Lets a
+ *   caller relaxing requiredCoins to 1 still require the wallet can fund a whole batch of spends.
  * @returns {Promise<{success: boolean, coinCount?: number, error?: string}>}
  */
 const DEFAULT_COIN_AMOUNT = CONFIG.DEFAULT_COIN_AMOUNT || 300;
 const DEFAULT_COIN_FEE = CONFIG.DEFAULT_FEE || 3000;
 const MIN_USABLE_COIN_SIZE = DEFAULT_COIN_AMOUNT + DEFAULT_COIN_FEE;
 
+/**
+ * Pure sufficiency check over wallet coin records: enough separate unspent
+ * coins of a usable size, whose combined amount can fund the whole batch.
+ * @param {Array<Object>} coinRecords - Records from get_coin_records
+ * @param {number} requiredCoins - Number of separate coins needed
+ * @param {number} minMojosPerCoin - Minimum mojos per coin
+ * @param {number} minTotalMojos - Minimum combined mojos across usable coins
+ * @returns {{sufficient: boolean, usableCoins: Array<Object>, totalBalance: number}}
+ */
+const evaluateSpendableCoins = (
+  coinRecords,
+  requiredCoins,
+  minMojosPerCoin,
+  minTotalMojos = 0,
+) => {
+  const usableCoins = coinRecords.filter((coin) => {
+    const isUnspent = !coin.spent_height || coin.spent_height === 0;
+    const hasSufficientBalance = coin.amount >= minMojosPerCoin;
+    return isUnspent && hasSufficientBalance;
+  });
+
+  const totalBalance = usableCoins.reduce((sum, coin) => sum + coin.amount, 0);
+
+  return {
+    sufficient:
+      usableCoins.length >= requiredCoins && totalBalance >= minTotalMojos,
+    usableCoins,
+    totalBalance,
+  };
+};
+
 const waitForSpendableCoins = async (
   requiredCoins = 4,
   minMojosPerCoin = MIN_USABLE_COIN_SIZE,
   maxWaitMs = 300000,
   pollIntervalMs = 10000,
+  minTotalMojos = 0,
 ) => {
   if (USE_SIMULATOR) {
     return { success: true, coinCount: 10, balance: 999000000000000 };
@@ -614,15 +648,12 @@ const waitForSpendableCoins = async (
         continue;
       }
 
-      // Count coins that are unspent and have sufficient balance
-      // Filter to coins that are unspent (spent_height === 0 or undefined)
-      const usableCoins = coinResult.coin_records.filter((coin) => {
-        const isUnspent = !coin.spent_height || coin.spent_height === 0;
-        const hasSufficientBalance = coin.amount >= minMojosPerCoin;
-        return isUnspent && hasSufficientBalance;
-      });
-
-      const totalBalance = usableCoins.reduce((sum, coin) => sum + coin.amount, 0);
+      const { sufficient, usableCoins, totalBalance } = evaluateSpendableCoins(
+        coinResult.coin_records,
+        requiredCoins,
+        minMojosPerCoin,
+        minTotalMojos,
+      );
 
       // Log status every 30 seconds or when count changes
       if (Date.now() - lastLogTime > 30000) {
@@ -638,7 +669,7 @@ const waitForSpendableCoins = async (
         }
       }
 
-      if (usableCoins.length >= requiredCoins) {
+      if (sufficient) {
         logger.info(
           `[wallet]: Sufficient coins available: ${usableCoins.length} coins of ${minMojosPerCoin}+ mojos (need ${requiredCoins})`,
         );
@@ -646,11 +677,18 @@ const waitForSpendableCoins = async (
       }
 
       // Not enough coins yet - check if we should warn about coin management
-      if (elapsed > 60 && usableCoins.length < requiredCoins) {
-        logger.warn(
-          `[wallet]: Only ${usableCoins.length}/${requiredCoins} usable coins available after ${elapsed}s. ` +
-          `Coin management may need to split coins first.`,
-        );
+      if (elapsed > 60) {
+        if (usableCoins.length < requiredCoins) {
+          logger.warn(
+            `[wallet]: Only ${usableCoins.length}/${requiredCoins} usable coins available after ${elapsed}s. ` +
+            `Coin management may need to split coins first.`,
+          );
+        } else {
+          logger.warn(
+            `[wallet]: Usable coins total ${totalBalance} mojos but ${minTotalMojos} are needed ` +
+            `after ${elapsed}s. The wallet may need more funds.`,
+          );
+        }
       }
     } catch (error) {
       logger.warn(`[wallet]: Error checking coin availability: ${error.message}`);
@@ -660,7 +698,9 @@ const waitForSpendableCoins = async (
   }
 
   const elapsed = Math.floor((Date.now() - startTime) / 1000);
-  const msg = `Timeout waiting for ${requiredCoins} coins of ${minMojosPerCoin}+ mojos after ${elapsed}s`;
+  const totalRequirement =
+    minTotalMojos > 0 ? ` totalling at least ${minTotalMojos} mojos` : '';
+  const msg = `Timeout waiting for ${requiredCoins} coins of ${minMojosPerCoin}+ mojos${totalRequirement} after ${elapsed}s`;
   logger.error(`[wallet]: ${msg}`);
   throw new Error(msg);
 };
@@ -951,15 +991,29 @@ const clearRejectedTransactions = async (walletId, txIds, context) => {
   return { cleared: true, reason: `Cleared ${health.rejected.length} rejected transaction(s)` };
 };
 
+// Errors the wallet raises when coin selection cannot fund a spend right now,
+// typically because coins are tied up in unconfirmed transactions. These clear
+// on their own as transactions confirm, so callers may retry on a time budget
+// (see chia's coin_selection.py and data_layer_wallet.py for the sources).
+const COIN_SHORTAGE_ERRORS = [
+  'No spendable coins',
+  "Can't select amount higher than our spendable balance",
+  'greater than max spendable balance in a block',
+  'Not enough coins to create new data layer singleton',
+];
+
+const isCoinShortageError = (error) =>
+  COIN_SHORTAGE_ERRORS.some((msg) => error.message?.includes(msg));
+
 const TRANSIENT_WALLET_ERRORS = [
   'Wallet needs to be fully synced',
   'DataLayerWallet not available',
   'DataLayer Wallet already exists',
-  'No spendable coins',
   'UNIQUE constraint failed',
 ];
 
 const isTransientWalletError = (error) =>
+  isCoinShortageError(error) ||
   TRANSIENT_WALLET_ERRORS.some((msg) => error.message?.includes(msg));
 
 const __test_resetDLWalletCache = () => {
@@ -985,11 +1039,14 @@ export default {
   buildCoinRecordsRequest,
   splitCoins,
   isTransientWalletError,
+  isCoinShortageError,
   getTransactionHealth,
   getDLWalletId,
   clearRejectedTransactions,
   formatDuration,
   findDLWalletInResponse,
   CHIA_WALLET_TYPE_DATA_LAYER,
+  MIN_USABLE_COIN_SIZE,
+  evaluateSpendableCoins,
   __test_resetDLWalletCache,
 };
