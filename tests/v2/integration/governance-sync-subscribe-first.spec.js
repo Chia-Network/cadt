@@ -46,10 +46,8 @@ describe('GovernanceV2.sync subscribe-first ordering', function () {
   });
 
   beforeEach(function () {
-    // The config-loader forces USE_SIMULATOR=true whenever process.env
-    // contains *any* string value for that key (see src/utils/config-loader.js
-    // "Handle USE_SIMULATOR environment variable override").  Delete it so
-    // withConfigOverride({ APP: { USE_SIMULATOR: false } }) actually sticks.
+    // The test runner sets USE_SIMULATOR=true, which still overrides YAML.
+    // Delete it so withConfigOverride({ APP: { USE_SIMULATOR: false } }) sticks.
     originalUseSimulator = process.env.USE_SIMULATOR;
     originalUseDevMode = process.env.USE_DEVELOPMENT_MODE;
     delete process.env.USE_SIMULATOR;
