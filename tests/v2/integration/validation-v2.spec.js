@@ -13,6 +13,7 @@ import {
   getV2HomeOrgId,
   addUuidIfNeeded,
 } from '../utils/v2-test-helpers.js';
+import { runCrudStagingSuite } from '../utils/crud-suite-factory.js';
 
 describe('V2 Validation API - Basic CRUD Tests', function () {
   this.timeout(30000);
@@ -74,50 +75,82 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
     }));
   });
 
-  describe('POST /v2/validation (Create)', function () {
-    it('should create a new validation record', async function () {
-      const validationData = {
-        validationId: 'TEST-VALIDATION-001',
+  runCrudStagingSuite({
+    resource: 'validation',
+    label: 'Validation',
+    pk: 'cadTrustValidationId',
+    pkColumn: 'cad_trust_validation_id',
+    missingId: '999999',
+    requiredFields: ['validationType', 'validationBody', 'validationId', 'cadTrustProjectId'],
+    picklists: [
+      {
+        field: 'validationType',
+        invalid: 'InvalidType',
+        valid: 'Validation of Project Design Document',
+      },
+      {
+        field: 'validationBody',
+        invalid: 'InvalidBody',
+        valid: 'AENOR International S.A.U.',
+      },
+    ],
+    context: () => ({ testProject }),
+    validPayload: (ctx) => ({
+      validationId: 'TEST-VALIDATION-001',
+      validationType: 'Validation of Project Design Document',
+      validationBody: 'AENOR International S.A.U.',
+      validationDate: '2024-01-01',
+      validationCreditPeriodStartDate: '2024-01-01',
+      validationCreditPeriodEndDate: '2024-12-31',
+      cadTrustProjectId: ctx.testProject.cadTrustProjectId,
+    }),
+    expectStagedInsert: (staged, ctx) => {
+      expect(staged.validation_id).to.equal('TEST-VALIDATION-001');
+      expect(staged.validation_type).to.equal('Validation of Project Design Document');
+      expect(staged.validation_body).to.equal('AENOR International S.A.U.');
+      expect(staged.cad_trust_project_id).to.equal(ctx.testProject.cadTrustProjectId);
+    },
+    list: {
+      title: 'should return validations from database with project association',
+      query: { columns: 'project' },
+      seed: (ctx) =>
+        ValidationV2.create(addUuidIfNeeded('ValidationV2', {
+          validationId: 'Database Validation',
+          validationType: 'Validation of Project Design Document',
+          validationBody: 'AENOR International S.A.U.',
+          cadTrustProjectId: ctx.testProject.cadTrustProjectId,
+        })),
+      expectRow: (row) => {
+        expect(row.validationId).to.equal('Database Validation');
+        expect(row.validationType).to.equal('Validation of Project Design Document');
+        expect(row.project).to.exist;
+        expect(row.project.projectName).to.equal('Test Project for Validation');
+      },
+    },
+    seed: (ctx) =>
+      ValidationV2.create(addUuidIfNeeded('ValidationV2', {
+        validationId: 'Original ID',
         validationType: 'Validation of Project Design Document',
         validationBody: 'AENOR International S.A.U.',
-        validationDate: '2024-01-01',
-        validationCreditPeriodStartDate: '2024-01-01',
-        validationCreditPeriodEndDate: '2024-12-31',
-        cadTrustProjectId: testProject.cadTrustProjectId,
-      };
+        cadTrustProjectId: ctx.testProject.cadTrustProjectId,
+      })),
+    updatePayload: (ctx) => ({
+      validationId: 'Updated ID',
+      validationType: 'Validation of Post Registration Change',
+      validationBody: 'AENOR International S.A.U.',
+      validationDate: '2024-02-01',
+      validationCreditPeriodStartDate: '2024-02-01',
+      validationCreditPeriodEndDate: '2024-12-31',
+      cadTrustProjectId: ctx.testProject.cadTrustProjectId,
+    }),
+    expectStagedUpdate: (staged, ctx) => {
+      expect(staged.validation_id).to.equal('Updated ID');
+      expect(staged.validation_type).to.equal('Validation of Post Registration Change');
+      expect(staged.cad_trust_project_id).to.equal(ctx.testProject.cadTrustProjectId);
+    },
+  });
 
-      const response = await supertest(app)
-        .post('/v2/validation')
-        .send(validationData);
-
-      if (response.status !== 200) {
-        console.log('Error response:', response.body);
-      }
-
-      expect(response.status).to.equal(200);
-      expect(response.body).to.have.property('message');
-      expect(response.body.message).to.equal('Validation staged successfully');
-      expect(response.body).to.have.property('uuid');
-      expect(response.body).to.have.property('success', true);
-
-      // Verify record was staged
-      expect(response.body).to.have.property('uuid');
-      const stagingRecord = await StagingV2.findOne({
-        where: { uuid: response.body.uuid },
-      });
-      expect(stagingRecord).to.exist;
-      expect(stagingRecord.table).to.equal('validation');
-      expect(stagingRecord.action).to.equal('INSERT');
-      expect(stagingRecord.committed).to.be.false;
-
-      // Verify staged data
-      const stagedData = JSON.parse(stagingRecord.data);
-      expect(stagedData[0].validation_id).to.equal('TEST-VALIDATION-001');
-      expect(stagedData[0].validation_type).to.equal('Validation of Project Design Document');
-      expect(stagedData[0].validation_body).to.equal('AENOR International S.A.U.');
-      expect(stagedData[0].cad_trust_project_id).to.equal(testProject.cadTrustProjectId);
-    });
-
+  describe('POST /v2/validation (Create)', function () {
     it('should create validation with all required data', async function () {
       const minimalData = {
         validationId: 'MIN-VALIDATION-001',
@@ -133,69 +166,6 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
 
       expect(response.body.success).to.be.true;
       expect(response.body.uuid).to.exist;
-    });
-
-    it('should reject validation without required validationType', async function () {
-      const invalidData = {
-        validationId: 'MISSING-TYPE-001',
-        validationBody: 'AENOR International S.A.U.',
-        cadTrustProjectId: testProject.cadTrustProjectId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/validation')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('validationType');
-    });
-
-    it('should reject validation without required validationBody', async function () {
-      const invalidData = {
-        validationId: 'MISSING-BODY-001',
-        validationType: 'Validation of Project Design Document',
-        cadTrustProjectId: testProject.cadTrustProjectId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/validation')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('validationBody');
-    });
-
-    // Validation tests
-    it('should reject validation without required validationId', async function () {
-      const invalidData = {
-        cadTrustProjectId: testProject.cadTrustProjectId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/validation')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('validationId');
-    });
-
-    it('should reject validation without required cadTrustProjectId', async function () {
-      const invalidData = {
-        validationId: 'MISSING-FK',
-        validationType: 'Validation of Project Design Document',
-        validationBody: 'AENOR International S.A.U.',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/validation')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('cadTrustProjectId');
     });
 
     it('should reject validation with invalid validationDate format', async function () {
@@ -214,72 +184,6 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
 
       expect(response.body.success).to.be.false;
       expect(response.body.error).to.include('validationDate');
-    });
-
-    // Picklist validation tests
-    it('should reject validation with invalid validationType (not in V2 picklist)', async function () {
-      const invalidData = {
-        validationId: 'INVALID-TYPE',
-        cadTrustProjectId: testProject.cadTrustProjectId,
-        validationType: 'InvalidType',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/validation')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('validationType');
-    });
-
-    it('should accept validation with valid V2 validationType', async function () {
-      const validData = {
-        validationId: 'VALID-TYPE',
-        validationType: 'Validation of Project Design Document',
-        validationBody: 'AENOR International S.A.U.',
-        cadTrustProjectId: testProject.cadTrustProjectId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/validation')
-        .send(validData)
-        .expect(200);
-
-      expect(response.body.success).to.be.true;
-    });
-
-    it('should reject validation with invalid validationBody (not in V2 picklist)', async function () {
-      const invalidData = {
-        validationId: 'INVALID-BODY',
-        validationType: 'Validation of Project Design Document',
-        validationBody: 'InvalidBody',
-        cadTrustProjectId: testProject.cadTrustProjectId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/validation')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('validationBody');
-    });
-
-    it('should accept validation with valid V2 validationBody', async function () {
-      const validData = {
-        validationId: 'VALID-BODY',
-        validationType: 'Validation of Project Design Document',
-        validationBody: 'AENOR International S.A.U.',
-        cadTrustProjectId: testProject.cadTrustProjectId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/validation')
-        .send(validData)
-        .expect(200);
-
-      expect(response.body.success).to.be.true;
     });
 
     // Foreign key validation tests
@@ -317,87 +221,9 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
       expect(response.body.success).to.be.true;
     });
 
-    it('should reject validation with forbidden createdAt field', async function () {
-      const invalidData = {
-        validationId: 'FORBIDDEN-FIELD',
-        validationType: 'Validation of Project Design Document',
-        validationBody: 'AENOR International S.A.U.',
-        cadTrustProjectId: testProject.cadTrustProjectId,
-        createdAt: '2024-01-01T00:00:00Z',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/validation')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('createdAt');
-    });
-
-    it('should reject validation with forbidden updatedAt field', async function () {
-      const invalidData = {
-        validationId: 'FORBIDDEN-FIELD',
-        validationType: 'Validation of Project Design Document',
-        validationBody: 'AENOR International S.A.U.',
-        cadTrustProjectId: testProject.cadTrustProjectId,
-        updatedAt: '2024-01-01T00:00:00Z',
-      };
-
-      const response = await supertest(app)
-        .post('/v2/validation')
-        .send(invalidData)
-        .expect(400);
-
-      expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('updatedAt');
-    });
-  });
-
-  describe('GET /v2/validation (List)', function () {
-    it('should return empty array when no validations exist', async function () {
-      const response = await supertest(app)
-        .get('/v2/validation')
-        .query({ page: 1, limit: 10 })
-        .expect(200);
-
-      expect(response.body.data).to.be.an('array');
-      expect(response.body.data).to.have.length(0);
-    });
-
-    it('should return validations from database with project association', async function () {
-      // Create a validation directly in database
-      const validation = await ValidationV2.create(addUuidIfNeeded('ValidationV2', {
-        validationId: 'Database Validation',
-        validationType: 'Validation of Project Design Document',
-        validationBody: 'AENOR International S.A.U.',
-        cadTrustProjectId: testProject.cadTrustProjectId,
-      }));
-
-      const response = await supertest(app)
-        .get('/v2/validation')
-        .query({ page: 1, limit: 10, columns: 'project' })
-        .expect(200);
-
-      expect(response.body.data).to.be.an('array');
-      expect(response.body.data).to.have.length(1);
-      expect(response.body.data[0].validationId).to.equal('Database Validation');
-      expect(response.body.data[0].validationType).to.equal('Validation of Project Design Document');
-      expect(response.body.data[0].project).to.exist;
-      expect(response.body.data[0].project.projectName).to.equal('Test Project for Validation');
-    });
   });
 
   describe('GET /v2/validation/:id (Get One)', function () {
-    it('should return 404 for non-existent validation', async function () {
-      const response = await supertest(app)
-        .get('/v2/validation/999999')
-        .expect(404);
-
-      expect(response.body.message).to.equal('Validation not found');
-      expect(response.body.success).to.be.false;
-    });
-
     it('should return validation by ID with project association', async function () {
       // Create a validation directly in database
       const validation = await ValidationV2.create(addUuidIfNeeded('ValidationV2', {
@@ -419,113 +245,7 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
     });
   });
 
-  describe('PUT /v2/validation/:id (Update)', function () {
-    it('should return 404 for non-existent validation', async function () {
-      const updateData = {
-        validationId: 'Updated ID',
-        validationType: 'Validation of Project Design Document',
-        validationBody: 'AENOR International S.A.U.',
-        cadTrustProjectId: testProject.cadTrustProjectId,
-      };
-
-      const response = await supertest(app)
-        .put('/v2/validation/999999')
-        .send(updateData)
-        .expect(404);
-
-      expect(response.body.message).to.equal('Validation not found');
-      expect(response.body.success).to.be.false;
-    });
-
-    it('should stage validation update', async function () {
-      // Create a validation directly in database
-      const validation = await ValidationV2.create(addUuidIfNeeded('ValidationV2', {
-        validationId: 'Original ID',
-        validationType: 'Validation of Project Design Document',
-        validationBody: 'AENOR International S.A.U.',
-        cadTrustProjectId: testProject.cadTrustProjectId,
-      }));
-
-      const updateData = {
-        validationId: 'Updated ID',
-        validationType: 'Validation of Post Registration Change',
-        validationBody: 'AENOR International S.A.U.',
-        validationDate: '2024-02-01',
-        validationCreditPeriodStartDate: '2024-02-01',
-        validationCreditPeriodEndDate: '2024-12-31',
-        cadTrustProjectId: testProject.cadTrustProjectId,
-      };
-
-      const response = await supertest(app)
-        .put(`/v2/validation/${validation.cadTrustValidationId}`)
-        .send(updateData);
-
-      if (response.status !== 200) {
-        console.log('Error response:', response.body);
-      }
-
-      expect(response.status).to.equal(200);
-      expect(response.body.message).to.equal('Validation update staged successfully');
-      expect(response.body.success).to.be.true;
-
-      // Verify update was staged
-      const stagingRecord = await StagingV2.findOne({
-        where: {
-          table: 'validation',
-          action: 'UPDATE',
-        },
-      });
-      expect(stagingRecord).to.exist;
-      expect(stagingRecord.committed).to.be.false;
-
-      // Verify staged update data
-      const stagedData = JSON.parse(stagingRecord.data);
-      expect(stagedData[0].cad_trust_validation_id).to.equal(validation.cadTrustValidationId);
-      expect(stagedData[0].validation_id).to.equal('Updated ID');
-      expect(stagedData[0].validation_type).to.equal('Validation of Post Registration Change');
-      expect(stagedData[0].cad_trust_project_id).to.equal(testProject.cadTrustProjectId);
-    });
-  });
-
   describe('DELETE /v2/validation/:id (Delete)', function () {
-    it('should return 404 for non-existent validation', async function () {
-      const response = await supertest(app)
-        .delete('/v2/validation/999999')
-        .expect(404);
-
-      expect(response.body.message).to.equal('Validation not found');
-      expect(response.body.success).to.be.false;
-    });
-
-    it('should stage validation deletion', async function () {
-      // Create a validation directly in database
-      const validation = await ValidationV2.create(addUuidIfNeeded('ValidationV2', {
-        validationId: 'To Be Deleted',
-        cadTrustProjectId: testProject.cadTrustProjectId,
-      }));
-
-      const response = await supertest(app)
-        .delete(`/v2/validation/${validation.cadTrustValidationId}`)
-        .expect(200);
-
-      expect(response.body.message).to.equal('Validation delete staged successfully');
-      expect(response.body.success).to.be.true;
-
-      // Verify deletion was staged
-      const stagingRecord = await StagingV2.findOne({
-        where: {
-          table: 'validation',
-          action: 'DELETE',
-        },
-      });
-      expect(stagingRecord).to.exist;
-      expect(stagingRecord.committed).to.be.false;
-
-      // Verify staged deletion data
-      const stagedData = JSON.parse(stagingRecord.data);
-      expect(stagedData[0].cad_trust_validation_id).to.equal(validation.cadTrustValidationId);
-    });
-
     it('should return 409 when verification still references validation', async function () {
       const validation = await ValidationV2.create(addUuidIfNeeded('ValidationV2', {
         validationId: `VAL-DEL-GUARD-${uuidv4().slice(0, 8)}`,
