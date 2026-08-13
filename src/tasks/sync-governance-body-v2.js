@@ -7,10 +7,7 @@ import { getConfig, getConfigV2 } from '../utils/config-loader.js';
 import { loggerV2 } from '../config/logger.js';
 import { GovernanceV2 } from '../models/v2/index.js';
 import { OrganizationsV2 } from '../models/v2/index.js';
-import {
-  markGovernanceNotReady,
-  markGovernanceReady,
-} from '../utils/governance-readiness.js';
+import { markGovernanceReady } from '../utils/governance-readiness.js';
 
 const CONFIG = getConfig().APP;
 const CONFIG_V2 = getConfigV2();
@@ -27,7 +24,8 @@ const task = new Task('sync-governance-meta-v2', async () => {
       return;
     }
 
-    markGovernanceNotReady('v2');
+    // Readiness is a freshness timestamp, not a sync-in-progress flag; do not
+    // clear it here. See utils/governance-readiness.js.
     await assertDataLayerAvailable();
     await assertWalletIsSynced();
 

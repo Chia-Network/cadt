@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import sinon from 'sinon';
 import { Op } from 'sequelize';
 import { prepareDb } from '../../src/database';
 import { Organization, Project, Staging, Meta, Governance } from '../../src/models';
@@ -68,6 +69,12 @@ describe('orglist-subscription-reconcile (V1)', function () {
     await Meta.destroy({ where: {} });
     resetOrgListReconcileState();
     resetGovernanceReadiness();
+  });
+
+  // A test aborted by timeout never reaches its own restore, which would leave
+  // a stub installed for the rest of the file.
+  afterEach(function () {
+    sinon.restore();
   });
 
   it('should unsubscribe and delete orgs after the grace cycle using V1 field names', async function () {
@@ -490,6 +497,58 @@ describe('orglist-subscription-reconcile (V1)', function () {
     markGovernanceNotReady('v1');
 
     expect(isGovernanceReady('v1')).to.equal(false);
+  });
+
+  it('should expire governance readiness once the last confirmed-good sync is stale', function () {
+    const clock = sinon.useFakeTimers({ now: Date.now(), toFake: ['Date'] });
+
+    try {
+      markGovernanceReady('v1');
+      expect(isGovernanceReady('v1')).to.equal(true);
+
+      // Readiness holds for five default 120s sync intervals, so a handful of
+      // failed syncs does not gate the purge off.
+      clock.tick(9 * 60 * 1000);
+      expect(isGovernanceReady('v1')).to.equal(true);
+
+      clock.tick(2 * 60 * 1000);
+      expect(isGovernanceReady('v1')).to.equal(false);
+    } finally {
+      clock.restore();
+    }
+  });
+
+  it('should keep governance readiness while a sync is in flight', async function () {
+    markGovernanceReady('v1');
+
+    let releaseUpsert;
+    const upsertGate = new Promise((resolve) => {
+      releaseUpsert = resolve;
+    });
+    let upsertStarted;
+    const upsertReached = new Promise((resolve) => {
+      upsertStarted = resolve;
+    });
+
+    const upsertStub = sinon.stub(Governance, 'upsert').callsFake(async () => {
+      upsertStarted();
+      await upsertGate;
+    });
+
+    try {
+      const syncPromise = Governance.sync();
+      await upsertReached;
+
+      // A sync that has started but not finished must not lower readiness: the
+      // purge gate is polled by a task on the same interval, so it would read
+      // the cleared value for the whole cycle.
+      expect(isGovernanceReady('v1')).to.equal(true);
+
+      releaseUpsert();
+      await syncPromise;
+    } finally {
+      upsertStub.restore();
+    }
   });
 
   it('should mark V1 governance ready after fallback governance sync', async function () {
