@@ -45,11 +45,22 @@ const getChiaRoot = () => {
 
 const chiaRoot = getChiaRoot();
 
+// Crash records carry the raw Error, which may hold circular references (an
+// Express error decorated with req/res is one). Rendering runs inside
+// winston's crash handler, so it must never throw.
+const renderMetadata = (metadata) => {
+  try {
+    return JSON.stringify(metadata);
+  } catch {
+    return '[unserializable metadata]';
+  }
+};
+
 const logFormat = format.printf(
   (info) =>
     `${info.timestamp} [${packageJson.version}] [${info.level}]: ${info.message} ${
       Object.keys(info.metadata || {}).length > 0
-        ? JSON.stringify(info.metadata)
+        ? renderMetadata(info.metadata)
         : ''
     }`,
 );
@@ -66,10 +77,16 @@ const MAX_LOG_FILE_RETENTION = '30d';
  * rotated equivalents, so they don't accumulate unbounded on hosts upgrading
  * across versions.
  *
- *   error.log, combined.log                  -> merged into application-%DATE%.log
- *   exceptions.log, rejections.log           -> merged into their rotated siblings
+ *   error.log, combined.log                  -> superseded by application-%DATE%.log
+ *   exceptions.log, rejections.log           -> superseded by application-%DATE%.log
  *   debug-%DATE%.log{,.gz,.N}                -> application-%DATE%.log now
  *                                               captures debug-level output
+ *   exceptions-%DATE%.log, rejections-%DATE%.log
+ *                                            -> deleted; crash records go to
+ *                                               application-%DATE%.log from
+ *                                               now on. These files were never
+ *                                               written to, so no history is
+ *                                               lost.
  *
  * Runs best-effort: missing files are ignored and per-file failures are
  * collected rather than thrown so a cleanup error never takes down startup.
@@ -104,12 +121,15 @@ const cleanupObsoleteLogFiles = (logDir) => {
     }
   }
 
-  // Orphaned debug-%DATE%.log{,.N,.gz} files from the retired debug transport.
-  const debugPattern = /^debug-.*\.log(\.\d+)?(\.gz)?$/;
+  // Rotated files left behind by retired transports. Anchored to the
+  // YYYY-MM-DD stamp those transports actually produced so an operator's own
+  // exceptions-incident-copy.log is not caught by the sweep.
+  const obsoletePattern =
+    /^(debug|exceptions|rejections)-\d{4}-\d{2}-\d{2}\.log(\.\d+)?(\.gz)?$/;
   try {
     const entries = fs.readdirSync(logDir);
     for (const entry of entries) {
-      if (debugPattern.test(entry)) {
+      if (obsoletePattern.test(entry)) {
         const filePath = path.join(logDir, entry);
         try {
           fs.unlinkSync(filePath);
@@ -140,50 +160,51 @@ const createVersionLogger = (version) => {
 
   const legacyCleanup = cleanupObsoleteLogFiles(logDir);
 
+  // Single rotated application log. Transport-level 'debug' makes this
+  // capture the full debug+verbose+info+warn+error stream regardless of
+  // APP.LOG_LEVEL, matching the behaviour of the previous debug-%DATE%.log
+  // file that this transport replaces.
+  const applicationTransport = new DailyRotateFile({
+    filename: `${logDir}/application-%DATE%.log`,
+    datePattern: 'YYYY-MM-DD',
+    level: 'debug',
+    zippedArchive: true,
+    maxSize: MAX_LOG_FILE_SIZE,
+    maxFiles: MAX_LOG_FILE_RETENTION,
+    utc: true,
+    format: format.combine(format.json()),
+  });
+
+  // Uncaught exceptions and unhandled rejections land in the application log
+  // rather than in dedicated files, so crash records sit in timeline order
+  // alongside the requests that led to them. Registering a handler is also
+  // what installs winston's process-level hooks, which combined with
+  // exitOnError keeps the service alive across them.
+  //
+  // Set after construction on purpose: winston-daily-rotate-file names its
+  // rotation audit after a hash of the constructor options, and the audit is
+  // the only thing maxFiles prunes against. Passing these as options would
+  // orphan the existing audit and strand every current log file on disk.
+  applicationTransport.handleExceptions = true;
+  applicationTransport.handleRejections = true;
+
   const versionLogger = createLogger({
     level: getConfig().APP.LOG_LEVEL || 'info',
+    // No renderer at this level: every transport declares its own format.
+    // A transport added without one writes `undefined` per line, since this
+    // chain produces no rendered message.
     format: format.combine(
       redactSensitiveFields(),
-      logFormat,
       format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-      format.metadata({ fillExcept: ['message', 'level', 'timestamp'] }),
+      // Winston's crash-routing flags. `exception` must stay top-level: it is
+      // what lets a transport without handleExceptions skip crash records.
+      // `rejection` is hoisted alongside it so both stay greppable in the
+      // JSON output.
+      format.metadata({
+        fillExcept: ['message', 'level', 'timestamp', 'exception', 'rejection'],
+      }),
     ),
-    transports: [
-      // Single rotated application log. Transport-level 'debug' makes this
-      // capture the full debug+verbose+info+warn+error stream regardless of
-      // APP.LOG_LEVEL, matching the behaviour of the previous
-      // debug-%DATE%.log file that this transport replaces.
-      new DailyRotateFile({
-        filename: `${logDir}/application-%DATE%.log`,
-        datePattern: 'YYYY-MM-DD',
-        level: 'debug',
-        zippedArchive: true,
-        maxSize: MAX_LOG_FILE_SIZE,
-        maxFiles: MAX_LOG_FILE_RETENTION,
-        utc: true,
-        format: format.combine(format.json()),
-      }),
-    ],
-    exceptionHandlers: [
-      new DailyRotateFile({
-        filename: `${logDir}/exceptions-%DATE%.log`,
-        datePattern: 'YYYY-MM-DD',
-        zippedArchive: true,
-        maxSize: MAX_LOG_FILE_SIZE,
-        maxFiles: MAX_LOG_FILE_RETENTION,
-        utc: true,
-      }),
-    ],
-    rejectionHandlers: [
-      new DailyRotateFile({
-        filename: `${logDir}/rejections-%DATE%.log`,
-        datePattern: 'YYYY-MM-DD',
-        zippedArchive: true,
-        maxSize: MAX_LOG_FILE_SIZE,
-        maxFiles: MAX_LOG_FILE_RETENTION,
-        utc: true,
-      }),
-    ],
+    transports: [applicationTransport],
     exitOnError: false,
   });
 
@@ -195,6 +216,8 @@ const createVersionLogger = (version) => {
           format.prettyPrint(),
           logFormat,
         ),
+        handleExceptions: true,
+        handleRejections: true,
       }),
     );
   } else {
@@ -215,6 +238,8 @@ const createVersionLogger = (version) => {
         level: 'debug',
         stderrLevels: ['error'],
         format: format.combine(format.json()),
+        handleExceptions: true,
+        handleRejections: true,
       }),
     );
   }
