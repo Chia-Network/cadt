@@ -234,93 +234,13 @@ jobs:
           APPLE_SIGNING_SECRET: "${{ secrets.APPLE_DEV_ID_APP }}"
 
       # Windows Code Signing (Azure Artifact Signing)
-      - name: Install Azure Artifact Signing client
-        if: matrix.runs-on == 'windows-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET
-        shell: pwsh
-        run: |
-          $toolsDir = Join-Path $env:RUNNER_TEMP "artifact-signing-client"
-          New-Item -ItemType Directory -Path $toolsDir -Force | Out-Null
-          Push-Location $toolsDir
-
-          Invoke-WebRequest -Uri "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe" -OutFile nuget.exe
-          .\nuget.exe install Microsoft.ArtifactSigning.Client -x -OutputDirectory .
-
-          $dlib = Get-ChildItem -Recurse -Filter "Azure.CodeSigning.Dlib.dll" |
-            Where-Object { $_.FullName -match '[\\/]x64[\\/]' } |
-            Select-Object -First 1
-          if (-not $dlib) {
-            throw "Azure.CodeSigning.Dlib.dll (x64) not found after installing Microsoft.ArtifactSigning.Client"
-          }
-
-          $metadataPath = Join-Path $toolsDir "metadata.json"
-          @{
-            Endpoint = "https://wus2.codesigning.azure.net/"
-            CodeSigningAccountName = "ChiaNetworkInc"
-            CertificateProfileName = "ChiaNetworkInc"
-            CorrelationId = "github-actions-$env:GITHUB_RUN_ID"
-          } | ConvertTo-Json | Set-Content -Path $metadataPath
-
-          Add-Content -Path $env:GITHUB_ENV -Value "AZURE_CODE_SIGNING_DLIB=$($dlib.FullName)"
-          Add-Content -Path $env:GITHUB_ENV -Value "AZURE_CODE_SIGNING_METADATA=$metadataPath"
-
-          Write-Output "dlib=$($dlib.FullName)"
-          Write-Output "metadata=$metadataPath"
-          Get-Content $metadataPath
-          Pop-Location
-
       - name: Sign windows artifacts
         if: matrix.runs-on == 'windows-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET
-        shell: pwsh
-        env:
-          # prod chain: EnvironmentCredential / WorkloadIdentity (not Azure CLI).
-          AZURE_TOKEN_CREDENTIALS: prod
-          AZURE_TENANT_ID: ${{ secrets.AZURE_SIGNING_TENANT_ID }}
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_SIGNING_CLIENT_ID }}
-        run: |
-          $env:path = "C:\Program Files (x86)\Windows Kits\10\App Certification Kit;$env:path"
-          $filePath = Join-Path $env:GITHUB_WORKSPACE "dist\cadt.exe"
-
-          # Request a fresh GitHub OIDC token immediately before signing.
-          if (-not $env:ACTIONS_ID_TOKEN_REQUEST_URL -or -not $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN) {
-            throw "ACTIONS_ID_TOKEN_REQUEST_URL/TOKEN not available; ensure permissions.id-token: write is set"
-          }
-          if (-not $env:AZURE_TENANT_ID -or -not $env:AZURE_CLIENT_ID) {
-            throw "AZURE_TENANT_ID and AZURE_CLIENT_ID must be set for AZURE_TOKEN_CREDENTIALS=prod"
-          }
-
-          $tokenUrl = "$($env:ACTIONS_ID_TOKEN_REQUEST_URL)&audience=api://AzureADTokenExchange"
-          $headers = @{ Authorization = "Bearer $($env:ACTIONS_ID_TOKEN_REQUEST_TOKEN)" }
-          $response = Invoke-RestMethod -Uri $tokenUrl -Headers $headers -Method GET
-          if (-not $response.value) {
-            throw "Failed to obtain GitHub OIDC token for Azure federated credential"
-          }
-
-          $tokenFile = Join-Path $env:RUNNER_TEMP "azure-federated-token"
-          Set-Content -Path $tokenFile -Value $response.value -NoNewline
-          $env:AZURE_FEDERATED_TOKEN_FILE = $tokenFile
-          Write-Output "Wrote Azure federated token to $tokenFile"
-
-          if (-not $env:AZURE_CODE_SIGNING_DLIB -or -not (Test-Path $env:AZURE_CODE_SIGNING_DLIB)) {
-            throw "AZURE_CODE_SIGNING_DLIB is not set or does not exist: $env:AZURE_CODE_SIGNING_DLIB"
-          }
-          if (-not $env:AZURE_CODE_SIGNING_METADATA -or -not (Test-Path $env:AZURE_CODE_SIGNING_METADATA)) {
-            throw "AZURE_CODE_SIGNING_METADATA is not set or does not exist: $env:AZURE_CODE_SIGNING_METADATA"
-          }
-
-          Write-Output "Signing $filePath"
-          signtool.exe sign /v /fd SHA256 /tr "http://timestamp.acs.microsoft.com" /td SHA256 `
-            /dlib $env:AZURE_CODE_SIGNING_DLIB `
-            /dmdf $env:AZURE_CODE_SIGNING_METADATA `
-            $filePath
-          if ($LASTEXITCODE -ne 0) {
-            throw "Azure Artifact Signing failed for $filePath with exit code $LASTEXITCODE"
-          }
-
-          Write-Output "Verify signature"
-          signtool.exe verify /v /pa $filePath
-          if ($LASTEXITCODE -ne 0) {
-            throw "Signature verification failed for $filePath"
-          }
+        uses: chia-network/actions/sign/azure-windows@main
+        with:
+          azure_tenant_id: ${{ secrets.AZURE_SIGNING_TENANT_ID }}
+          azure_client_id: ${{ secrets.AZURE_SIGNING_CLIENT_ID }}
+          file: "${{ github.workspace }}/dist/cadt.exe"
 
       # Mac .pkg build + sign
       - name: Import Apple installer signing certificate
