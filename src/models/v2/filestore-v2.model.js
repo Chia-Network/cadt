@@ -10,6 +10,13 @@ import { sequelizeV2 } from '../../database/v2/index.js';
 import OrganizationsV2 from './organizations-v2.model.js';
 
 import datalayer from '../../datalayer';
+import pendingFileStoreCreations, {
+  claimFailedFileStoreOrgStorePush,
+  clearFileStoreIdPendingOrgStorePush,
+  getFileStoreIdPendingOrgStorePush,
+  markFileStoreOrgStorePushFailed,
+  markFileStoreOrgStorePushStarted,
+} from '../../datalayer/pending-file-store-creations.js';
 import { encodeHex } from '../../utils/datalayer-utils.js';
 import { loggerV2 } from '../../config/logger.js';
 import { getConfig } from '../../utils/config-loader.js';
@@ -35,34 +42,166 @@ const getStoreDataPromise = async (storeId) => {
 
 import ModelTypes from './filestore-v2.modeltypes.js';
 
+/**
+ * Find a file store id already persisted for this org, checking this model's
+ * table first and then the v1 model's. An upgraded org keeps the same file
+ * store on both sides (see OrganizationsV2.upgradeFromV1), so an id recorded
+ * by either model means the store already exists and must not be re-minted.
+ * @param {string} orgUid
+ * @returns {Promise<string|null>}
+ */
+const findExistingFileStoreId = async (orgUid) => {
+  const organization = await OrganizationsV2.findOne({
+    where: { org_uid: orgUid },
+    attributes: ['file_store_subscribed'],
+    raw: true,
+  });
+  if (organization?.file_store_subscribed) {
+    return organization.file_store_subscribed;
+  }
+
+  try {
+    const { Organization } =
+      await import('../organizations/organizations.model.js');
+    const v1Organization = await Organization.findOne({
+      where: { orgUid },
+      attributes: ['fileStoreId'],
+      raw: true,
+    });
+    if (v1Organization?.fileStoreId) {
+      return v1Organization.fileStoreId;
+    }
+  } catch {
+    // v1 tables may not be populated in a v2-only deployment.
+  }
+
+  // A store minted moments ago can be absent from both tables: reconciliation
+  // clears the recorded id for as long as the org store has no fileStoreId of
+  // its own, which lasts until the push that registers it lands.
+  return getFileStoreIdPendingOrgStorePush(orgUid);
+};
+
+/**
+ * Start file store creation for an org unless one is already running.
+ * Returns immediately; callers are expected to throw a retry-later error.
+ * @param {Object} myOrganization - Home organization row
+ */
+const startFileStoreCreation = (myOrganization) => {
+  const orgUid = myOrganization.org_uid;
+
+  if (pendingFileStoreCreations.has(orgUid)) {
+    return;
+  }
+
+  pendingFileStoreCreations.add(orgUid);
+
+  const mintAndPersist = async () => {
+    // The caller's org snapshot may predate a creation that has since
+    // finished, and the v1 model may have recorded the store for an
+    // upgraded org; adopt any persisted id instead of minting another.
+    const existingId = await findExistingFileStoreId(orgUid);
+    if (existingId) {
+      await OrganizationsV2.update(
+        { file_store_subscribed: existingId },
+        { where: { org_uid: orgUid } },
+      );
+      return claimFailedFileStoreOrgStorePush(orgUid);
+    }
+
+    await datalayer.waitForSpendableCoins(1);
+    const newFileStoreId = await datalayer.createDataLayerStoreWithRetry();
+    // Recorded before the database write so the id stays reachable even if
+    // reconciliation clears the column before the push below completes.
+    markFileStoreOrgStorePushStarted(orgUid, newFileStoreId);
+    // Record the store before syncing. The store is already paid for on
+    // chain, so losing the id to a sync failure would mint another one on
+    // the next request; subsequent requests use the persisted id.
+    try {
+      await OrganizationsV2.update(
+        { file_store_subscribed: newFileStoreId },
+        { where: { org_uid: orgUid } },
+      );
+    } catch (error) {
+      clearFileStoreIdPendingOrgStorePush(orgUid, newFileStoreId);
+      throw error;
+    }
+    return newFileStoreId;
+  };
+
+  const run = async () => {
+    let newFileStoreId = null;
+    try {
+      newFileStoreId = await mintAndPersist();
+    } catch (error) {
+      loggerV2.error(
+        `[v2]: Failed to create file store for org ${orgUid}: ${error.message}`,
+      );
+    } finally {
+      // Released before the org-store push, which retries for up to half an
+      // hour. The guard only has to cover the mint, and the id is persisted by
+      // this point, so anything arriving later adopts it rather than minting.
+      // Holding it across the push would keep the v1 model from adopting the
+      // id for an upgraded org for that whole window.
+      pendingFileStoreCreations.delete(orgUid);
+    }
+
+    if (!newFileStoreId) {
+      return;
+    }
+
+    try {
+      await datalayer.syncDataLayer(orgUid, { fileStoreId: newFileStoreId });
+      await datalayer.waitForAllTransactionsToConfirm();
+      clearFileStoreIdPendingOrgStorePush(orgUid, newFileStoreId);
+    } catch (error) {
+      markFileStoreOrgStorePushFailed(orgUid, newFileStoreId);
+      loggerV2.error(
+        `[v2]: File store ${newFileStoreId} for org ${orgUid} was created and recorded, ` +
+          `but registering it on the org store failed: ${error.message}`,
+      );
+    }
+  };
+
+  run().catch((error) => {
+    loggerV2.error(
+      `[v2]: File store creation for org ${orgUid} failed unexpectedly: ${error?.message}`,
+    );
+  });
+};
+
 class FilestoreV2 extends Model {
   static async create(values, options) {
     const result = await super.create(values, options);
-    if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
+    if (process.env.USE_SIMULATOR !== 'true')
+      await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
 
   static async bulkCreate(values, options) {
     const result = await super.bulkCreate(values, options);
-    if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
+    if (process.env.USE_SIMULATOR !== 'true')
+      await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
 
   static async update(values, options) {
     const result = await super.update(values, options);
-    if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
+    if (process.env.USE_SIMULATOR !== 'true')
+      await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
 
   static async upsert(values, options) {
     const result = await super.upsert(values, options);
-    if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
+    if (process.env.USE_SIMULATOR !== 'true')
+      await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
 
   static async destroy(options) {
     const result = await super.destroy(options);
-    if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
+    if (process.env.USE_SIMULATOR !== 'true')
+      await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
 
@@ -109,7 +248,9 @@ class FilestoreV2 extends Model {
       );
     }
 
-    const fileStoreId = organization.file_store_subscribed;
+    const fileStoreId =
+      organization.file_store_subscribed ||
+      getFileStoreIdPendingOrgStorePush(orgUid);
 
     if (fileStoreId) {
       // Delete cached files for this organization
@@ -121,6 +262,7 @@ class FilestoreV2 extends Model {
         { file_store_subscribed: null },
         { where: { org_uid: orgUid } },
       );
+      clearFileStoreIdPendingOrgStorePush(orgUid, fileStoreId);
     }
   }
 
@@ -141,18 +283,7 @@ class FilestoreV2 extends Model {
     const fileStoreId = myOrganization.file_store_subscribed;
 
     if (myOrganization && !fileStoreId) {
-      datalayer.waitForSpendableCoins(1).then(() =>
-        datalayer.createDataLayerStoreWithRetry()
-      ).then((newFileStoreId) => {
-        datalayer.syncDataLayer(myOrganization.org_uid, { fileStoreId: newFileStoreId });
-        OrganizationsV2.update(
-          { file_store_subscribed: newFileStoreId },
-          { where: { org_uid: myOrganization.org_uid } },
-        );
-      }).catch((error) => {
-        loggerV2.error(`[v2]: Failed to create file store: ${error.message}`);
-      });
-
+      startFileStoreCreation(myOrganization);
       throw new Error('New File store being created, please try again later.');
     }
 
@@ -198,17 +329,7 @@ class FilestoreV2 extends Model {
     const fileStoreId = myOrganization.file_store_subscribed;
 
     if (!fileStoreId) {
-      datalayer.waitForSpendableCoins(1).then(() =>
-        datalayer.createDataLayerStoreWithRetry()
-      ).then((newFileStoreId) => {
-        datalayer.syncDataLayer(myOrganization.org_uid, { fileStoreId: newFileStoreId });
-        OrganizationsV2.update(
-          { file_store_subscribed: newFileStoreId },
-          { where: { org_uid: myOrganization.org_uid } },
-        );
-      }).catch((error) => {
-        loggerV2.error(`[v2]: Failed to create file store: ${error.message}`);
-      });
+      startFileStoreCreation(myOrganization);
       throw new Error('New File store being created, please try again later.');
     }
 
@@ -240,7 +361,9 @@ class FilestoreV2 extends Model {
           );
         })
         .catch((error) => {
-          loggerV2.warn('[v2]: Failed to sync file store data', { error: error.message });
+          loggerV2.warn('[v2]: Failed to sync file store data', {
+            error: error.message,
+          });
         });
     }
 
@@ -266,17 +389,7 @@ class FilestoreV2 extends Model {
     const fileStoreId = myOrganization.file_store_subscribed;
 
     if (!fileStoreId) {
-      datalayer.waitForSpendableCoins(1).then(() =>
-        datalayer.createDataLayerStoreWithRetry()
-      ).then((newFileStoreId) => {
-        datalayer.syncDataLayer(myOrganization.org_uid, { fileStoreId: newFileStoreId });
-        OrganizationsV2.update(
-          { file_store_subscribed: newFileStoreId },
-          { where: { org_uid: myOrganization.org_uid } },
-        );
-      }).catch((error) => {
-        loggerV2.error(`[v2]: Failed to create file store: ${error.message}`);
-      });
+      startFileStoreCreation(myOrganization);
       throw new Error('New File store being created, please try again later.');
     }
 
@@ -308,16 +421,10 @@ class FilestoreV2 extends Model {
       throw new Error('No home org detected');
     }
 
-    let fileStoreId = myOrganization.file_store_subscribed;
+    const fileStoreId = myOrganization.file_store_subscribed;
 
     if (!fileStoreId) {
-      await datalayer.waitForSpendableCoins(1);
-      fileStoreId = await datalayer.createDataLayerStoreWithRetry();
-      datalayer.syncDataLayer(myOrganization.org_uid, { fileStoreId });
-      await OrganizationsV2.update(
-        { file_store_subscribed: fileStoreId },
-        { where: { org_uid: myOrganization.org_uid } },
-      );
+      startFileStoreCreation(myOrganization);
       throw new Error('New File store being created, please try again later.');
     }
 
@@ -378,4 +485,3 @@ FilestoreV2.init(ModelTypes, {
 });
 
 export default FilestoreV2;
-
