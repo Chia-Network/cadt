@@ -1,0 +1,1719 @@
+#!/usr/bin/env bats
+
+setup() {
+  export INSTALL_OMNIBUS_LIB_ONLY=1
+  # shellcheck source=/dev/null
+  source "${BATS_TEST_DIRNAME}/../install-omnibus.sh"
+}
+
+wait_for_pid_exit() {
+  local pid="$1"
+  for _ in {1..20}; do
+    if ! kill -0 "$pid" 2>/dev/null; then
+      return 0
+    fi
+    sleep 0.05
+  done
+  return 1
+}
+
+@test "pick_release_from_json stable returns the first non-prerelease tag exactly" {
+  # Assert exact tag so a future jq/order regression can't pass with any
+  # non-empty string. chia-releases.json puts RCs before 2.7.0, so stable
+  # must skip them and land on 2.7.0.
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  local tag
+  tag=$(pick_release_from_json "$fixture" stable)
+  [[ "$tag" == "2.7.0" ]]
+}
+
+@test "pick_release_from_json prerelease returns the newest prerelease exactly" {
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/cadt-releases.json"
+  local tag
+  tag=$(pick_release_from_json "$fixture" prerelease)
+  [[ "$tag" == "1.7.26-rc28" ]]
+}
+
+@test "pick_release_from_json index 1 returns the first non-draft release exactly" {
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  local tag
+  tag=$(pick_release_from_json "$fixture" 1)
+  [[ "$tag" == "2.7.1-rc2" ]]
+}
+
+@test "pick_release_from_json index out of range returns empty" {
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  local tag
+  tag=$(pick_release_from_json "$fixture" 99)
+  [[ -z "$tag" ]]
+}
+
+@test "pick_release_from_json stable returns empty when no stable releases exist" {
+  # cadt-releases.json is all prereleases — stable mode must yield empty.
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/cadt-releases.json"
+  local tag
+  tag=$(pick_release_from_json "$fixture" stable)
+  [[ -z "$tag" ]]
+}
+
+@test "pick_release_from_json on missing file returns non-zero" {
+  run pick_release_from_json /nonexistent/path.json stable
+  [[ "$status" -ne 0 ]]
+}
+
+@test "pick_release_from_json on empty array returns empty" {
+  local empty="${BATS_TEST_TMPDIR}/empty.json"
+  printf '[]\n' >"$empty"
+  local tag
+  tag=$(pick_release_from_json "$empty" stable)
+  [[ -z "$tag" ]]
+}
+
+@test "resolve_version_choice stable maps to first non-prerelease tag" {
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  local got
+  resolve_version_choice stable "$fixture" got
+  [[ "$got" == "2.7.0" ]]
+}
+
+@test "resolve_version_choice passes explicit tags through unchanged" {
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  local got
+  resolve_version_choice "9.9.9" "$fixture" got
+  [[ "$got" == "9.9.9" ]]
+}
+
+@test "resolve_version_choice dies when no release matches the choice" {
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/cadt-releases.json"
+  local got
+  # 'stable' over an all-prerelease list produces an empty pick → die.
+  run resolve_version_choice stable "$fixture" got
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"Could not resolve version"* ]]
+}
+
+@test "resolve_version_choice resolves the 'latest' alias the same as 'stable'" {
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  local got
+  resolve_version_choice latest "$fixture" got
+  [[ "$got" == "2.7.0" ]]
+}
+
+@test "resolve_version_choice resolves rc and pre-release aliases" {
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/cadt-releases.json"
+  local a b
+  resolve_version_choice prerelease "$fixture" a
+  resolve_version_choice rc "$fixture" b
+  [[ "$a" == "1.7.26-rc28" && "$b" == "1.7.26-rc28" ]]
+}
+
+@test "resolve_version_choice stable picks chia-tools 1.3.9 from its fixture" {
+  # Wire the otherwise unused chia-tools fixture; protects against drift if
+  # chia-tools fixture format ever diverges from chia/cadt fixtures.
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/chia-tools-releases.json"
+  local got
+  resolve_version_choice stable "$fixture" got
+  [[ "$got" == "1.3.9" ]]
+}
+
+@test "fetch_releases_json surfaces curl failures with version flag hint" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  cat >"${bin}/curl" <<'EOF'
+#!/usr/bin/env bash
+echo "curl: (22) The requested URL returned error: 504" >&2
+exit 22
+EOF
+  chmod +x "${bin}/curl"
+  PATH="${bin}:$PATH"
+
+  run fetch_releases_json "https://api.example.invalid/releases" "${BATS_TEST_TMPDIR}/releases.json" "chia-blockchain-cli" "chia-version"
+
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"Could not fetch chia-blockchain-cli releases from GitHub"* ]]
+  [[ "$output" == *"--chia-version=<tag>"* ]]
+  [[ "$output" != *"Install failed at line"* ]]
+}
+
+@test "prompt_version_choice accepts exact flag value without fetching releases" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  cat >"${bin}/curl" <<'EOF'
+#!/usr/bin/env bash
+echo "curl should not be called for exact tags" >&2
+exit 99
+EOF
+  chmod +x "${bin}/curl"
+  PATH="${bin}:$PATH"
+
+  CHIA_VERSION_CHOICE="2.7.0"
+  CHIA_APT_VER=""
+
+  prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER false
+
+  [[ "$CHIA_APT_VER" == "2.7.0" ]]
+}
+
+@test "prompt_version_choice fetches releases for stable alias" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  local marker="${BATS_TEST_TMPDIR}/curl-called"
+  mkdir -p "$bin"
+  cat >"${bin}/curl" <<EOF
+#!/usr/bin/env bash
+touch "${marker}"
+while [[ "\${1:-}" != "-o" ]]; do
+  shift
+done
+cp "${fixture}" "\$2"
+EOF
+  chmod +x "${bin}/curl"
+  PATH="${bin}:$PATH"
+
+  CHIA_VERSION_CHOICE="stable"
+  CHIA_APT_VER=""
+
+  prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER false
+
+  [[ -f "$marker" ]]
+  [[ "$CHIA_APT_VER" == "2.7.0" ]]
+}
+
+@test "prompt_version_choice finds stable release beyond first GitHub page" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  local marker="${BATS_TEST_TMPDIR}/page-2-called"
+  mkdir -p "$bin"
+  cat >"${bin}/curl" <<EOF
+#!/usr/bin/env bash
+out=""
+url=""
+while [[ \$# -gt 0 ]]; do
+  case "\$1" in
+    -o)
+      out="\$2"
+      shift 2
+      ;;
+    http*)
+      url="\$1"
+      shift
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
+if [[ "\$url" == *"&page=1" ]]; then
+  {
+    echo "["
+    for i in \$(seq 1 100); do
+      [[ "\$i" -gt 1 ]] && echo ","
+      printf '{"tag_name":"1.0.0-rc%s","draft":false,"prerelease":true}' "\$i"
+    done
+    echo "]"
+  } >"\$out"
+else
+  touch "${marker}"
+  printf '[{"tag_name":"1.0.0","draft":false,"prerelease":false}]\\n' >"\$out"
+fi
+EOF
+  chmod +x "${bin}/curl"
+  PATH="${bin}:$PATH"
+
+  CHIA_VERSION_CHOICE="stable"
+  CHIA_APT_VER=""
+
+  prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER false
+
+  [[ -f "$marker" ]]
+  [[ "$CHIA_APT_VER" == "1.0.0" ]]
+}
+
+@test "fetch_releases_json stops after maximum full pages" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  cat >"${bin}/curl" <<'EOF'
+#!/usr/bin/env bash
+out=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -o)
+      out="$2"
+      shift 2
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
+{
+  echo "["
+  for i in $(seq 1 100); do
+    [[ "$i" -gt 1 ]] && echo ","
+    printf '{"tag_name":"1.0.0-rc%s","draft":false,"prerelease":true}' "$i"
+  done
+  echo "]"
+} >"$out"
+EOF
+  chmod +x "${bin}/curl"
+  PATH="${bin}:$PATH"
+
+  run fetch_releases_json "https://api.example.invalid/releases" "${BATS_TEST_TMPDIR}/releases.json" "cadt" "cadt-version"
+
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"Could not find a final cadt releases page after 10 GitHub pages"* ]]
+  [[ "$output" == *"--cadt-version=<tag>"* ]]
+}
+
+@test "prompt_version_choice fetches releases for latest alias" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  local marker="${BATS_TEST_TMPDIR}/curl-called"
+  mkdir -p "$bin"
+  cat >"${bin}/curl" <<EOF
+#!/usr/bin/env bash
+touch "${marker}"
+while [[ "\${1:-}" != "-o" ]]; do
+  shift
+done
+cp "${fixture}" "\$2"
+EOF
+  chmod +x "${bin}/curl"
+  PATH="${bin}:$PATH"
+
+  CHIA_VERSION_CHOICE="latest"
+  CHIA_APT_VER=""
+
+  prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER false
+
+  [[ -f "$marker" ]]
+  [[ "$CHIA_APT_VER" == "2.7.0" ]]
+}
+
+@test "prompt_version_choice fetches releases for rc alias" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/cadt-releases.json"
+  local marker="${BATS_TEST_TMPDIR}/curl-called"
+  mkdir -p "$bin"
+  cat >"${bin}/curl" <<EOF
+#!/usr/bin/env bash
+touch "${marker}"
+while [[ "\${1:-}" != "-o" ]]; do
+  shift
+done
+cp "${fixture}" "\$2"
+EOF
+  chmod +x "${bin}/curl"
+  PATH="${bin}:$PATH"
+
+  CADT_VERSION_CHOICE="rc"
+  CADT_APT_VER=""
+
+  prompt_version_choice "cadt" "$GH_API_CADT" CADT_VERSION_CHOICE CADT_APT_VER true
+
+  [[ -f "$marker" ]]
+  [[ "$CADT_APT_VER" == "1.7.26-rc28" ]]
+}
+
+@test "prompt_version_choice fetches Chia prerelease for beta alias" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  local fixture="${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  local marker="${BATS_TEST_TMPDIR}/curl-called"
+  mkdir -p "$bin"
+  cat >"${bin}/curl" <<EOF
+#!/usr/bin/env bash
+touch "${marker}"
+while [[ "\${1:-}" != "-o" ]]; do
+  shift
+done
+cp "${fixture}" "\$2"
+EOF
+  chmod +x "${bin}/curl"
+  PATH="${bin}:$PATH"
+
+  CHIA_VERSION_CHOICE="beta"
+  CHIA_APT_VER=""
+
+  prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER true
+
+  [[ -f "$marker" ]]
+  [[ "$CHIA_APT_VER" == "2.7.1-rc2" ]]
+}
+
+@test "prompt_version_choice rejects chia-tools beta alias" {
+  CHIA_TOOLS_VERSION_CHOICE="beta"
+  TOOLS_APT_VER=""
+
+  run prompt_version_choice "chia-tools" "$GH_API_TOOLS" CHIA_TOOLS_VERSION_CHOICE TOOLS_APT_VER false
+
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"chia-tools prerelease aliases are not supported"* ]]
+}
+
+@test "prompt_version_choice captures explicit chia-tools beta tag for validation" {
+  CHIA_TOOLS_VERSION_CHOICE="1.2.3-beta1"
+  TOOLS_APT_VER=""
+
+  prompt_version_choice "chia-tools" "$GH_API_TOOLS" CHIA_TOOLS_VERSION_CHOICE TOOLS_APT_VER false
+
+  [[ "$TOOLS_APT_VER" == "1.2.3-beta1" ]]
+  run validate_supported_apt_versions
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"chia-tools prerelease apt packages are not supported"* ]]
+}
+
+@test "strip_url_scheme removes http prefix" {
+  [[ "$(strip_url_scheme "http://example.com")" == "example.com" ]]
+}
+
+@test "strip_url_scheme removes https prefix" {
+  [[ "$(strip_url_scheme "https://example.com")" == "example.com" ]]
+}
+
+@test "strip_url_scheme removes trailing slash" {
+  [[ "$(strip_url_scheme "https://example.com/")" == "example.com" ]]
+}
+
+@test "strip_url_scheme passes through bare domain" {
+  [[ "$(strip_url_scheme "example.com")" == "example.com" ]]
+}
+
+@test "strip_url_scheme passes through IP address" {
+  [[ "$(strip_url_scheme "203.0.113.10")" == "203.0.113.10" ]]
+}
+
+@test "is_domain identifies domains correctly" {
+  is_domain "example.com"
+  is_domain "cadt.chia.net"
+  ! is_domain "203.0.113.10"
+  ! is_domain "::1"
+}
+
+@test "validate_public_address accepts valid domains and IPs" {
+  validate_public_address "example.com"
+  validate_public_address "cadt.chia.net"
+  validate_public_address "203.0.113.10"
+  validate_public_address "my-server.example.org"
+  ! validate_public_address ""
+  ! validate_public_address "has spaces.com"
+}
+
+@test "build_datalayer_url produces http URL with /data path" {
+  PUBLIC_ADDRESS="203.0.113.10"
+  ENABLE_HTTPS=false
+  build_datalayer_url
+  [[ "$DATALAYER_URL" == "http://203.0.113.10/data" ]]
+}
+
+@test "build_datalayer_url produces https URL when HTTPS enabled" {
+  PUBLIC_ADDRESS="cadt.example.com"
+  ENABLE_HTTPS=true
+  build_datalayer_url
+  [[ "$DATALAYER_URL" == "https://cadt.example.com/data" ]]
+}
+
+@test "build_datalayer_url is blank when public mirror disabled" {
+  PUBLIC_ADDRESS=""
+  ENABLE_HTTPS=true
+  TESTING_NO_PUBLIC_MIRROR=true
+  build_datalayer_url
+  [[ "$DATALAYER_URL" == "" ]]
+}
+
+@test "build_public_url produces correct scheme" {
+  PUBLIC_ADDRESS="cadt.example.com"
+  ENABLE_HTTPS=false
+  build_public_url
+  [[ "$PUBLIC_URL" == "http://cadt.example.com" ]]
+
+  ENABLE_HTTPS=true
+  build_public_url
+  [[ "$PUBLIC_URL" == "https://cadt.example.com" ]]
+}
+
+@test "meets_min_specs passes for adequate hardware" {
+  meets_min_specs 8 $((10 * 1024 * 1024)) 500 300
+}
+
+@test "meets_min_specs fails for low disk" {
+  ! meets_min_specs 8 $((10 * 1024 * 1024)) 50 300
+}
+
+@test "soft spec shortfall requires every metric to be close" {
+  is_soft_spec_shortfall 3 $((7 * 1024 * 1024)) 270
+  ! is_soft_spec_shortfall 8 $((10 * 1024 * 1024)) 50
+}
+
+@test "existing_path_for_disk_check uses chia symlink when mainnet is missing" {
+  local home="${BATS_TEST_TMPDIR}/home"
+  local ssd="${BATS_TEST_TMPDIR}/ssd/chia_root"
+  mkdir -p "$home" "$ssd"
+  ln -s "$ssd" "${home}/.chia"
+
+  local resolved
+  resolved=$(existing_path_for_disk_check "${home}/.chia/mainnet")
+
+  [[ "$resolved" == "${home}/.chia" ]]
+}
+
+@test "datalayer web root defaults under chia root" {
+  [[ "$DATALAYER_WWW_ROOT" == "${CHIA_ROOT}/data_layer/www" ]]
+}
+
+@test "validate_network rejects unsupported network names" {
+  validate_network mainnet
+  validate_network testneta
+
+  run validate_network testnet
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"Invalid network: testnet"* ]]
+}
+
+@test "validate_supported_apt_versions allows Chia prereleases" {
+  CHIA_APT_VER="2.7.1-rc2"
+  TOOLS_APT_VER="1.2.3"
+  CADT_APT_VER="1.7.26-rc28"
+
+  validate_supported_apt_versions
+}
+
+@test "validate_supported_apt_versions allows CADT prereleases" {
+  CHIA_APT_VER="2.7.1"
+  TOOLS_APT_VER="1.2.3"
+  CADT_APT_VER="1.7.26-rc28"
+
+  validate_supported_apt_versions
+}
+
+@test "validate_supported_apt_versions rejects chia-tools prereleases" {
+  # Mirror of the chia-blockchain-cli RC rejection; copy-paste error in the
+  # second guard would otherwise leave tools RC installs silently allowed.
+  CHIA_APT_VER="2.7.1"
+  TOOLS_APT_VER="1.2.3-rc1"
+  CADT_APT_VER="1.7.26"
+
+  run validate_supported_apt_versions
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"chia-tools prerelease apt packages are not supported"* ]]
+}
+
+@test "validate_supported_apt_versions rejects chia-tools beta tags" {
+  CHIA_APT_VER="2.7.1"
+  TOOLS_APT_VER="1.2.3-beta1"
+  CADT_APT_VER="1.7.26"
+
+  run validate_supported_apt_versions
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"chia-tools prerelease apt packages are not supported"* ]]
+}
+
+@test "verify_or_fallback_apt_version keeps the pin when exact match exists" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  cat >"${bin}/apt-cache" <<'EOF'
+#!/usr/bin/env bash
+echo "  cadt | 1.7.26 | https://repo.chia.net cadt/main amd64 Packages"
+echo "  cadt | 1.7.25 | https://repo.chia.net cadt/main amd64 Packages"
+EOF
+  chmod +x "${bin}/apt-cache"
+  PATH="${bin}:$PATH"
+  CADT_APT_VER="1.7.26"
+
+  verify_or_fallback_apt_version cadt CADT_APT_VER
+  [[ "$CADT_APT_VER" == "1.7.26" ]]
+}
+
+@test "verify_or_fallback_apt_version falls back to highest published -rc when exact pin missing" {
+  # Mirrors the real failure: GitHub published 1.7.26-rc29 but apt only has rc28.
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  cat >"${bin}/apt-cache" <<'EOF'
+#!/usr/bin/env bash
+echo "  cadt | 1.7.26-rc28 | https://repo.chia.net cadt-test/main amd64 Packages"
+echo "  cadt | 1.7.26-rc27 | https://repo.chia.net cadt-test/main amd64 Packages"
+echo "  cadt | 1.7.25      | https://repo.chia.net cadt/main      amd64 Packages"
+EOF
+  chmod +x "${bin}/apt-cache"
+  PATH="${bin}:$PATH"
+  CADT_APT_VER="1.7.26-rc29"
+
+  verify_or_fallback_apt_version cadt CADT_APT_VER
+  [[ "$CADT_APT_VER" == "1.7.26-rc28" ]]
+}
+
+@test "verify_or_fallback_apt_version refuses to upgrade past the requested pin" {
+  # User explicitly asked for rc28; apt has only rc29. Silently installing
+  # rc29 would mean we installed something the user did not request.
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  cat >"${bin}/apt-cache" <<'EOF'
+#!/usr/bin/env bash
+echo "  cadt | 1.7.26-rc29 | https://repo.chia.net cadt-test/main amd64 Packages"
+EOF
+  chmod +x "${bin}/apt-cache"
+  PATH="${bin}:$PATH"
+  CADT_APT_VER="1.7.26-rc28"
+
+  run verify_or_fallback_apt_version cadt CADT_APT_VER
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"no compatible fallback"* ]]
+}
+
+@test "verify_or_fallback_apt_version keeps Chia beta on prerelease track" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  cat >"${bin}/apt-cache" <<'EOF'
+#!/usr/bin/env bash
+echo "  chia-blockchain-cli | 2.7.1-beta1 | https://repo.chia.net prerelease/main amd64 Packages"
+echo "  chia-blockchain-cli | 2.7.0       | https://repo.chia.net stable/main     amd64 Packages"
+EOF
+  chmod +x "${bin}/apt-cache"
+  PATH="${bin}:$PATH"
+  CHIA_APT_VER="2.7.1-beta1"
+
+  verify_or_fallback_apt_version chia-blockchain-cli CHIA_APT_VER
+
+  [[ "$CHIA_APT_VER" == "2.7.1-beta1" ]]
+}
+
+@test "verify_or_fallback_apt_version falls back to highest stable when stable pin missing" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  cat >"${bin}/apt-cache" <<'EOF'
+#!/usr/bin/env bash
+echo "  cadt | 1.7.26-rc28 | https://repo.chia.net cadt-test/main amd64 Packages"
+echo "  cadt | 1.7.25      | https://repo.chia.net cadt/main      amd64 Packages"
+echo "  cadt | 1.7.24      | https://repo.chia.net cadt/main      amd64 Packages"
+EOF
+  chmod +x "${bin}/apt-cache"
+  PATH="${bin}:$PATH"
+  CADT_APT_VER="1.7.26"
+
+  run verify_or_fallback_apt_version cadt CADT_APT_VER
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == *"not yet in apt"* ]]
+
+  verify_or_fallback_apt_version cadt CADT_APT_VER
+  # Should NOT cross tracks: stable pin must NOT fall back to an -rc tag.
+  [[ "$CADT_APT_VER" == "1.7.25" ]]
+}
+
+@test "verify_or_fallback_apt_version dies when no compatible track version exists" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  # Only -rc available, but user asked for stable.
+  cat >"${bin}/apt-cache" <<'EOF'
+#!/usr/bin/env bash
+echo "  cadt | 1.7.26-rc28 | https://repo.chia.net cadt-test/main amd64 Packages"
+EOF
+  chmod +x "${bin}/apt-cache"
+  PATH="${bin}:$PATH"
+  CADT_APT_VER="1.7.26"
+
+  run verify_or_fallback_apt_version cadt CADT_APT_VER
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"no compatible fallback"* ]]
+}
+
+@test "verify_or_fallback_apt_version dies cleanly when apt-cache fails (unknown pkg)" {
+  # Guard against the previous regression: bare `available=$(... | sort)`
+  # tripped the ERR trap on apt-cache failure, surfacing a generic
+  # "Install failed at line N" instead of the function's own die message.
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  cat >"${bin}/apt-cache" <<'EOF'
+#!/usr/bin/env bash
+exit 100
+EOF
+  chmod +x "${bin}/apt-cache"
+  PATH="${bin}:$PATH"
+  CADT_APT_VER="1.7.26-rc28"
+
+  run verify_or_fallback_apt_version cadt CADT_APT_VER
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"no compatible fallback"* ]]
+}
+
+@test "verify_or_fallback_apt_version is a no-op when variable is empty" {
+  CADT_APT_VER=""
+  verify_or_fallback_apt_version cadt CADT_APT_VER
+  [[ -z "$CADT_APT_VER" ]]
+}
+
+@test "setup_apt_repos adds Chia prerelease repo for rc CLI version" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  local capture="${BATS_TEST_TMPDIR}/apt-lists"
+  mkdir -p "$bin" "$capture"
+
+  cat >"${bin}/curl" <<'EOF'
+#!/usr/bin/env bash
+printf 'fake-gpg-key'
+EOF
+  cat >"${bin}/dpkg" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--print-architecture" ]]; then
+  echo amd64
+  exit 0
+fi
+exit 1
+EOF
+  cat >"${bin}/gpg" <<'EOF'
+#!/usr/bin/env bash
+cat >/dev/null
+exit 0
+EOF
+  cat >"${bin}/apt-get" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+  cat >"${bin}/sudo" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "gpg" ]]; then
+  shift
+  exec gpg "$@"
+fi
+if [[ "${1:-}" == "rm" ]]; then
+  exit 0
+fi
+if [[ "${1:-}" == "tee" ]]; then
+  dest="${2##*/}"
+  cat >"${CAPTURE_APT_LIST_DIR}/${dest}"
+  exit 0
+fi
+if [[ "${1:-}" == "apt-get" ]]; then
+  shift
+  exec apt-get "$@"
+fi
+exec "$@"
+EOF
+  chmod +x "${bin}/curl" "${bin}/dpkg" "${bin}/gpg" "${bin}/apt-get" "${bin}/sudo"
+  PATH="${bin}:$PATH"
+  export CAPTURE_APT_LIST_DIR="$capture"
+  LOG_FILE="${BATS_TEST_TMPDIR}/install.log"
+
+  CHIA_APT_VER="2.7.1-rc2"
+  CADT_APT_VER="1.7.26"
+
+  setup_apt_repos
+
+  [[ -f "${capture}/chia-blockchain-prerelease.list" ]]
+  [[ "$(cat "${capture}/chia-blockchain-prerelease.list")" == *"https://repo.chia.net/prerelease/debian/ prerelease main"* ]]
+}
+
+@test "setup_apt_repos adds Chia prerelease repo for beta CLI version" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  local capture="${BATS_TEST_TMPDIR}/apt-lists"
+  mkdir -p "$bin" "$capture"
+
+  cat >"${bin}/curl" <<'EOF'
+#!/usr/bin/env bash
+printf 'fake-gpg-key'
+EOF
+  cat >"${bin}/dpkg" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--print-architecture" ]]; then
+  echo amd64
+  exit 0
+fi
+exit 1
+EOF
+  cat >"${bin}/gpg" <<'EOF'
+#!/usr/bin/env bash
+cat >/dev/null
+exit 0
+EOF
+  cat >"${bin}/apt-get" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+  cat >"${bin}/sudo" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "gpg" ]]; then
+  shift
+  exec gpg "$@"
+fi
+if [[ "${1:-}" == "rm" ]]; then
+  exit 0
+fi
+if [[ "${1:-}" == "tee" ]]; then
+  dest="${2##*/}"
+  cat >"${CAPTURE_APT_LIST_DIR}/${dest}"
+  exit 0
+fi
+if [[ "${1:-}" == "apt-get" ]]; then
+  shift
+  exec apt-get "$@"
+fi
+exec "$@"
+EOF
+  chmod +x "${bin}/curl" "${bin}/dpkg" "${bin}/gpg" "${bin}/apt-get" "${bin}/sudo"
+  PATH="${bin}:$PATH"
+  export CAPTURE_APT_LIST_DIR="$capture"
+  LOG_FILE="${BATS_TEST_TMPDIR}/install.log"
+
+  CHIA_APT_VER="2.7.1-beta1"
+  CADT_APT_VER="1.7.26"
+
+  setup_apt_repos
+
+  [[ -f "${capture}/chia-blockchain-prerelease.list" ]]
+  [[ "$(cat "${capture}/chia-blockchain-prerelease.list")" == *"https://repo.chia.net/prerelease/debian/ prerelease main"* ]]
+}
+
+@test "setup_apt_repos only adds Chia prerelease repo for rc CLI version" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  local capture="${BATS_TEST_TMPDIR}/apt-lists"
+  mkdir -p "$bin" "$capture"
+
+  cat >"${bin}/curl" <<'EOF'
+#!/usr/bin/env bash
+printf 'fake-gpg-key'
+EOF
+  cat >"${bin}/dpkg" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--print-architecture" ]]; then
+  echo amd64
+  exit 0
+fi
+exit 1
+EOF
+  cat >"${bin}/gpg" <<'EOF'
+#!/usr/bin/env bash
+cat >/dev/null
+exit 0
+EOF
+  cat >"${bin}/apt-get" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+  cat >"${bin}/sudo" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "gpg" ]]; then
+  shift
+  exec gpg "$@"
+fi
+if [[ "${1:-}" == "rm" ]]; then
+  exit 0
+fi
+if [[ "${1:-}" == "tee" ]]; then
+  dest="${2##*/}"
+  cat >"${CAPTURE_APT_LIST_DIR}/${dest}"
+  exit 0
+fi
+if [[ "${1:-}" == "apt-get" ]]; then
+  shift
+  exec apt-get "$@"
+fi
+exec "$@"
+EOF
+  chmod +x "${bin}/curl" "${bin}/dpkg" "${bin}/gpg" "${bin}/apt-get" "${bin}/sudo"
+  PATH="${bin}:$PATH"
+  export CAPTURE_APT_LIST_DIR="$capture"
+  LOG_FILE="${BATS_TEST_TMPDIR}/install.log"
+
+  CHIA_APT_VER="2.7.1"
+  CADT_APT_VER="1.7.26-rc28"
+
+  setup_apt_repos
+
+  [[ ! -f "${capture}/chia-blockchain-prerelease.list" ]]
+  [[ -f "${capture}/cadt-test.list" ]]
+}
+
+@test "setup_apt_repos adds cadt-test repo for beta CADT version" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  local capture="${BATS_TEST_TMPDIR}/apt-lists"
+  mkdir -p "$bin" "$capture"
+
+  cat >"${bin}/curl" <<'EOF'
+#!/usr/bin/env bash
+printf 'fake-gpg-key'
+EOF
+  cat >"${bin}/dpkg" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--print-architecture" ]]; then
+  echo amd64
+  exit 0
+fi
+exit 1
+EOF
+  cat >"${bin}/gpg" <<'EOF'
+#!/usr/bin/env bash
+cat >/dev/null
+exit 0
+EOF
+  cat >"${bin}/apt-get" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+  cat >"${bin}/sudo" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "gpg" ]]; then
+  shift
+  exec gpg "$@"
+fi
+if [[ "${1:-}" == "rm" ]]; then
+  exit 0
+fi
+if [[ "${1:-}" == "tee" ]]; then
+  dest="${2##*/}"
+  cat >"${CAPTURE_APT_LIST_DIR}/${dest}"
+  exit 0
+fi
+if [[ "${1:-}" == "apt-get" ]]; then
+  shift
+  exec apt-get "$@"
+fi
+exec "$@"
+EOF
+  chmod +x "${bin}/curl" "${bin}/dpkg" "${bin}/gpg" "${bin}/apt-get" "${bin}/sudo"
+  PATH="${bin}:$PATH"
+  export CAPTURE_APT_LIST_DIR="$capture"
+  LOG_FILE="${BATS_TEST_TMPDIR}/install.log"
+
+  CHIA_APT_VER="2.7.1"
+  CADT_APT_VER="1.7.26-beta1"
+
+  setup_apt_repos
+
+  [[ ! -f "${capture}/chia-blockchain-prerelease.list" ]]
+  [[ -f "${capture}/cadt-test.list" ]]
+  [[ "$(cat "${capture}/cadt-test.list")" == *"https://repo.chia.net/cadt-test/debian/ stable main"* ]]
+}
+
+@test "format_gib_from_kib renders fractional GiB with one decimal" {
+  # 7680 MiB == 7.5 GiB exact (matches the MIN_RAM_KIB constant)
+  [[ "$(format_gib_from_kib $((7680 * 1024)))" == "7.5" ]]
+  # 8 GiB exact
+  [[ "$(format_gib_from_kib $((8 * 1024 * 1024)))" == "8.0" ]]
+  # 15 GiB system
+  [[ "$(format_gib_from_kib $((15 * 1024 * 1024)))" == "15.0" ]]
+  # 1.0 GiB
+  [[ "$(format_gib_from_kib $((1 * 1024 * 1024)))" == "1.0" ]]
+}
+
+@test "format_gib_from_kib boundary: 0 and sub-GiB values render as 0.x" {
+  [[ "$(format_gib_from_kib 0)" == "0.0" ]]
+  # 512 MiB = 0.5 GiB
+  [[ "$(format_gib_from_kib $((512 * 1024)))" == "0.5" ]]
+  # 100 MiB < 0.1 GiB → truncates to "0.0" (intentional, not rounded)
+  [[ "$(format_gib_from_kib $((100 * 1024)))" == "0.0" ]]
+}
+
+@test "format_gib_from_kib truncates tenths (does not round)" {
+  # 7.99 GiB-ish: 8181 MiB.  Integer math floors to 7.9, not 8.0.
+  # Documents the trade-off: bash int-only math means small downward bias
+  # in display, which is fine (and conservative) for spec-check messaging.
+  [[ "$(format_gib_from_kib $((8181 * 1024)))" == "7.9" ]]
+}
+
+@test "cadt_health_curl_args includes API key header only when configured" {
+  local args
+
+  CADT_API_KEY=""
+  cadt_health_curl_args args
+  [[ "${args[*]}" == "-fsS --connect-timeout 5 --max-time 10 http://localhost:31310/v1/health" ]]
+
+  CADT_API_KEY="secret-key"
+  cadt_health_curl_args args
+  [[ "${args[*]}" == "-fsS --connect-timeout 5 --max-time 10 -H x-api-key: secret-key http://localhost:31310/v1/health" ]]
+}
+
+@test "is_dpkg_package_installed detects installed dpkg rows" {
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  cat >"${bin}/dpkg" <<'EOF'
+#!/usr/bin/env bash
+case "$2" in
+  cadt)
+    echo "ii  cadt 1.2.3 amd64 CADT"
+    ;;
+  *)
+    echo "un  $2 <none> <none>"
+    ;;
+esac
+EOF
+  chmod +x "${bin}/dpkg"
+
+  PATH="${bin}:$PATH"
+
+  is_dpkg_package_installed cadt
+  ! is_dpkg_package_installed chia-tools
+}
+
+@test "normalize_mnemonic_file converts all whitespace to single spaces" {
+  local mnemonic_file="${BATS_TEST_TMPDIR}/mnemonic.txt"
+  printf 'word1\nword2\r\nword3\tword4   word5\n' >"$mnemonic_file"
+
+  [[ "$(normalize_mnemonic_file "$mnemonic_file")" == "word1 word2 word3 word4 word5" ]]
+}
+
+@test "cleanup_background_processes stops tracked background pids" {
+  sleep 60 &
+  local spinner_pid=$!
+  sleep 60 &
+  local keepalive_pid=$!
+  SPINNER_PID="$spinner_pid"
+  SUDO_KEEPALIVE_PID="$keepalive_pid"
+
+  cleanup_background_processes
+
+  [[ -z "$SPINNER_PID" ]]
+  [[ -z "$SUDO_KEEPALIVE_PID" ]]
+  wait_for_pid_exit "$spinner_pid"
+  wait_for_pid_exit "$keepalive_pid"
+  wait "$spinner_pid" 2>/dev/null || true
+  wait "$keepalive_pid" 2>/dev/null || true
+}
+
+@test "die cleans up tracked background pids before exiting" {
+  sleep 60 &
+  local spinner_pid=$!
+  sleep 60 &
+  local keepalive_pid=$!
+  SPINNER_PID="$spinner_pid"
+  SUDO_KEEPALIVE_PID="$keepalive_pid"
+
+  run die "boom"
+
+  [[ "$status" -eq 1 ]]
+  [[ "$output" == *"ERROR:"*"boom"* ]]
+  wait_for_pid_exit "$spinner_pid"
+  wait_for_pid_exit "$keepalive_pid"
+  wait "$spinner_pid" 2>/dev/null || true
+  wait "$keepalive_pid" 2>/dev/null || true
+}
+
+@test "private output can render escapes without transforming literals" {
+  local private_file="${BATS_TEST_TMPDIR}/private-output.txt"
+  exec 9>"$private_file"
+  PRIVATE_FD=9
+
+  private_echo '\033[31mred\033[0m'
+  private_literal 'abc\ndef'
+  exec 9>&-
+
+  run sed -n '1p' "$private_file"
+  [[ "$output" == $'\033[31mred\033[0m' ]]
+  run sed -n '2p' "$private_file"
+  [[ "$output" == 'abc\ndef' ]]
+}
+
+@test "patch_cadt_config rewrites real YAML with expected APP/V1/V2 values" {
+  if ! command -v python3 >/dev/null 2>&1 ||
+    ! python3 -c 'import yaml' >/dev/null 2>&1; then
+    skip "python3 + pyyaml required"
+  fi
+
+  # Real config.yaml fixture; patch_cadt_config must mutate it in place.
+  CADT_CONFIG="${BATS_TEST_TMPDIR}/config.yaml"
+  cat >"$CADT_CONFIG" <<'YAML'
+APP:
+  CHIA_NETWORK: mainnet
+  BIND_ADDRESS: 0.0.0.0
+V1:
+  READ_ONLY: false
+  CADT_API_KEY: null
+V2:
+  READ_ONLY: false
+  CADT_API_KEY: null
+YAML
+
+  NETWORK=testneta
+  DATALAYER_URL="http://example.com/data"
+  READ_ONLY=true
+  CADT_API_KEY="my-secret-key"
+
+  patch_cadt_config
+
+  python3 - "$CADT_CONFIG" <<'PY'
+import sys, yaml
+with open(sys.argv[1]) as f:
+    c = yaml.safe_load(f)
+assert c["APP"]["CHIA_NETWORK"] == "testneta", c["APP"].get("CHIA_NETWORK")
+assert c["APP"]["BIND_ADDRESS"] == "127.0.0.1", c["APP"].get("BIND_ADDRESS")
+assert c["APP"]["DATALAYER_FILE_SERVER_URL"] == "http://example.com/data", c["APP"].get("DATALAYER_FILE_SERVER_URL")
+for sec in ("V1", "V2"):
+    assert c[sec]["READ_ONLY"] is True, (sec, c[sec]["READ_ONLY"])
+    assert c[sec]["CADT_API_KEY"] == "my-secret-key", (sec, c[sec]["CADT_API_KEY"])
+    # Testneta governance id from install-omnibus.sh
+    assert (
+        c[sec]["GOVERNANCE"]["GOVERNANCE_BODY_ID"]
+        == "1019153f631bb82e7fc4984dc1f0f2af9e95a7c29df743f7b4dcc2b975857409"
+    ), (sec, c[sec]["GOVERNANCE"])
+PY
+}
+
+@test "patch_cadt_config leaves datalayer URL blank when public mirror disabled" {
+  if ! command -v python3 >/dev/null 2>&1 ||
+    ! python3 -c 'import yaml' >/dev/null 2>&1; then
+    skip "python3 + pyyaml required"
+  fi
+
+  CADT_CONFIG="${BATS_TEST_TMPDIR}/config.yaml"
+  cat >"$CADT_CONFIG" <<'YAML'
+APP: {}
+V1: {}
+V2: {}
+YAML
+
+  NETWORK=testneta
+  DATALAYER_URL=""
+  READ_ONLY=true
+  CADT_API_KEY=""
+
+  patch_cadt_config
+
+  python3 - "$CADT_CONFIG" <<'PY'
+import sys, yaml
+with open(sys.argv[1]) as f:
+    c = yaml.safe_load(f)
+assert c["APP"]["DATALAYER_FILE_SERVER_URL"] == "", c["APP"].get("DATALAYER_FILE_SERVER_URL")
+PY
+}
+
+@test "patch_cadt_config preserves literal API key when value contains shell-meaningful chars" {
+  if ! command -v python3 >/dev/null 2>&1 ||
+    ! python3 -c 'import yaml' >/dev/null 2>&1; then
+    skip "python3 + pyyaml required"
+  fi
+
+  CADT_CONFIG="${BATS_TEST_TMPDIR}/config.yaml"
+  cat >"$CADT_CONFIG" <<'YAML'
+APP: {}
+V1: {}
+V2: {}
+YAML
+
+  NETWORK=mainnet
+  DATALAYER_URL="http://127.0.0.1/data"
+  READ_ONLY=false
+  # Backticks, single+double quotes, dollar-prefix, backslash — all hazards if
+  # patch_cadt_config interpolates the key into Python source instead of env.
+  CADT_API_KEY="a\`b\"c'd\$e\\f"
+
+  patch_cadt_config
+
+  python3 - "$CADT_CONFIG" "$CADT_API_KEY" <<'PY'
+import sys, yaml
+with open(sys.argv[1]) as f:
+    c = yaml.safe_load(f)
+expected = sys.argv[2]
+for sec in ("V1", "V2"):
+    assert c[sec]["CADT_API_KEY"] == expected, (sec, c[sec]["CADT_API_KEY"], expected)
+PY
+}
+
+@test "patch_cadt_config sets governance ID for mainnet" {
+  if ! command -v python3 >/dev/null 2>&1 ||
+    ! python3 -c 'import yaml' >/dev/null 2>&1; then
+    skip "python3 + pyyaml required"
+  fi
+
+  CADT_CONFIG="${BATS_TEST_TMPDIR}/config.yaml"
+  cat >"$CADT_CONFIG" <<'YAML'
+APP: {}
+V1: {}
+V2: {}
+YAML
+
+  NETWORK=mainnet
+  DATALAYER_URL="http://127.0.0.1/data"
+  READ_ONLY=false
+  CADT_API_KEY=""
+
+  patch_cadt_config
+
+  python3 - "$CADT_CONFIG" <<'PY'
+import sys, yaml
+with open(sys.argv[1]) as f:
+    c = yaml.safe_load(f)
+mainnet_id = "23f6498e015ebcd7190c97df30c032de8deb5c8934fc1caa928bc310e2b8a57e"
+for sec in ("V1", "V2"):
+    assert c[sec]["GOVERNANCE"]["GOVERNANCE_BODY_ID"] == mainnet_id, (sec, c[sec]["GOVERNANCE"])
+    # Empty CADT_API_KEY env should map to None (null) in YAML.
+    assert c[sec]["CADT_API_KEY"] is None, (sec, c[sec]["CADT_API_KEY"])
+PY
+}
+
+@test "parse_args sets network, public-address, and flags" {
+  NETWORK=""
+  CHIA_VERSION_CHOICE=""
+  PUBLIC_ADDRESS=""
+  LOCAL_ONLY=false
+  ENABLE_HTTPS=false
+  CERTBOT_DRY_RUN=false
+  parse_args \
+    --network=testneta \
+    --chia-version=stable \
+    --public-address=127.0.0.1 \
+    --generate-key \
+    --yes \
+    --min-disk-gb=10
+  [[ "$NETWORK" == "testneta" ]]
+  [[ "$CHIA_VERSION_CHOICE" == "stable" ]]
+  [[ "$PUBLIC_ADDRESS" == "127.0.0.1" ]]
+  [[ "$KEY_MODE" == "generate" ]]
+  [[ "$ASSUME_YES" == true ]]
+  [[ "$MIN_DISK_GIB" == "10" ]]
+}
+
+@test "parse_args strips URL scheme from --public-address" {
+  PUBLIC_ADDRESS=""
+  parse_args --public-address=https://cadt.example.com/
+  [[ "$PUBLIC_ADDRESS" == "cadt.example.com" ]]
+}
+
+@test "parse_args handles --local-only and --https flags" {
+  LOCAL_ONLY=false
+  ENABLE_HTTPS=false
+  CERTBOT_DRY_RUN=false
+  PUBLIC_ADDRESS=""
+  parse_args --public-address=example.com --local-only --https --certbot-dry-run
+  [[ "$LOCAL_ONLY" == true ]]
+  [[ "$ENABLE_HTTPS" == true ]]
+  [[ "$CERTBOT_DRY_RUN" == true ]]
+  [[ "$PUBLIC_ADDRESS" == "example.com" ]]
+}
+
+@test "parse_args handles testing no public mirror flag" {
+  TESTING_NO_PUBLIC_MIRROR=false
+  LOCAL_ONLY=false
+  parse_args --testing-no-public-mirror
+  [[ "$TESTING_NO_PUBLIC_MIRROR" == true ]]
+  [[ "$LOCAL_ONLY" == false ]]
+}
+
+@test "parse_args dies on unknown option with usage hint" {
+  run parse_args --not-a-real-flag
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"Unknown option"* ]]
+  [[ "$output" == *"--help"* ]]
+}
+
+@test "parse_args dies when a value-taking flag has no value" {
+  run parse_args --network
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"requires a value"* ]]
+}
+
+@test "parse_args sets KEY_MODE=import via --import-key-from-file" {
+  KEY_MODE=""
+  IMPORT_KEY_FILE=""
+  parse_args --import-key-from-file=/tmp/seed.txt
+  [[ "$KEY_MODE" == "import" ]]
+  [[ "$IMPORT_KEY_FILE" == "/tmp/seed.txt" ]]
+}
+
+@test "parse_args sets READ_ONLY=true via --read-only" {
+  READ_ONLY=""
+  parse_args --read-only
+  [[ "$READ_ONLY" == true ]]
+}
+
+@test "parse_args captures --api-key value" {
+  CADT_API_KEY=""
+  parse_args --api-key="my-secret"
+  [[ "$CADT_API_KEY" == "my-secret" ]]
+}
+
+@test "validate_yes_args dies when --yes is set but required flags missing" {
+  ASSUME_YES=true
+  NETWORK=""
+  PUBLIC_ADDRESS=""
+  KEY_MODE=""
+  IMPORT_KEY_FILE=""
+  MNEMONIC_OUTPUT_FILE=""
+
+  run validate_yes_args
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"--yes requires:"* ]]
+  [[ "$output" == *"--network"* ]]
+  [[ "$output" == *"--public-address"* ]]
+  [[ "$output" == *"--mnemonic-output-file"* ]]
+}
+
+@test "validate_yes_args passes when --yes is set with required flags and generate" {
+  ASSUME_YES=true
+  NETWORK=testneta
+  PUBLIC_ADDRESS=example.com
+  KEY_MODE=""
+  IMPORT_KEY_FILE=""
+  MNEMONIC_OUTPUT_FILE="${BATS_TEST_TMPDIR}/seed.txt"
+
+  validate_yes_args
+}
+
+@test "validate_yes_args allows testing no public mirror without public address" {
+  ASSUME_YES=true
+  NETWORK=testneta
+  PUBLIC_ADDRESS=""
+  TESTING_NO_PUBLIC_MIRROR=true
+  KEY_MODE=""
+  IMPORT_KEY_FILE=""
+  MNEMONIC_OUTPUT_FILE="${BATS_TEST_TMPDIR}/seed.txt"
+
+  validate_yes_args
+}
+
+@test "validate_yes_args allows testing no public mirror with public address" {
+  ASSUME_YES=true
+  NETWORK=testneta
+  PUBLIC_ADDRESS=example.com
+  TESTING_NO_PUBLIC_MIRROR=true
+  KEY_MODE=""
+  IMPORT_KEY_FILE=""
+  MNEMONIC_OUTPUT_FILE="${BATS_TEST_TMPDIR}/seed.txt"
+
+  validate_yes_args
+}
+
+@test "validate_yes_args rejects testing no public mirror on mainnet" {
+  ASSUME_YES=true
+  NETWORK=mainnet
+  PUBLIC_ADDRESS=example.com
+  TESTING_NO_PUBLIC_MIRROR=true
+  KEY_MODE=""
+  IMPORT_KEY_FILE=""
+  MNEMONIC_OUTPUT_FILE="${BATS_TEST_TMPDIR}/seed.txt"
+
+  run validate_yes_args
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"only supported with --network=testneta"* ]]
+}
+
+@test "validate_yes_args requires --import-key-from-file when KEY_MODE=import" {
+  ASSUME_YES=true
+  NETWORK=testneta
+  PUBLIC_ADDRESS=example.com
+  KEY_MODE=import
+  IMPORT_KEY_FILE=""
+  MNEMONIC_OUTPUT_FILE=""
+
+  run validate_yes_args
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"--import-key-from-file"* ]]
+}
+
+@test "validate_yes_args dies on unreadable --import-key-from-file" {
+  ASSUME_YES=true
+  NETWORK=testneta
+  PUBLIC_ADDRESS=example.com
+  KEY_MODE=import
+  IMPORT_KEY_FILE="/nonexistent/path/to/key"
+  MNEMONIC_OUTPUT_FILE=""
+
+  run validate_yes_args
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"import key file not found"* ]]
+}
+
+@test "validate_mnemonic_output_file_path rejects /dev/null and special files" {
+  run validate_mnemonic_output_file_path /dev/null
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"regular file"* ]]
+}
+
+@test "validate_mnemonic_output_file_path rejects symlinks" {
+  local link="${BATS_TEST_TMPDIR}/seed-link"
+  ln -s "${BATS_TEST_TMPDIR}/target" "$link"
+
+  run validate_mnemonic_output_file_path "$link"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"symlink"* ]]
+}
+
+@test "write_mnemonic_to_output_file refuses to write to a symlink (TOCTOU defense)" {
+  TMP_FILES=()
+  local link="${BATS_TEST_TMPDIR}/seed-link"
+  ln -s "${BATS_TEST_TMPDIR}/elsewhere" "$link"
+
+  run write_mnemonic_to_output_file "word1 word2" "$link"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"symlink"* ]]
+  [[ ! -e "${BATS_TEST_TMPDIR}/elsewhere" ]]
+}
+
+@test "write_mnemonic_to_output_file writes 600-mode file atomically" {
+  TMP_FILES=()
+  local target="${BATS_TEST_TMPDIR}/seed.txt"
+
+  write_mnemonic_to_output_file "word1 word2 word3" "$target"
+
+  [[ -f "$target" ]]
+  [[ "$(cat "$target")" == "word1 word2 word3" ]]
+  # Mode should be 600 (owner read+write only).
+  local mode
+  mode=$(stat -c '%a' "$target")
+  [[ "$mode" == "600" ]]
+}
+
+@test "validate_mnemonic_output_file_path rejects unwritable parent" {
+  run validate_mnemonic_output_file_path /nonexistent-parent-dir/seed.txt
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"parent directory does not exist"* ]]
+}
+
+@test "validate_mnemonic_output_file_path accepts a writable tmp path" {
+  validate_mnemonic_output_file_path "${BATS_TEST_TMPDIR}/seed.txt"
+}
+
+@test "validate_yes_args rejects --mnemonic-output-file=/dev/null" {
+  ASSUME_YES=true
+  NETWORK=testneta
+  PUBLIC_ADDRESS=example.com
+  KEY_MODE=generate
+  IMPORT_KEY_FILE=""
+  MNEMONIC_OUTPUT_FILE=/dev/null
+
+  run validate_yes_args
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"regular file"* ]]
+}
+
+@test "validate_yes_args requires --mnemonic-output-file when generating under --yes" {
+  ASSUME_YES=true
+  NETWORK=testneta
+  PUBLIC_ADDRESS=example.com
+  KEY_MODE=generate
+  IMPORT_KEY_FILE=""
+  MNEMONIC_OUTPUT_FILE=""
+
+  run validate_yes_args
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"--mnemonic-output-file"* ]]
+}
+
+@test "extract_mnemonic_line picks the 24-word line out of generate_and_print output" {
+  # Real chia keys generate_and_print format: header / 24-word seed / footer.
+  local fake_output mnemonic words
+  fake_output="Generating private key. Mnemonic (24 secret words):
+$(printf 'word%d ' {1..24})
+Note that this key has not been added to the keychain. Run chia keys add"
+
+  mnemonic=$(printf '%s\n' "$fake_output" | extract_mnemonic_line)
+
+  [[ -n "$mnemonic" ]]
+  words=$(printf '%s\n' "$mnemonic" | awk '{print NF}')
+  [[ "$words" -eq 24 ]]
+  ! grep -q "Generating" <<<"$mnemonic"
+  ! grep -q "keychain" <<<"$mnemonic"
+}
+
+@test "extract_mnemonic_line returns empty when no 24-word line is present" {
+  local out
+  out=$(printf 'one two three\nfour five\n' | extract_mnemonic_line)
+  [[ -z "$out" ]]
+}
+
+@test "format_mnemonic_for_display keeps seed copy-paste friendly" {
+  local mnemonic formatted
+  mnemonic=$(printf 'word%d ' {1..24})
+  mnemonic="${mnemonic% }"
+
+  formatted=$(format_mnemonic_for_display "$mnemonic")
+
+  [[ "$formatted" == "  $mnemonic" ]]
+  [[ "$formatted" != *"1."* ]]
+  [[ "$(printf '%s\n' "$formatted" | wc -l)" -eq 1 ]]
+}
+
+@test "setup_chia_keys_generate failure surfaces descriptive die, not ERR trap" {
+  # Simulate a broken `chia` binary that exits non-zero with no stdout.
+  # Without `|| true` on the command sub, the pipeline failure would trip
+  # the ERR trap with "Install failed at line N" instead of our descriptive
+  # "Failed to generate mnemonic" message.
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  cat >"${bin}/chia" <<'EOF'
+#!/usr/bin/env bash
+exit 2
+EOF
+  chmod +x "${bin}/chia"
+  PATH="${bin}:$PATH"
+  ASSUME_YES=true
+  MNEMONIC_OUTPUT_FILE=""
+
+  run setup_chia_keys_generate
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"Failed to generate mnemonic"* ]]
+  # Negative assertion: the generic ERR-trap message must not appear.
+  ! grep -q "Install failed at line" <<<"$output"
+}
+
+@test "setup_datalayer_directory merges into existing web root without nesting" {
+  run bash -c '
+    set -Eeuo pipefail
+    tmp="$1"
+    test_dir="$2"
+    bin="${tmp}/bin"
+    mkdir -p "$bin"
+    cat >"${bin}/sudo" <<'"'"'EOF'"'"'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "systemctl" ]]; then
+  exit 0
+fi
+if [[ "${1:-}" == "chown" ]]; then
+  exit 0
+fi
+if [[ "${1:-}" == "tee" ]]; then
+  cat >/dev/null
+  exit 0
+fi
+if [[ "${1:-}" == "setfacl" ]]; then
+  exit 0
+fi
+if [[ "${1:-}" == "mkdir" && "${2:-}" == "-p" && "${3:-}" == /etc/systemd/* ]]; then
+  exit 0
+fi
+exec "$@"
+EOF
+    chmod +x "${bin}/sudo"
+
+    export INSTALL_OMNIBUS_LIB_ONLY=1
+    export HOME="${tmp}/home"
+    export USER=testuser
+    export PATH="${bin}:$PATH"
+    export DATALAYER_WWW_ROOT="${tmp}/www"
+    source "${test_dir}/../install-omnibus.sh"
+
+    src="${CHIA_ROOT}/data_layer/db/server_files_location_testneta"
+    dst="${DATALAYER_WWW_ROOT}/server_files_location_testneta"
+    mkdir -p "$src" "$dst" "${src}/nested" "${dst}/nested"
+    printf source >"${src}/from-src.dat"
+    printf nested >"${src}/nested/file.dat"
+    printf stale >"${dst}/existing.dat"
+    printf old-nested >"${dst}/nested/existing-file.dat"
+
+    setup_datalayer_directory testneta
+
+    [[ -L "$src" ]]
+    [[ "$(readlink "$src")" == "$dst" ]]
+    [[ ! -e "${dst}/server_files_location_testneta" ]]
+    [[ "$(cat "${dst}/from-src.dat")" == "source" ]]
+    [[ "$(cat "${dst}/nested/file.dat")" == "nested" ]]
+    [[ "$(cat "${dst}/existing.dat")" == "stale" ]]
+    [[ "$(cat "${dst}/nested/existing-file.dat")" == "old-nested" ]]
+  ' bash "$BATS_TEST_TMPDIR" "$BATS_TEST_DIRNAME"
+  [[ "$status" -eq 0 ]]
+}
+
+@test "validate_min_disk_gb accepts integers and rejects non-numeric" {
+  MIN_DISK_GIB=300
+  validate_min_disk_gb
+
+  MIN_DISK_GIB=0
+  validate_min_disk_gb
+
+  MIN_DISK_GIB="abc"
+  run validate_min_disk_gb
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"non-negative integer"* ]]
+
+  MIN_DISK_GIB="-5"
+  run validate_min_disk_gb
+  [[ "$status" -ne 0 ]]
+}
+
+@test "is_ipv4 recognizes dotted quads and rejects out-of-range octets" {
+  is_ipv4 "192.168.1.1"
+  is_ipv4 "0.0.0.0"
+  is_ipv4 "255.255.255.255"
+  ! is_ipv4 "not-an-ip"
+  ! is_ipv4 "999.999.999.999"
+  ! is_ipv4 "256.0.0.1"
+  ! is_ipv4 "1.2.3"
+  ! is_ipv4 "1.2.3.4.5"
+}
+
+# --- Interactive menu dispatch ---
+#
+# The numbered version menus in prompt_version_choice are the literal
+# "choose option N" flow real users drive. They read selections through
+# prompt_default, which blocks on /dev/tty. These tests replace
+# prompt_default with a queue of answers so the case-dispatch logic
+# (menu choice -> resolved tag) is exercised without a tty, and assert the
+# exact tag so a future re-ordering of menu branches can't pass silently.
+
+# Stub prompt_default with a FIFO queue of answers. Each call pops the next
+# queued value into the requested variable. Redefining the function here
+# overrides the sourced one for the remainder of the test.
+_queue_prompt_answers() {
+  PROMPT_QUEUE=("$@")
+  PROMPT_IDX=0
+  prompt_default() {
+    local var_name="$1"
+    printf -v "$var_name" '%s' "${PROMPT_QUEUE[$PROMPT_IDX]:-}"
+    PROMPT_IDX=$((PROMPT_IDX + 1))
+  }
+}
+
+# Stub curl so fetch_releases_json serves a local fixture instead of hitting
+# GitHub. Mirrors the copy-to-"-o"-target pattern used elsewhere in this file.
+_stub_curl_serves_fixture() {
+  local fixture="$1"
+  local bin="${BATS_TEST_TMPDIR}/bin"
+  mkdir -p "$bin"
+  cat >"${bin}/curl" <<EOF
+#!/usr/bin/env bash
+while [[ "\${1:-}" != "-o" ]]; do shift; done
+cp "${fixture}" "\$2"
+EOF
+  chmod +x "${bin}/curl"
+  PATH="${bin}:$PATH"
+}
+
+@test "prompt_version_choice menu option 1 selects latest stable" {
+  _stub_curl_serves_fixture "${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  _queue_prompt_answers 1
+  CHIA_VERSION_CHOICE=""
+  CHIA_APT_VER=""
+
+  prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER true
+
+  [[ "$CHIA_APT_VER" == "2.7.0" ]]
+}
+
+@test "prompt_version_choice menu option 2 selects latest pre-release" {
+  _stub_curl_serves_fixture "${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  _queue_prompt_answers 2
+  CHIA_VERSION_CHOICE=""
+  CHIA_APT_VER=""
+
+  prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER true
+
+  [[ "$CHIA_APT_VER" == "2.7.1-rc2" ]]
+}
+
+@test "prompt_version_choice menu option 3 picks the chosen list index" {
+  _stub_curl_serves_fixture "${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  # Choice 3 (pick from list), then number 1 = first non-draft release.
+  _queue_prompt_answers 3 1
+  CHIA_VERSION_CHOICE=""
+  CHIA_APT_VER=""
+
+  prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER true
+
+  [[ "$CHIA_APT_VER" == "2.7.1-rc2" ]]
+}
+
+@test "prompt_version_choice stable-only menu option 1 selects latest stable" {
+  # chia-tools has no pre-release option: menu is 1) stable 2) pick-from-list.
+  _stub_curl_serves_fixture "${BATS_TEST_DIRNAME}/fixtures/chia-tools-releases.json"
+  _queue_prompt_answers 1
+  CHIA_TOOLS_VERSION_CHOICE=""
+  TOOLS_APT_VER=""
+
+  prompt_version_choice "chia-tools" "$GH_API_TOOLS" CHIA_TOOLS_VERSION_CHOICE TOOLS_APT_VER false
+
+  [[ "$TOOLS_APT_VER" == "1.3.9" ]]
+}
+
+@test "prompt_version_choice stable-only menu option 2 picks from stable list" {
+  _stub_curl_serves_fixture "${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  # Choice 2 (pick from list), then number 1 = first STABLE release (skips RCs).
+  _queue_prompt_answers 2 1
+  CHIA_VERSION_CHOICE=""
+  CHIA_APT_VER=""
+
+  prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER false
+
+  [[ "$CHIA_APT_VER" == "2.7.0" ]]
+}
+
+@test "prompt_version_choice dies on an out-of-range list selection" {
+  _stub_curl_serves_fixture "${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  _queue_prompt_answers 3 999
+  CHIA_VERSION_CHOICE=""
+  CHIA_APT_VER=""
+
+  run prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER true
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"Invalid selection"* ]]
+}
+
+@test "prompt_version_choice dies on an unknown top-level menu choice" {
+  _stub_curl_serves_fixture "${BATS_TEST_DIRNAME}/fixtures/chia-releases.json"
+  _queue_prompt_answers 9
+  CHIA_VERSION_CHOICE=""
+  CHIA_APT_VER=""
+
+  run prompt_version_choice "chia-blockchain-cli" "$GH_API_CHIA" CHIA_VERSION_CHOICE CHIA_APT_VER true
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"Invalid choice"* ]]
+}
+
+# --- nginx config generation ---
+#
+# write_nginx_*_config emit the server blocks via `sudo tee`. These tests
+# override sudo to capture the rendered config to a tmpfile, then assert the
+# option->outcome contract: --local-only must drop the `location /` reverse
+# proxy (so CADT stays loopback-only) while always keeping the /data/ file
+# alias, and the HTTPS variant must emit the 443 TLS block and the port-80
+# redirect. Pure text assertions (no nginx binary) keep this PR-cheap.
+
+# Override sudo (a plain command in the script) so `sudo tee <path>` writes the
+# heredoc to NGINX_CAPTURE and `sudo mkdir` is a no-op.
+_capture_sudo_tee() {
+  NGINX_CAPTURE="${BATS_TEST_TMPDIR}/cadt.conf"
+  : >"$NGINX_CAPTURE"
+  sudo() {
+    case "${1:-}" in
+      mkdir) return 0 ;;
+      tee) cat >"$NGINX_CAPTURE" ;;
+      *) command "$@" ;;
+    esac
+  }
+}
+
+@test "write_nginx_http_config includes the CADT reverse proxy by default" {
+  _capture_sudo_tee
+  PUBLIC_ADDRESS="cadt.example.com"
+  LOCAL_ONLY=false
+
+  write_nginx_http_config testneta
+
+  grep -q "location /data/" "$NGINX_CAPTURE"
+  grep -q "server_files_location_testneta/" "$NGINX_CAPTURE"
+  grep -q "proxy_pass http://127.0.0.1:31310" "$NGINX_CAPTURE"
+  grep -q "server_name cadt.example.com" "$NGINX_CAPTURE"
+}
+
+@test "write_nginx_http_config omits the reverse proxy under --local-only" {
+  _capture_sudo_tee
+  PUBLIC_ADDRESS="cadt.example.com"
+  LOCAL_ONLY=true
+
+  write_nginx_http_config testneta
+
+  # /data/ file serving stays; the CADT API proxy must be absent.
+  grep -q "location /data/" "$NGINX_CAPTURE"
+  ! grep -q "proxy_pass" "$NGINX_CAPTURE"
+}
+
+@test "write_nginx_https_config emits TLS block, redirect, and proxy by default" {
+  _capture_sudo_tee
+  PUBLIC_ADDRESS="cadt.example.com"
+  LOCAL_ONLY=false
+
+  write_nginx_https_config testneta
+
+  grep -q "listen 443 ssl" "$NGINX_CAPTURE"
+  grep -q "ssl_certificate /etc/letsencrypt/live/cadt.example.com/fullchain.pem" "$NGINX_CAPTURE"
+  grep -q "return 301 https://" "$NGINX_CAPTURE"
+  grep -q "location /data/" "$NGINX_CAPTURE"
+  grep -q "proxy_pass http://127.0.0.1:31310" "$NGINX_CAPTURE"
+}
+
+@test "write_nginx_https_config omits the reverse proxy under --local-only" {
+  _capture_sudo_tee
+  PUBLIC_ADDRESS="cadt.example.com"
+  LOCAL_ONLY=true
+
+  write_nginx_https_config testneta
+
+  grep -q "listen 443 ssl" "$NGINX_CAPTURE"
+  grep -q "location /data/" "$NGINX_CAPTURE"
+  ! grep -q "proxy_pass" "$NGINX_CAPTURE"
+}
