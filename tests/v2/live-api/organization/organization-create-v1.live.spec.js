@@ -36,7 +36,7 @@ describe('V1 Organization Creation Tests', function () {
     it('should create a new V1 organization and wait for completion', async function () {
       const orgData = {
         name: `Test V1 Organization ${Date.now()}`,
-        icon: 'https://www.chia.net/wp-content/uploads/2023/01/chia-logo-dark.svg',
+        icon: 'https://www.chia.net/brand/chia-logo.svg',
       };
 
       // Track org creation timing
