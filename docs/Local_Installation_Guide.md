@@ -33,7 +33,7 @@ Please note that the CADT software is meant to be running 24/7. If the local mac
 
 ## Install Chia blockchain software
 
-To get started, first go to [https://www.chia.net/downloads/](https://www.chia.net/downloads/) and select the download option for your OS.
+To get started, first go to [https://www.chia.net/farm/downloads/](https://www.chia.net/farm/downloads/) and select the download option for your OS.
 
 Once the package has been downloaded, simply follow on screen prompts to launch the Chia application. When the application finishes launching, you will be prompted with a screen that asks whether you want to run Chia in “Farming Mode” or “Wallet Mode”.
 

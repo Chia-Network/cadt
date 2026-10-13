@@ -658,7 +658,7 @@ Response
     "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
     "orgHash": "0x14d8ea0f809c73c649827837cada5ec4d931153839383008a28c59fd1de86d2e",
     "name":"Org Test",
-    "icon":"https://www.chia.net/wp-content/uploads/2023/01/chia-logo-dark.svg",
+    "icon":"https://www.chia.net/brand/chia-logo.svg",
     "isHome":true,
     "subscribed":true,
     "synced": true,
@@ -829,7 +829,7 @@ curl --location -g --request POST 'localhost:31310/v2/organizations' \
      --header 'Content-Type: application/json' \
      --data-raw '{
         "name": "Sample Org",
-        "icon": "https://www.chia.net/wp-content/uploads/2023/01/chia-logo-dark.svg"
+        "icon": "https://www.chia.net/brand/chia-logo.svg"
 }'
 ```
 
@@ -1021,7 +1021,7 @@ curl --location -g --request PUT 'http://localhost:31310/v2/organizations/edit' 
 --header 'Content-Type: application/json' \
 --data-raw '{
   "name": "Updated Org Name",
-  "icon": "https://www.chia.net/wp-content/uploads/2023/01/chia-logo-light.svg"
+  "icon": "https://www.chia.net/brand/chia-logo-on-dark.svg"
 }'
 ```
 

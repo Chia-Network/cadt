@@ -74,7 +74,7 @@ describe('V1 to V2 Organization Upgrade Tests', function () {
 
         orgData = {
           name: `Test V1 Upgrade Org ${Date.now()}`,
-          icon: 'https://www.chia.net/wp-content/uploads/2023/01/chia-logo-dark.svg',
+          icon: 'https://www.chia.net/brand/chia-logo.svg',
         };
         v1OrgName = orgData.name;
 
