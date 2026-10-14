@@ -1,0 +1,249 @@
+name: Install Omnibus E2E
+
+on:
+  pull_request:
+    paths:
+      - 'tools/install-omnibus.sh'
+      - 'tools/test/**'
+      - '.github/workflows/install-omnibus-e2e.yml'
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: e2e (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        # PRs only test the newest LTS to keep CI under ~25 min per PR.
+        # Older LTS coverage runs on the weekly schedule + workflow_dispatch.
+        os: ${{ github.event_name == 'pull_request' && fromJSON('["ubuntu-24.04"]') || fromJSON('["ubuntu-22.04", "ubuntu-24.04"]') }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Run installer (testneta, prerelease CADT)
+        # /dev/null is rejected by validate_mnemonic_output_file_path because
+        # real users could lose the seed; CI captures to a tmpfile and shreds.
+        # trap EXIT so the seed file is scrubbed even if the installer fails
+        # mid-run (e.g., nginx/CADT startup failure after key generation).
+        run: |
+          set -e
+          API_KEY="$(openssl rand -hex 24)"
+          echo "API_KEY=${API_KEY}" >> "$GITHUB_ENV"
+          MNEMONIC_FILE="$(mktemp)"
+          echo "MNEMONIC_FILE=${MNEMONIC_FILE}" >> "$GITHUB_ENV"
+          trap 'shred -u "${MNEMONIC_FILE}" 2>/dev/null || rm -f "${MNEMONIC_FILE}"' EXIT
+          bash tools/install-omnibus.sh \
+            --yes \
+            --network=testneta \
+            --chia-version=stable \
+            --chia-tools-version=stable \
+            --cadt-version=prerelease \
+            --public-address=127.0.0.1 \
+            --generate-key \
+            --mnemonic-output-file="${MNEMONIC_FILE}" \
+            --api-key="${API_KEY}" \
+            --min-disk-gb=10
+
+      - name: Assert all services active
+        # Smoke-test the full systemd graph the installer enables. If any of
+        # the four chia units or nginx fails to reach active state, dump the
+        # journal so the failing service is debuggable from the CI log.
+        run: |
+          for svc in chia-wallet chia-full-node chia-data-layer cadt; do
+            sudo systemctl is-active "${svc}@${USER}" || (
+              sudo journalctl -u "${svc}@${USER}" --no-pager -n 200
+              exit 1
+            )
+          done
+          sudo systemctl is-active nginx
+
+      - name: Assert Chia wallet key was added
+        # `chia keys add` swallows errors silently; this guards against
+        # a regression where the installer reports success without a key.
+        # chia keys show prints "Fingerprint: NNN" — not the | table | form.
+        run: |
+          chia keys show | tee /tmp/keys.txt
+          if grep -q "no saved private keys" /tmp/keys.txt; then
+            echo "ERROR: No keys present in keychain after install"
+            exit 1
+          fi
+          grep -qE '^Fingerprint: [0-9]+$' /tmp/keys.txt
+
+      - name: Assert nginx proxies CADT API
+        # Chain-of-trust check: public nginx (port 80) must reach the
+        # CADT API on 127.0.0.1:31310 with the same key. A separate later
+        # step verifies the API directly on :31310.
+        run: |
+          for _ in $(seq 1 40); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -H "x-api-key: ${API_KEY}" http://127.0.0.1/v1/health)
+            if [[ "$code" == "200" ]]; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Nginx proxy to CADT failed (last HTTP code: ${code})"
+          sudo nginx -T
+          sudo journalctl -u "cadt@${USER}" --no-pager -n 200
+          exit 1
+
+      - name: Assert datalayer path serves via nginx
+        # /data/ must work even in --local-only (it's the public file tree).
+        # 404 = empty tree, 200 = autoindex, 403 = listing disabled — all OK.
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1/data/)
+          [[ "$code" == "404" || "$code" == "200" || "$code" == "403" ]]
+
+      - name: Assert CADT API responds on localhost:31310
+        run: |
+          curl -fsS -H "x-api-key: ${API_KEY}" http://localhost:31310/v1/health
+
+      - name: Assert patched CADT config values
+        # Single integration check after install. Bind address, datalayer URL,
+        # network selection, and governance IDs are all enforced by
+        # patch_cadt_config and unit-tested in bats; this step catches
+        # end-to-end drift (e.g., service restart clobbering our edits).
+        run: |
+          sudo apt-get install -y python3-yaml
+          python3 -c "
+          import yaml
+          c = yaml.safe_load(open('${HOME}/.chia/mainnet/cadt/config.yaml'))
+          assert c['APP']['BIND_ADDRESS'] == '127.0.0.1', c['APP'].get('BIND_ADDRESS')
+          assert c['APP']['DATALAYER_FILE_SERVER_URL'] == 'http://127.0.0.1/data', c['APP'].get('DATALAYER_FILE_SERVER_URL')
+          assert c['APP']['CHIA_NETWORK'] == 'testneta', c['APP'].get('CHIA_NETWORK')
+          tid = '1019153f631bb82e7fc4984dc1f0f2af9e95a7c29df743f7b4dcc2b975857409'
+          for sec in ('V1', 'V2'):
+              assert c[sec]['GOVERNANCE']['GOVERNANCE_BODY_ID'] == tid, (sec, c[sec]['GOVERNANCE'])
+          "
+
+      - name: Assert chia network is testneta
+        # Separate layer from the CADT yaml check above: this validates that
+        # `chia-tools network switch testneta` persisted in Chia's own config.
+        run: |
+          grep -q 'selected_network: testneta' "${HOME}/.chia/mainnet/config/config.yaml"
+
+      - name: Re-run installer must abort (existing install)
+        # Idempotency guard: check_existing_install must refuse a second run
+        # once packages, config, and systemd units are present.
+        run: |
+          RERUN_MNEMONIC="$(mktemp)"
+          trap 'shred -u "${RERUN_MNEMONIC}" 2>/dev/null || rm -f "${RERUN_MNEMONIC}"' EXIT
+          set +e
+          bash tools/install-omnibus.sh --yes \
+            --network=testneta \
+            --chia-version=stable \
+            --chia-tools-version=stable \
+            --cadt-version=prerelease \
+            --public-address=127.0.0.1 \
+            --generate-key \
+            --mnemonic-output-file="${RERUN_MNEMONIC}" \
+            --min-disk-gb=10 2>&1 | tee /tmp/rerun.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          [[ "$rc" -ne 0 ]]
+          grep -qi 'existing' /tmp/rerun.log
+
+      - name: Upload install log on failure
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: install-log-${{ matrix.os }}
+          path: /tmp/cadt-install-*.log
+          if-no-files-found: ignore
+
+  local-only:
+    name: local-only mode
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Run installer with --local-only
+        run: |
+          set -e
+          API_KEY="$(openssl rand -hex 24)"
+          echo "API_KEY=${API_KEY}" >> "$GITHUB_ENV"
+          MNEMONIC_FILE="$(mktemp)"
+          trap 'shred -u "${MNEMONIC_FILE}" 2>/dev/null || rm -f "${MNEMONIC_FILE}"' EXIT
+          bash tools/install-omnibus.sh \
+            --yes \
+            --network=testneta \
+            --chia-version=stable \
+            --chia-tools-version=stable \
+            --cadt-version=prerelease \
+            --public-address=127.0.0.1 \
+            --local-only \
+            --generate-key \
+            --mnemonic-output-file="${MNEMONIC_FILE}" \
+            --api-key="${API_KEY}" \
+            --min-disk-gb=10
+
+      - name: Assert CADT API responds on localhost:31310 directly
+        run: |
+          for _ in $(seq 1 40); do
+            if curl -fsS -H "x-api-key: ${API_KEY}" http://localhost:31310/v1/health >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 5
+          done
+          exit 1
+
+      - name: Assert nginx does NOT proxy CADT (no location / proxy)
+        # Defining assertion of the local-only job: with --local-only, nginx
+        # must omit the `location /` proxy block so CADT is reachable only
+        # on 127.0.0.1:31310.
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1/v1/health)
+          [[ "$code" != "200" ]]
+
+      - name: Assert datalayer path still serves via nginx
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1/data/)
+          [[ "$code" == "404" || "$code" == "200" || "$code" == "403" ]]
+
+      - name: Upload install log on failure
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: install-log-local-only
+          path: /tmp/cadt-install-*.log
+          if-no-files-found: ignore
+
+  root-rejection:
+    name: reject root execution
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Running as root must fail with helpful message
+        # refuse_root now runs before validate_yes_args, so any --yes invocation
+        # (even with all flags) aborts on the root check first. Keep full flags
+        # so that if ordering ever regresses, the test still tests root rejection.
+        run: |
+          MNEMONIC_FILE="$(mktemp)"
+          trap 'shred -u "${MNEMONIC_FILE}" 2>/dev/null || rm -f "${MNEMONIC_FILE}"' EXIT
+          set +e
+          sudo bash -c 'cd "$PWD" && bash tools/install-omnibus.sh \
+            --yes \
+            --network=testneta \
+            --chia-version=stable \
+            --chia-tools-version=stable \
+            --cadt-version=prerelease \
+            --public-address=127.0.0.1 \
+            --generate-key \
+            --mnemonic-output-file='"${MNEMONIC_FILE}"' \
+            --min-disk-gb=10' 2>&1 | tee /tmp/root.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          [[ "$rc" -ne 0 ]]
+          grep -qi 'regular user' /tmp/root.log
