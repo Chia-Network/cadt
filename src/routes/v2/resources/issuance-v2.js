@@ -1,3 +1,4 @@
+import { deletePreview } from '../../../controllers/v2/delete-preview.controller.js';
 import express from 'express';
 import joiExpress from 'express-joi-validation';
 import Joi from 'joi';
@@ -16,6 +17,7 @@ const issuanceGetSchema = Joi.object({
 // CRUD routes for issuance
 IssuanceV2Router.post('/', IssuanceV2Controller.create);
 IssuanceV2Router.get('/', validator.query(issuanceGetSchema), IssuanceV2Controller.findAll);
+IssuanceV2Router.get('/:id/delete-preview', deletePreview('issuance'));
 IssuanceV2Router.get('/:id', IssuanceV2Controller.findOne);
 IssuanceV2Router.put('/:id', IssuanceV2Controller.update);
 IssuanceV2Router.delete('/:id', IssuanceV2Controller.destroy);

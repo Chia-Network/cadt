@@ -5,6 +5,7 @@ export const REDACTED = '[REDACTED]';
 // elsewhere in the codebase are not guaranteed to be normalized.
 const SENSITIVE_HEADERS = new Set([
   'x-api-key',
+  'x-deletion-confirmation',
   'authorization',
   'proxy-authorization',
   'cookie',

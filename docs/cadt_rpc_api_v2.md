@@ -35,6 +35,94 @@ The CADT RPC API V2 is exposed by default on port 31310. This document will give
 
 If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to your `curl` request.
 
+## Deletion previews
+
+The following additive, read-only endpoints preview the exact committed cascade:
+
+- `GET /v2/project/:id/delete-preview`
+- `GET /v2/verification/:id/delete-preview`
+- `GET /v2/issuance/:id/delete-preview`
+- `GET /v2/unit/:id/delete-preview`
+
+**DELETE confirmation enforcement is not active in this increment.** Existing
+DELETE requests continue to stage deletions as before, with or without an
+`X-Deletion-Confirmation` header. The preview token establishes the foundation
+for a later confirmation workflow; token consumption, claims and replay receipts
+are not yet exposed. `confirmationRequired` describes whether the reviewed set
+has descendants, rather than changing current DELETE behavior.
+
+No pagination parameters are needed. Include the usual `x-api-key` header when
+configured. Existing network/Data Layer readiness gates still apply. Preview
+eligibility requires a subscribed home organization, write mode, no pending
+non-transfer commits, ownership of every affected member, existing reference
+checks and no overlapping staging work. Ordinary read endpoints remain usable
+in read-only mode, but deletion previews return 403 there.
+
+```shell
+curl http://localhost:31310/v2/unit/<unit-id>/delete-preview
+```
+
+Example for one unit with one unit-label link (the actual response always lists
+every affected member):
+
+```json
+{
+  "success": true,
+  "target": { "table": "unit", "id": "<unit-id>" },
+  "confirmationRequired": true,
+  "childCounts": { "unit_label": 1 },
+  "totalRecords": 2,
+  "affectedRecords": [
+    { "table": "unit", "id": "<unit-id>" },
+    { "table": "unit_label", "id": "<unit-label-id>" }
+  ],
+  "confirmationToken": "<opaque-token>",
+  "expiresAt": "2026-11-09T20:10:00.000Z"
+}
+```
+
+IDs are the actual data record primary keys, never staging UUIDs. `childCounts`
+excludes the root; `totalRecords` includes it. A zero-child preview has
+`confirmationRequired: false`, an empty `childCounts`, and still returns a token.
+Previews use one consistent read snapshot and do not write data/staging or emit
+staging notifications. Abandoning a preview needs no cancellation. The response
+has `Cache-Control: no-store`; do not put tokens in URLs or logs.
+
+Tokens expire after **10 minutes** and bind the root type/ID, home organization,
+registry and exact graph fingerprint, including relationship/ownership and
+semantic values but excluding volatile local timestamps. They do not reserve or
+freeze records. Supported deployments guarantee one application process. Tokens
+are process-local and become unknown after restart; request a new preview then.
+The cache admits at most **1,024 tokens** and **1 MiB of serialized retained token
+context plus token strings**. Expired entries are reclaimed on admission (and an
+expired token is removed on lookup). Valid entries are not evicted to admit new
+ones. No complete graph is retained in the cache.
+
+A complete response is limited to **10,000 records and 1 MiB of JSON**, including
+token/expiry metadata. These finite defaults are not configuration settings.
+Oversized responses fail without truncation or allocating a token; preview a
+smaller root. Staging conflict scanning checks every record in relevant payload
+arrays, both snake_case and camelCase identifiers, failed/retryable and transfer
+work, overlaps and reparenting. Malformed relevant staging fails closed; unrelated
+well-formed work and malformed unrelated tables do not block previews. Resolve
+conflicting staged work before requesting another preview.
+
+Errors use `success: false`, a descriptive `error`, and a `code` where applicable:
+
+- 404 `DELETE_PREVIEW_NOT_FOUND`: the committed root does not exist.
+- 409 `DELETE_PREVIEW_REFERENCED`: an existing reference blocker applies.
+- 409 `DELETE_PREVIEW_STAGING_CONFLICT`: relevant staging overlaps or cannot be
+  interpreted safely.
+- 413 `DELETE_PREVIEW_TOO_LARGE`: complete response exceeds a limit.
+- 503 `DELETE_PREVIEW_CAPACITY`: cache count/byte capacity is full; wait for expiry.
+- 400: existing home-organization, pending-commit or ownership eligibility error.
+- 403: existing read-only response.
+
+The token store also distinguishes unknown/restart, expired and wrong
+root/type/org/registry tokens for the later confirmation increment. Current
+DELETE endpoints do not validate or reject tokens yet. API authentication and
+readiness errors retain their existing responses.
+
 ## System endpoints
 
 Several routes are mounted on the server root (not under `/v1` or `/v2`). They are for monitoring and troubleshooting. Unlike most API routes, they are not blocked when the wallet or DataLayer is still syncing or migrations are in progress.

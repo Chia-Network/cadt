@@ -1,3 +1,4 @@
+import { deletePreview } from '../../../controllers/v2/delete-preview.controller.js';
 import express from 'express';
 import multer from 'multer';
 import joiExpress from 'express-joi-validation';
@@ -33,6 +34,7 @@ UnitV2Router.post(
 // CRUD routes for unit
 UnitV2Router.post('/', UnitV2Controller.create);
 UnitV2Router.get('/', validator.query(unitV2QuerySchema), UnitV2Controller.findAll);
+UnitV2Router.get('/:id/delete-preview', deletePreview('unit'));
 UnitV2Router.get('/:id', UnitV2Controller.findOne);
 UnitV2Router.put('/:id', UnitV2Controller.update);
 UnitV2Router.delete('/:id', UnitV2Controller.destroy);

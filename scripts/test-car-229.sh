@@ -7,8 +7,8 @@ cd "$REPO_ROOT"
 
 MODE="${1:-all}"
 case "$MODE" in
-  all|delete|planner|regression|xls|crud|v1) ;;
-  *) echo "Usage: bash scripts/test-car-229.sh [all|delete|planner|regression|xls|crud|v1]" >&2; exit 2 ;;
+  all|redaction|delete|planner|preview|guards|regression|xls|crud|v1) ;;
+  *) echo "Usage: bash scripts/test-car-229.sh [all|redaction|delete|planner|preview|guards|regression|xls|crud|v1]" >&2; exit 2 ;;
 esac
 
 node -e 'if (Number(process.versions.node.split(".")[0]) < 24) process.exit(1)' || {
@@ -33,12 +33,23 @@ run_specs() {
     --reporter dot --exit --timeout 300000 --fail-zero "$@"
 }
 
+# Keep V1 server imports in a separate process from the V2 suites.
+if [[ "$MODE" == all || "$MODE" == redaction ]]; then
+  run_specs tests/integration/log-redaction.spec.js
+fi
+if [[ "$MODE" == all || "$MODE" == preview ]]; then
+  run_specs tests/v2/integration/delete-preview*.spec.js
+fi
 if [[ "$MODE" == all || "$MODE" == planner ]]; then
   run_specs tests/v2/integration/cascade-delete-planner.spec.js
 fi
 if [[ "$MODE" == all || "$MODE" == delete ]]; then
   run_specs tests/v2/integration/{project,verification,issuance,unit}-v2.spec.js \
     --grep DELETE
+fi
+if [[ "$MODE" == all || "$MODE" == guards ]]; then
+  run_specs tests/v2/integration/v2-data-assertions.spec.js
+  run_specs tests/v2/integration/{methodology,program,stakeholder,label,project-methodology,location,validation}-v2.spec.js --grep DELETE
 fi
 if [[ "$MODE" == all || "$MODE" == regression ]]; then
   run_specs tests/v2/integration/staging-v2.spec.js \
