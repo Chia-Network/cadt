@@ -562,17 +562,19 @@ export const getV2TableSchema = async (tableName) => {
 /**
  * Helper to temporarily override config values for testing
  * Clears the memoize cache, modifies test config file, runs test, then restores
- * Uses test-specific config file (tests/v2/config/test-config.yaml) instead of production config
+ * Uses the same config path as config-loader: explicit CHIA_ROOT when provided,
+ * otherwise tests/v2/config/test-config.yaml.
  *
  * @param {Function} testFn - The test function to run with overridden config
  * @param {Object} configOverrides - Config values to override (e.g., { APP: { IS_GOVERNANCE_BODY: true } })
  * @returns {Promise} Result of testFn
  */
 export const withConfigOverride = async (testFn, configOverrides) => {
-  // Use test-specific config file when running tests
-  const projectRoot = path.resolve(process.cwd());
-  const unifiedConfigDir = path.resolve(`${projectRoot}/tests/v2/config`);
-  const unifiedConfigFile = path.resolve(`${unifiedConfigDir}/test-config.yaml`);
+  // Match config-loader so overrides also work in an isolated test CHIA_ROOT.
+  const unifiedConfigFile = process.env.CHIA_ROOT
+    ? path.resolve(getChiaRoot(), 'cadt/config.yaml')
+    : path.resolve(process.cwd(), 'tests/v2/config/test-config.yaml');
+  const unifiedConfigDir = path.dirname(unifiedConfigFile);
 
   // Ensure directory exists
   if (!fs.existsSync(unifiedConfigDir)) {
