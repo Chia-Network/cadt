@@ -593,8 +593,10 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
         cadTrustLabelId: label.cadTrustLabelId,
       });
 
+      const preview = await supertest(app).get(`/v2/verification/${verification.cadTrustVerificationId}/delete-preview`).expect(200);
       const response = await supertest(app)
         .delete(`/v2/verification/${verification.cadTrustVerificationId}`)
+        .set('X-Deletion-Confirmation', preview.body.confirmationToken)
         .expect(200);
 
       expect(response.body.success).to.be.true;

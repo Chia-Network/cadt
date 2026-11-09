@@ -42,6 +42,19 @@ describe('Cascade Delete Live API Tests', function () {
     return response.body[idField];
   };
 
+  const confirmCascade = async (table, id, members) => {
+    const endpoint = `/v2/${table}/${id}`;
+    const before = await request.get('/v2/staging').query({ page: 1, limit: 500 }).expect(200);
+    const preview = await request.get(`${endpoint}/delete-preview`).expect(200);
+    const memberKeys = values => values.map(({ table: memberTable, id: memberId }) => `${memberTable}:${memberId}`).sort();
+    expect(memberKeys(preview.body.affectedRecords)).to.deep.equal(memberKeys(members));
+    const missing = await request.delete(endpoint).expect(409);
+    expect(missing.body.code).to.equal('DELETE_CONFIRMATION_REQUIRED');
+    const unchanged = await request.get('/v2/staging').query({ page: 1, limit: 500 }).expect(200);
+    expect(unchanged.body.data).to.deep.equal(before.body.data);
+    return request.delete(endpoint).set('X-Deletion-Confirmation', preview.body.confirmationToken).expect(200);
+  };
+
   const hasStagedDelete = (rows, table, key, value) => rows.some((row) => {
     if (row.table !== table || row.action !== 'DELETE') {
       return false;
@@ -114,14 +127,6 @@ describe('Cascade Delete Live API Tests', function () {
     await waitForDataToAppear(request, 'unit-label', unitLabelAId);
     await waitForDataToAppear(request, 'unit-label', ul3Id);
 
-    // --- Graph A deletes: delete projectA → cascades 11 children ---
-    const deleteResponse = await request.delete(`/v2/project/${projectAId}`).expect(200);
-    expect(deleteResponse.body.success).to.equal(true);
-    expect(deleteResponse.body.stagedChildDeletes).to.equal(11);
-
-    const stagingResponseA = await request.get('/v2/staging').query({ page: 1, limit: 500 }).expect(200);
-    const stagedRowsA = stagingResponseA.body?.data || [];
-
     const expectedDeleteRowsA = [
       ['location', 'cad_trust_location_id', locationAId],
       ['estimation', 'cad_trust_estimation_id', estimationAId],
@@ -137,6 +142,14 @@ describe('Cascade Delete Live API Tests', function () {
       ['project', 'cad_trust_project_id', projectAId],
     ];
 
+    // --- Graph A deletes: delete projectA → cascades 11 children ---
+    const deleteResponse = await confirmCascade('project', projectAId, expectedDeleteRowsA.map(([table, , id]) => ({ table, id })));
+    expect(deleteResponse.body.success).to.equal(true);
+    expect(deleteResponse.body.stagedChildDeletes).to.equal(11);
+
+    const stagingResponseA = await request.get('/v2/staging').query({ page: 1, limit: 500 }).expect(200);
+    const stagedRowsA = stagingResponseA.body?.data || [];
+
     for (const [table, key, value] of expectedDeleteRowsA) {
       expect(hasStagedDelete(stagedRowsA, table, key, value), `missing staged delete ${table}:${value}`).to.equal(true);
     }
@@ -146,20 +159,31 @@ describe('Cascade Delete Live API Tests', function () {
     expect(deleteRowsA.length, 'unexpected extra staged deletes in Graph A').to.equal(12);
 
     // --- Graph B deletes: unit3, issuance2, verification1 ---
-    const unitDelResp = await request.delete(`/v2/unit/${unit3Id}`).expect(200);
+    const unitDelResp = await confirmCascade('unit', unit3Id, [{ table: 'unit', id: unit3Id }, { table: 'unit_label', id: ul3Id }]);
     expect(unitDelResp.body.success).to.equal(true);
     expect(unitDelResp.body.stagedChildDeletes).to.equal(1);
 
-    const issDelResp = await request.delete(`/v2/issuance/${iss2Id}`).expect(200);
+    const issDelResp = await confirmCascade('issuance', iss2Id, [{ table: 'issuance', id: iss2Id }, { table: 'unit', id: unit2Id }, { table: 'unit_label', id: ul2Id }]);
     expect(issDelResp.body.success).to.equal(true);
     expect(issDelResp.body.stagedChildDeletes).to.equal(2);
 
-    const verDelResp = await request.delete(`/v2/verification/${ver1Id}`).expect(200);
+    const verDelResp = await confirmCascade('verification', ver1Id, [{ table: 'verification', id: ver1Id }, { table: 'issuance', id: iss1Id }, { table: 'unit', id: unit1Id }, { table: 'unit_label', id: ul1Id }]);
     expect(verDelResp.body.success).to.equal(true);
     expect(verDelResp.body.stagedChildDeletes).to.equal(3);
 
     const stagingResponseB = await request.get('/v2/staging').query({ page: 1, limit: 500 }).expect(200);
     const stagedRowsB = stagingResponseB.body?.data || [];
+
+    // Confirmation leaves ordinary staging removal and individual DELETE usable.
+    const labelRow = stagedRowsB.find(row => hasStagedDelete([row], 'unit_label', 'cad_trust_unit_label_id', ul3Id));
+    expect(labelRow).to.exist;
+    await request.delete('/v2/staging').send({ uuid: labelRow.uuid }).expect(200);
+    const removed = await request.get('/v2/staging').query({ page: 1, limit: 500 }).expect(200);
+    expect(hasStagedDelete(removed.body.data, 'unit_label', 'cad_trust_unit_label_id', ul3Id)).to.equal(false);
+    await request.delete(`/v2/unit-label/${ul3Id}`).expect(200);
+    const restaged = await request.get('/v2/staging').query({ page: 1, limit: 500 }).expect(200);
+    expect(hasStagedDelete(restaged.body.data, 'unit_label', 'cad_trust_unit_label_id', ul3Id)).to.equal(true);
+    expect(restaged.body.data.filter(row => row.action === 'DELETE')).to.have.length(21);
 
     const expectedStagedDeletesB = [
       // unit3 cascade

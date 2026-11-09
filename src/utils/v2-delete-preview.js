@@ -70,9 +70,80 @@ const assertReferences = async (table, id, plan, options) => {
   }
 };
 
+/** Shared discovery, ownership, reference and semantic snapshot for preview and
+ * confirmation. The caller owns the snapshot and its write-intent lock. */
+export const inspectDeletePlan = async (
+  table,
+  id,
+  homeOrg,
+  options,
+  { maxRecords = 10000 } = {},
+) => {
+  const modelMap = StagingV2.getMutationGuardModelMap();
+  const rootModel = modelMap[table];
+  if (!['project', 'verification', 'issuance', 'unit'].includes(table))
+    throw new Error('Unsupported delete preview root');
+  const root = await rootModel.findByPk(id, options);
+  if (!root)
+    throw deletePreviewError(
+      'DELETE_PREVIEW_NOT_FOUND',
+      `${table} not found`,
+      404,
+    );
+  const plan = await discoverCascadeDeletePlan(table, id, options);
+  if (plan.totalCount > maxRecords)
+    throw deletePreviewError(
+      'DELETE_PREVIEW_TOO_LARGE',
+      'Deletion preview exceeds the complete response limit. Preview a smaller root.',
+      413,
+    );
+  const records = [];
+  for (const member of plan.members) {
+    await StagingV2.assertMutationOwnedByHomeOrg(
+      {
+        table: member.table,
+        action: 'DELETE',
+        data: [{ [member.primaryKeyField]: member.id }],
+      },
+      options,
+      homeOrg.org_uid,
+    );
+    const record = await modelMap[member.table].findByPk(member.id, {
+      ...options,
+      raw: true,
+    });
+    records.push({
+      table: member.table,
+      id: member.id,
+      values: semanticRecord(record),
+    });
+  }
+  await assertReferences(table, id, plan, options);
+  const context = {
+    table,
+    id,
+    orgUid: homeOrg.org_uid,
+    registryId: homeOrg.registry_id,
+    fingerprint: createHash('sha256')
+      .update(
+        JSON.stringify(
+          canonical({
+            table,
+            id,
+            orgUid: homeOrg.org_uid,
+            registryId: homeOrg.registry_id,
+            records,
+          }),
+        ),
+      )
+      .digest('hex'),
+  };
+  return { plan, context };
+};
+
 /** Build a complete read-only preview in one DEFERRED snapshot, then admit its
  * compact token only after successful snapshot completion and size validation.
- * No confirmation/replay behavior is enabled on DELETE by this increment. */
+ */
 export const createDeletePreview = async (
   table,
   id,
@@ -89,66 +160,14 @@ export const createDeletePreview = async (
       const options = { transaction };
       const homeOrg = await assertV2HomeOrgExists(options);
       await assertNoPendingCommitsExcludingTransfers(options);
-      const modelMap = StagingV2.getMutationGuardModelMap();
-      const rootModel = modelMap[table];
-      if (!['project', 'verification', 'issuance', 'unit'].includes(table))
-        throw new Error('Unsupported delete preview root');
-      const root = await rootModel.findByPk(id, options);
-      if (!root)
-        throw deletePreviewError(
-          'DELETE_PREVIEW_NOT_FOUND',
-          `${table} not found`,
-          404,
-        );
-      const plan = await discoverCascadeDeletePlan(table, id, options);
-      if (plan.totalCount > maxRecords)
-        throw deletePreviewError(
-          'DELETE_PREVIEW_TOO_LARGE',
-          'Deletion preview exceeds the complete response limit. Preview a smaller root.',
-          413,
-        );
-      const records = [];
-      for (const member of plan.members) {
-        await StagingV2.assertMutationOwnedByHomeOrg(
-          {
-            table: member.table,
-            action: 'DELETE',
-            data: [{ [member.primaryKeyField]: member.id }],
-          },
-          options,
-          homeOrg.org_uid,
-        );
-        const record = await modelMap[member.table].findByPk(member.id, {
-          ...options,
-          raw: true,
-        });
-        records.push({
-          table: member.table,
-          id: member.id,
-          values: semanticRecord(record),
-        });
-      }
-      await assertReferences(table, id, plan, options);
-      await assertNoDeletePreviewStagingConflicts(plan, options);
-      const context = {
+      const { plan, context } = await inspectDeletePlan(
         table,
         id,
-        orgUid: homeOrg.org_uid,
-        registryId: homeOrg.registry_id,
-        fingerprint: createHash('sha256')
-          .update(
-            JSON.stringify(
-              canonical({
-                table,
-                id,
-                orgUid: homeOrg.org_uid,
-                registryId: homeOrg.registry_id,
-                records,
-              }),
-            ),
-          )
-          .digest('hex'),
-      };
+        homeOrg,
+        options,
+        { maxRecords },
+      );
+      await assertNoDeletePreviewStagingConflicts(plan, options);
       const childCounts = { ...plan.counts };
       delete childCounts[table];
       const body = {

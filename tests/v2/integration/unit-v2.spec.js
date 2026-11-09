@@ -1056,8 +1056,10 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         cadTrustLabelId: label.cadTrustLabelId,
       });
 
+      const preview = await supertest(app).get(`/v2/unit/${unit.cadTrustUnitId}/delete-preview`).expect(200);
       const response = await supertest(app)
         .delete(`/v2/unit/${unit.cadTrustUnitId}`)
+        .set('X-Deletion-Confirmation', preview.body.confirmationToken)
         .expect(200);
 
       expect(response.body.success).to.be.true;

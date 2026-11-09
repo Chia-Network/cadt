@@ -332,17 +332,17 @@ describe('CAR-229 delete preview', function () {
       response.headers['access-control-allow-headers'].toLowerCase(),
     ).to.include('x-deletion-confirmation');
   });
-  it('keeps existing DELETE behavior active when no token or an unknown header is supplied', async function () {
-    await supertest(app)
+  it('requires a current preview token for cascading DELETE instead of ignoring the header', async function () {
+    const unknown = await supertest(app)
       .delete(`/v2/unit/${fixture.records.aV1I1U1.id}`)
       .set('X-Deletion-Confirmation', 'unknown')
-      .expect(200);
-    expect(await StagingV2.count()).to.equal(2);
-    await StagingV2.destroy({ where: {} });
-    await supertest(app)
+      .expect(409);
+    expect(unknown.body.code).to.equal('DELETE_PREVIEW_UNKNOWN');
+    const missing = await supertest(app)
       .delete(`/v2/unit/${fixture.records.aV1I1U1.id}`)
-      .expect(200);
-    expect(await StagingV2.count()).to.equal(2);
+      .expect(409);
+    expect(missing.body.code).to.equal('DELETE_CONFIRMATION_REQUIRED');
+    expect(await StagingV2.count()).to.equal(0);
   });
   const fingerprint = async (table = 'unit') => {
     const store = new DeletePreviewTokenStore();

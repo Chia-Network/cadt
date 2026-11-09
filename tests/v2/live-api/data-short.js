@@ -9,6 +9,7 @@
  * this test runner will also verify that data is correctly mirrored to MySQL after each commit.
  */
 
+import { DELETE_DEPENDENCY_BATCHES } from './helpers/delete-confirmation.js';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -58,30 +59,8 @@ const testFiles = [
   'aef-t5-authorized-entities-validation.live.spec.js',
 ];
 
-/** DELETE phase: dependents first so referential delete guards succeed */
-const deletePhaseTestFiles = [
-  'unit-label-validation.live.spec.js',
-  'stakeholder-projects-validation.live.spec.js',
-  'aef-t5-authorized-entities-validation.live.spec.js',
-  'aef-t4-holdings-validation.live.spec.js',
-  'aef-t3-actions-validation.live.spec.js',
-  'aef-t2-authorizations-validation.live.spec.js',
-  'unit-validation.live.spec.js',
-  'issuance-validation.live.spec.js',
-  'verification-validation.live.spec.js',
-  'project-methodology-validation.live.spec.js',
-  'location-validation.live.spec.js',
-  'estimation-validation.live.spec.js',
-  'rating-validation.live.spec.js',
-  'co-benefit-validation.live.spec.js',
-  'validation-validation.live.spec.js',
-  'project-validation.live.spec.js',
-  'methodology-validation.live.spec.js',
-  'program-validation.live.spec.js',
-  'stakeholder-validation.live.spec.js',
-  'label-validation.live.spec.js',
-  'aef-t1-submission-validation.live.spec.js',
-];
+// Explicit dependency batches retain every endpoint test and avoid staging
+// descendant deletes over the committed graph reviewed by an ancestor preview.
 
 async function runMochaTests(grepPattern, phaseName, filesToRun = null) {
   return new Promise((resolve, reject) => {
@@ -431,8 +410,10 @@ async function main() {
     ]);
 
     // Phase 5: DELETE tests (dependents first — shared entities last)
-    await runMochaTests('Step 9: DELETE Request Tests', 'DELETE Operations', deletePhaseTestFiles);
-    await commitAndWait('DELETE');
+    for (const batch of DELETE_DEPENDENCY_BATCHES) {
+      await runMochaTests('Step 9: DELETE Request Tests', `DELETE ${batch.join(', ')}`, batch.map(name => `${name}-validation.live.spec.js`));
+      await commitAndWait('DELETE');
+    }
 
     console.log('\n=== All phases complete ===\n');
 

@@ -1,3 +1,4 @@
+import { requestDeleteWithPreview } from './helpers/delete-confirmation.js';
 import { expect } from 'chai';
 import {
   commitStagedRecords,
@@ -140,6 +141,21 @@ async function getBatchStagingIds(request, table, predicate) {
     .map((row) => row.uuid);
 }
 
+async function deleteBatchAndCommit(request, endpoint, ids) {
+  if (!ids.length) return;
+  const before = new Set((await listStagingRows(request)).map(row => row.uuid));
+  for (const id of ids) {
+    const response = await requestDeleteWithPreview(request, `/v2/${endpoint}/${id}`);
+    expect(response.status).to.equal(200);
+    expect(response.body.success).to.equal(true);
+  }
+  const staged = (await listStagingRows(request)).filter(row => !before.has(row.uuid));
+  expect(staged.length).to.be.greaterThan(0);
+  await commitStagedRecords(request, staged.map(row => row.uuid), true);
+  await waitForPendingCommits(request);
+  await waitForStagingEmpty(request);
+}
+
 describe('CSV Batch Upload Live API Tests', function () {
   this.timeout(1800000);
 
@@ -187,26 +203,8 @@ describe('CSV Batch Upload Live API Tests', function () {
         }
       }
 
-      for (const unitId of createdUnitIds) {
-        await request.delete(`/v2/unit/${unitId}`);
-      }
-      for (const projectId of createdProjectIds) {
-        await request.delete(`/v2/project/${projectId}`);
-      }
-
-      if (createdUnitIds.length > 0 || createdProjectIds.length > 0) {
-        const deleteStageIds = [
-          ...(await getBatchStagingIds(request, 'unit', (record) =>
-            createdUnitIds.includes(record.cad_trust_unit_id || record.cadTrustUnitId))),
-          ...(await getBatchStagingIds(request, 'project', (record) =>
-            createdProjectIds.includes(record.cad_trust_project_id || record.cadTrustProjectId))),
-        ];
-        if (deleteStageIds.length > 0) {
-          await commitStagedRecords(request, deleteStageIds, true);
-          await waitForPendingCommits(request);
-          await waitForStagingEmpty(request);
-        }
-      }
+      await deleteBatchAndCommit(request, 'unit', createdUnitIds);
+      await deleteBatchAndCommit(request, 'project', createdProjectIds);
     } catch (error) {
       console.warn(`CSV batch live test cleanup warning: ${error.message}`);
     }
@@ -342,26 +340,8 @@ ${createdUnitIds[0]},,250`;
 
   describe('Step 17d: Clean up live CSV batch records', function () {
     it('should delete the batch-created units and projects', async function () {
-      for (const unitId of createdUnitIds) {
-        const response = await request.delete(`/v2/unit/${unitId}`);
-        expect(response.status).to.equal(200);
-        expect(response.body.success).to.be.true;
-      }
-      for (const projectId of createdProjectIds) {
-        const response = await request.delete(`/v2/project/${projectId}`);
-        expect(response.status).to.equal(200);
-        expect(response.body.success).to.be.true;
-      }
-
-      const stageIds = [
-        ...(await getBatchStagingIds(request, 'unit', (record) =>
-          createdUnitIds.includes(record.cad_trust_unit_id || record.cadTrustUnitId))),
-        ...(await getBatchStagingIds(request, 'project', (record) =>
-          createdProjectIds.includes(record.cad_trust_project_id || record.cadTrustProjectId))),
-      ];
-      await commitStagedRecords(request, stageIds, true);
-      await waitForPendingCommits(request);
-      await waitForStagingEmpty(request);
+      await deleteBatchAndCommit(request, 'unit', createdUnitIds);
+      await deleteBatchAndCommit(request, 'project', createdProjectIds);
     });
   });
 

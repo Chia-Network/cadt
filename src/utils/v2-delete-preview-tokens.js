@@ -4,8 +4,8 @@ export const deletePreviewError = (code, message, status = 409) =>
   Object.assign(new Error(message), { code, status });
 
 // Supported deployments run one application process. Tokens intentionally die on
-// restart. This store only mints/looks up previews; confirmation claims and bounded
-// completion receipts belong to the subsequent confirmation increment.
+// restart. Executing entries are pinned; completion receipts share the original
+// token expiry and count/byte limits. No full graph or caller-owned object is retained.
 export class DeletePreviewTokenStore {
   #entries = new Map();
   #bytes = 0;
@@ -45,6 +45,17 @@ export class DeletePreviewTokenStore {
     this.#entries.delete(token);
   }
 
+  #purgeExpired(now, except) {
+    for (const [token, entry] of this.#entries) {
+      if (
+        token !== except &&
+        entry.state !== 'executing' &&
+        entry.context.expiresAt <= now
+      )
+        this.#remove(token);
+    }
+  }
+
   mint({ table, id, orgUid, registryId, fingerprint }) {
     if (
       !['project', 'verification', 'issuance', 'unit'].includes(table) ||
@@ -59,9 +70,7 @@ export class DeletePreviewTokenStore {
       );
     }
     const issuedAt = this.#clock();
-    for (const [token, { context }] of this.#entries) {
-      if (context.expiresAt <= issuedAt) this.#remove(token);
-    }
+    this.#purgeExpired(issuedAt);
     const context = {
       table,
       id,
@@ -84,19 +93,23 @@ export class DeletePreviewTokenStore {
         503,
       );
     }
-    this.#entries.set(token, { context, bytes });
+    this.#entries.set(token, { context, bytes, state: 'ready' });
     this.#bytes += bytes;
     return { token, expiresAt: new Date(context.expiresAt).toISOString() };
   }
 
   lookup(token, { table, id, orgUid, registryId }) {
+    this.#purgeExpired(this.#clock(), token);
     const entry = this.#entries.get(token);
     if (!entry)
       throw deletePreviewError(
         'DELETE_PREVIEW_UNKNOWN',
         'Unknown delete preview, possibly invalidated by an application restart. Request a new preview.',
       );
-    if (entry.context.expiresAt <= this.#clock()) {
+    if (
+      entry.state !== 'executing' &&
+      entry.context.expiresAt <= this.#clock()
+    ) {
       this.#remove(token);
       throw deletePreviewError(
         'DELETE_PREVIEW_EXPIRED',
@@ -116,6 +129,55 @@ export class DeletePreviewTokenStore {
       );
     }
     return { ...context };
+  }
+  receipt(token, binding) {
+    this.lookup(token, binding);
+    const entry = this.#entries.get(token);
+    return entry.state === 'completed'
+      ? { ...entry.result, replayed: true }
+      : null;
+  }
+
+  // Reserve the compact success receipt before any staging write. Completion
+  // only changes state after COMMIT, with no allocation/admission that can fail.
+  claim(token, binding, result) {
+    const context = this.lookup(token, binding);
+    const entry = this.#entries.get(token);
+    if (entry.state !== 'ready')
+      throw deletePreviewError(
+        'DELETE_PREVIEW_USED',
+        'Deletion is already executing or completed. Retry the original request.',
+      );
+    const serialized = JSON.stringify(result);
+    const receipt = Object.freeze(JSON.parse(serialized));
+    const bytes = Buffer.byteLength(serialized);
+    if (this.#bytes + bytes > this.#maxBytes)
+      throw deletePreviewError(
+        'DELETE_PREVIEW_CAPACITY',
+        'Deletion receipt capacity is full. Wait for previews to expire and retry.',
+        503,
+      );
+    entry.state = 'executing';
+    entry.result = receipt;
+    entry.bytes += bytes;
+    this.#bytes += bytes;
+    let settled = false;
+    return {
+      context,
+      complete: () => {
+        if (settled) return;
+        settled = true;
+        entry.state = 'completed';
+      },
+      release: () => {
+        if (settled) return;
+        settled = true;
+        entry.state = 'ready';
+        delete entry.result;
+        entry.bytes -= bytes;
+        this.#bytes -= bytes;
+      },
+    };
   }
 }
 

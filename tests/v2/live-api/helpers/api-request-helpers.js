@@ -1,3 +1,5 @@
+import { requestDeleteWithPreview } from './delete-confirmation.js';
+
 /**
  * API request helpers for making POST/PUT/DELETE requests to endpoints
  * Handles response parsing and ID extraction
@@ -300,11 +302,7 @@ export const makeDeleteRequest = async (request, endpoint, id, options = {}) => 
   // Note: Request logging is handled by the request wrapper in live-api-helpers.js
   // No need to log here to avoid duplicate logs
 
-  let req = request.delete(fullEndpoint);
-  if (options.query) {
-    req = req.query(options.query);
-  }
-  const response = await req;
+  const response = await requestDeleteWithPreview(request, fullEndpoint, options);
 
   // Return response object even for non-200 status codes so tests can handle them
   // The response.body will contain the error information

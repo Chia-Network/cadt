@@ -477,8 +477,10 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
         cadTrustLabelId: label.cadTrustLabelId,
       });
 
+      const preview = await supertest(app).get(`/v2/issuance/${issuance.cadTrustIssuanceId}/delete-preview`).expect(200);
       const response = await supertest(app)
         .delete(`/v2/issuance/${issuance.cadTrustIssuanceId}`)
+        .set('X-Deletion-Confirmation', preview.body.confirmationToken)
         .expect(200);
 
       expect(response.body.success).to.be.true;
