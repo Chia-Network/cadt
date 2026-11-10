@@ -49,11 +49,9 @@
  * See: docs/orphaned-records-analysis.md for the full analysis.
  */
 
-import { v4 as uuidv4 } from 'uuid';
 import { Transaction } from 'sequelize';
 import { sequelizeV2 } from '../database/v2/index.js';
 import {
-  StagingV2,
   LocationV2,
   EstimationV2,
   RatingV2,
@@ -107,7 +105,7 @@ const ROOT_PRIMARY_KEYS = {
  *
  * Returns root plus unique members in parent/table traversal order, with IDs
  * sorted lexically within each table. Counts include the root. Target IDs are
- * database primary keys; staging UUIDs are allocated only by the write helpers.
+ * database primary keys, not staging UUIDs.
  *
  * Without a supplied transaction, use one DEFERRED SQLite read snapshot rather
  * than the configured IMMEDIATE write-intent default. With a transaction, every
@@ -163,76 +161,4 @@ export const discoverCascadeDeletePlan = async (table, id, options = {}) => {
     totalCount: members.length,
     descendantCount: members.length - 1,
   };
-};
-
-const stageChildDeletes = async (table, id, { transaction } = {}) => {
-  const plan = await discoverCascadeDeletePlan(table, id, { transaction });
-  const rows = plan.members.slice(1).map((member) => ({
-    uuid: uuidv4(),
-    table: member.table,
-    data: JSON.stringify([{ [member.primaryKeyField]: member.id }]),
-    action: 'DELETE',
-    committed: false,
-    failed_commit: false,
-    is_transfer: false,
-  }));
-  if (rows.length > 0) await StagingV2.bulkCreate(rows, { transaction });
-  return rows.length;
-};
-
-export const stageProjectChildDeletes = (id, options) =>
-  stageChildDeletes('project', id, options);
-export const stageVerificationChildDeletes = (id, options) =>
-  stageChildDeletes('verification', id, options);
-export const stageIssuanceChildDeletes = (id, options) =>
-  stageChildDeletes('issuance', id, options);
-export const stageUnitChildDeletes = (id, options) =>
-  stageChildDeletes('unit', id, options);
-
-export const getProjectCascadeUnits = async (projectId, options = {}) => {
-  const { transaction } = options;
-
-  const verifications = await VerificationV2.findAll({
-    where: { cadTrustProjectId: projectId },
-    raw: true,
-    transaction,
-  });
-
-  const verificationIds = verifications
-    .map((verification) => verification.cadTrustVerificationId)
-    .filter(Boolean);
-
-  if (verificationIds.length === 0) {
-    return [];
-  }
-
-  const issuances = await IssuanceV2.findAll({
-    where: { cadTrustVerificationId: verificationIds },
-    raw: true,
-    transaction,
-  });
-
-  const issuanceIds = issuances
-    .map((issuance) => issuance.cadTrustIssuanceId)
-    .filter(Boolean);
-
-  if (issuanceIds.length === 0) {
-    return [];
-  }
-
-  return getUnitsForIssuances(issuanceIds, { transaction });
-};
-
-const getUnitsForIssuances = async (issuanceIds, options = {}) => {
-  const { transaction } = options;
-
-  if (issuanceIds.length === 0) {
-    return [];
-  }
-
-  return UnitV2.findAll({
-    where: { cadTrustIssuanceId: issuanceIds },
-    raw: true,
-    transaction,
-  });
 };
