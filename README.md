@@ -466,6 +466,36 @@ npm install
 npm run start
 ```
 
+### Local simulator tests
+
+After selecting Node 24 with `nvm use` and installing dependencies, use the local
+helper to run each version in its own process:
+
+```bash
+bash scripts/test-local.sh v1
+bash scripts/test-local.sh v2
+```
+
+With no spec selection, these run the same standard globs as `npm run test:v1`
+and `npm run test:v2`. To focus a run, put spec paths or quoted globs before normal
+Mocha options. Options alone filter the selected version's standard suites:
+
+```bash
+bash scripts/test-local.sh v1 tests/integration/log-redaction.spec.js --reporter spec
+bash scripts/test-local.sh v2 'tests/v2/integration/delete-preview*.spec.js' --grep token
+bash scripts/test-local.sh v2 --grep DELETE --reporter spec
+CW_PORT=31319 bash scripts/test-local.sh v2 tests/v2/integration/cascade-delete-planner.spec.js
+```
+
+Each invocation uses simulator mode, a disposable `CHIA_ROOT` for config and logs,
+and the existing database isolation in `tests/run-tests.sh`. Config, logs and test
+databases are removed on exit; capture stdout/stderr when investigating failures.
+Failures and selections matching no tests return a nonzero status. The default
+ports are 31310 for V1 and 31311 for V2; override `CW_PORT` when needed. Keep V1 and
+V2 suites in separate invocations. These tests need no running CADT, Chia or MySQL
+service and cover simulator behavior; real Data Layer and mirror checks still
+require the live API tests.
+
 ### Contributing
 
 All branches should be created from the `develop` branch and not from `main`. All pull requests should be made against the `develop` branch unless it is a new release. The `develop` branch will be merged into the `main` branch to create a release. Automation in the CI will create the [release](https://github.com/Chia-Network/cadt/releases) and attach the installation files to it automatically whenever code is merged to `main`. Additionally, the changelog will automatically be updated in the `main` branch. Therefore, the `main` branch should always be a representation of the latest released code.
