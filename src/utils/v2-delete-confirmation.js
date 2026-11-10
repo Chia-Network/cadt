@@ -4,7 +4,11 @@ import { sequelizeV2 } from '../database/v2/index.js';
 import { StagingV2 } from '../models/v2/index.js';
 import { processingSyncRegistriesTransactionMutexV2 } from './v2-mutex-utils.js';
 import { assertNoDeletePreviewStagingConflicts } from './v2-delete-preview-conflicts.js';
-import { inspectDeletePlan } from './v2-delete-preview.js';
+import {
+  inspectDeletePlan,
+  assertDeletePlanOwned,
+  assertDeletePlanReferences,
+} from './v2-delete-preview.js';
 import {
   deletePreviewTokens,
   deletePreviewError,
@@ -79,7 +83,9 @@ export const confirmDelete = async (
           homeOrg,
           options,
         );
+        await assertDeletePlanReferences(plan, options);
         if (token === undefined && plan.descendantCount > 0) {
+          await assertDeletePlanOwned(plan, homeOrg, options);
           throw Object.assign(
             deletePreviewError(
               'DELETE_CONFIRMATION_REQUIRED',
@@ -95,11 +101,15 @@ export const confirmDelete = async (
         };
         if (token !== undefined) {
           const reviewed = tokenStore.lookup(token, binding);
-          if (reviewed.fingerprint !== context.fingerprint)
+          if (reviewed.fingerprint !== context.fingerprint) {
+            // Retain Restricted data errors for changed ownership; an unchanged
+            // plan is authorized once by create/bulkCreate immediately below.
+            await assertDeletePlanOwned(plan, homeOrg, options);
             throw deletePreviewError(
               'DELETE_PREVIEW_CHANGED',
               'The affected records changed. Request and review a new delete preview.',
             );
+          }
         }
         if (token !== undefined || plan.descendantCount > 0)
           await assertNoDeletePreviewStagingConflicts(plan, options);

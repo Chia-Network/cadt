@@ -68,6 +68,7 @@ describe('CAR-229 delete preview', function () {
       const subscription = StagingV2.changes.subscribe((event) =>
         events.push(event),
       );
+      const guard = sinon.spy(StagingV2, 'assertMutationOwnedByHomeOrg');
       let response;
       try {
         response = await supertest(app)
@@ -75,7 +76,16 @@ describe('CAR-229 delete preview', function () {
           .expect(200);
       } finally {
         subscription.unsubscribe();
+        guard.restore();
       }
+      expect(
+        keys(
+          guard.getCalls().map(({ args: [row] }) => ({
+            table: row.table,
+            id: Object.values(row.data[0])[0],
+          })),
+        ),
+      ).to.deep.equal(keys(expected));
       expect(keys(response.body.affectedRecords)).to.deep.equal(keys(expected));
       expect(response.body.target).to.deep.equal({ table, id: expected[0].id });
       expect(response.body.confirmationRequired).to.equal(true);
@@ -252,12 +262,18 @@ describe('CAR-229 delete preview', function () {
     ['transfer', 'UPDATE', { committed: true, is_transfer: true }],
   ]) {
     it(`rejects ${name} overlaps without changing staging`, async function () {
-      await stage('unit', [{ cad_trust_unit_id: fixture.records.aV1I1U1.id }], {
-        action,
-        ...flags,
-      });
+      const conflicting = await stage(
+        'unit',
+        [{ cad_trust_unit_id: fixture.records.aV1I1U1.id }],
+        {
+          action,
+          ...flags,
+        },
+      );
       const before = await StagingV2.findAll({ raw: true });
-      await assertConflict(await preview());
+      const response = await preview();
+      await assertConflict(response);
+      expect(response.body.error).to.include(conflicting.uuid);
       expect(await StagingV2.findAll({ raw: true })).to.deep.equal(before);
     });
   }
@@ -297,8 +313,10 @@ describe('CAR-229 delete preview', function () {
   }
   for (const malformed of ['{invalid', 'null', '[null]', '[]', '{}', '[{}]']) {
     it(`rejects malformed relevant staging ${malformed}`, async function () {
-      await stage('unit_label', malformed);
-      await assertConflict(await preview('unit'));
+      const conflicting = await stage('unit_label', malformed);
+      const response = await preview('unit');
+      await assertConflict(response);
+      expect(response.body.error).to.include(conflicting.uuid);
     });
   }
   it('allows unrelated staged work, failed and transfer rows, and malformed unrelated tables', async function () {

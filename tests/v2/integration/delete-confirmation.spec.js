@@ -96,10 +96,26 @@ describe('CAR-229 delete confirmation', function () {
     });
     it(`confirms exact ${table} members once and explicitly replays the original result`, async function () {
       const { confirmationToken } = await preview(table);
-      const response = await request
-        .delete(path(table))
-        .set('X-Deletion-Confirmation', confirmationToken)
-        .expect(200);
+      const guard = sinon.spy(StagingV2, 'assertMutationOwnedByHomeOrg');
+      let response;
+      try {
+        response = await request
+          .delete(path(table))
+          .set('X-Deletion-Confirmation', confirmationToken)
+          .expect(200);
+      } finally {
+        guard.restore();
+      }
+      expect(
+        keys(
+          guard.getCalls().map(({ args: [row] }) => ({
+            table: row.table,
+            id: Object.values(
+              (Array.isArray(row.data) ? row.data : JSON.parse(row.data))[0],
+            )[0],
+          })),
+        ),
+      ).to.deep.equal(keys(fixture.expected[table]));
       expect(response.body.stagedChildDeletes).to.equal(
         fixture.expected[table].length - 1,
       );
@@ -335,6 +351,57 @@ describe('CAR-229 delete confirmation', function () {
       expect(await StagingV2.count()).to.equal(0);
     });
   }
+  it('rejects inherited root ownership changes outside the fingerprint at the staging guard', async function () {
+    const { confirmationToken } = await preview('issuance');
+    await ProjectV2.update(
+      { orgUid: 'other-owner' },
+      { where: { cadTrustProjectId: fixture.records.aProject.id } },
+    );
+    const rootWrite = sinon.spy(StagingV2, 'create');
+    try {
+      const response = await request
+        .delete(path('issuance'))
+        .set('X-Deletion-Confirmation', confirmationToken)
+        .expect(400);
+      expect(response.body.error).to.include('Restricted data');
+      // Reaching the root write proves the unchanged fingerprint matched and
+      // child writes passed; the real inherited-owner guard rejects the root.
+      expect(rootWrite.calledOnce).to.equal(true);
+      expect(rootWrite.firstCall.args[0].table).to.equal('issuance');
+    } finally {
+      rootWrite.restore();
+    }
+    expect(await StagingV2.count()).to.equal(0);
+  });
+  it('keeps the canonical staging guard for an unauthorized descendant write', async function () {
+    const { confirmationToken } = await preview('project');
+    const id = fixture.records.aV1I1U1.id;
+    const originalOwner = (await UnitV2.findByPk(id)).orgUid;
+    const original = StagingV2.bulkCreate;
+    // Mutate real data after fingerprint validation, then invoke the unchanged
+    // staging implementation; authorization and the rollback remain real.
+    const write = sinon
+      .stub(StagingV2, 'bulkCreate')
+      .callsFake(async (rows, options) => {
+        await UnitV2.update(
+          { orgUid: 'other-owner' },
+          { where: { cadTrustUnitId: id }, transaction: options.transaction },
+        );
+        return original.call(StagingV2, rows, options);
+      });
+    try {
+      const response = await request
+        .delete(path('project'))
+        .set('X-Deletion-Confirmation', confirmationToken)
+        .expect(400);
+      expect(response.body.error).to.include('Restricted data');
+      expect(write.calledOnce).to.equal(true);
+    } finally {
+      write.restore();
+    }
+    expect(await StagingV2.count()).to.equal(0);
+    expect((await UnitV2.findByPk(id)).orgUid).to.equal(originalOwner);
+  });
   for (const table of ['unit', 'project']) {
     it(`rechecks a new ${table} reference blocker`, async function () {
       const { confirmationToken } = await preview(table);
@@ -421,13 +488,14 @@ describe('CAR-229 delete confirmation', function () {
   ]) {
     it(`rejects ${name} staged after the preview without partial writes`, async function () {
       const { confirmationToken } = await preview('unit');
-      await stage('unit_label', records(fixture), flags);
+      const conflicting = await stage('unit_label', records(fixture), flags);
       const before = await StagingV2.findAll({ raw: true });
       const response = await request
         .delete(path('unit'))
         .set('X-Deletion-Confirmation', confirmationToken)
         .expect(409);
       expect(response.body.code).to.equal('DELETE_PREVIEW_STAGING_CONFLICT');
+      expect(response.body.error).to.include(conflicting.uuid);
       expect(await StagingV2.findAll({ raw: true })).to.deep.equal(before);
     });
   }
@@ -906,6 +974,7 @@ describe('CAR-229 delete confirmation', function () {
         .set('X-Deletion-Confirmation', confirmationToken)
         .expect(409);
       expect(response.body.code).to.equal('DELETE_PREVIEW_STAGING_CONFLICT');
+      expect(response.body.error).to.include(before[0].uuid);
       expect(await StagingV2.findAll({ raw: true })).to.deep.equal(before);
     });
   }

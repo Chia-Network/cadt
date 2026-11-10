@@ -41,7 +41,8 @@ const semanticRecord = (record) =>
     ),
   );
 
-const assertReferences = async (table, id, plan, options) => {
+export const assertDeletePlanReferences = async (plan, options) => {
+  const { table, id } = plan.root;
   if (!['project', 'unit'].includes(table)) return;
   const result = await checkReferences(table, id, options);
   if (result.hasReferences) {
@@ -70,8 +71,24 @@ const assertReferences = async (table, id, plan, options) => {
   }
 };
 
-/** Shared discovery, ownership, reference and semantic snapshot for preview and
- * confirmation. The caller owns the snapshot and its write-intent lock. */
+/** Read-only ownership eligibility for previews and rejected confirmations.
+ * Actual writes always use the canonical staging-layer guard. */
+export const assertDeletePlanOwned = async (plan, homeOrg, options) => {
+  for (const member of plan.members) {
+    await StagingV2.assertMutationOwnedByHomeOrg(
+      {
+        table: member.table,
+        action: 'DELETE',
+        data: [{ [member.primaryKeyField]: member.id }],
+      },
+      options,
+      homeOrg.org_uid,
+    );
+  }
+};
+
+/** Shared discovery and semantic snapshot for preview and confirmation.
+ * The caller owns the transaction and applies eligibility before using it. */
 export const inspectDeletePlan = async (
   table,
   id,
@@ -99,15 +116,6 @@ export const inspectDeletePlan = async (
     );
   const records = [];
   for (const member of plan.members) {
-    await StagingV2.assertMutationOwnedByHomeOrg(
-      {
-        table: member.table,
-        action: 'DELETE',
-        data: [{ [member.primaryKeyField]: member.id }],
-      },
-      options,
-      homeOrg.org_uid,
-    );
     const record = await modelMap[member.table].findByPk(member.id, {
       ...options,
       raw: true,
@@ -118,7 +126,6 @@ export const inspectDeletePlan = async (
       values: semanticRecord(record),
     });
   }
-  await assertReferences(table, id, plan, options);
   const context = {
     table,
     id,
@@ -167,6 +174,8 @@ export const createDeletePreview = async (
         options,
         { maxRecords },
       );
+      await assertDeletePlanOwned(plan, homeOrg, options);
+      await assertDeletePlanReferences(plan, options);
       await assertNoDeletePreviewStagingConflicts(plan, options);
       const childCounts = { ...plan.counts };
       delete childCounts[table];
