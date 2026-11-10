@@ -107,7 +107,7 @@
     "babel-plugin-module-resolver": "^5.0.2",
     "chai": "^6.2.0",
     "cross-env": "^10.1.0",
-    "eslint": "^10.7.0",
+    "eslint": "^10.11.0",
     "eslint-plugin-mocha": "^11.3.0",
     "extensionless": "^2.0.6",
     "globals": "^17.7.0",
