@@ -68,7 +68,7 @@ import {
 } from '../models/v2/index.js';
 
 // Keep the existing table traversal order; IDs within each table are canonical.
-const CHILDREN = [
+export const CASCADE_DELETE_CHILDREN = [
   { parent: 'project', model: LocationV2, foreignKey: 'cadTrustProjectId' },
   { parent: 'project', model: EstimationV2, foreignKey: 'cadTrustProjectId' },
   { parent: 'project', model: RatingV2, foreignKey: 'cadTrustProjectId' },
@@ -131,7 +131,7 @@ export const discoverCascadeDeletePlan = async (table, id, options = {}) => {
   const idsByTable = new Map([[table, [id]]]);
   const counts = { [table]: 1 };
 
-  for (const { parent, model, foreignKey } of CHILDREN) {
+  for (const { parent, model, foreignKey } of CASCADE_DELETE_CHILDREN) {
     const parentIds = idsByTable.get(parent);
     if (!parentIds?.length) continue;
     const records = await model.findAll({

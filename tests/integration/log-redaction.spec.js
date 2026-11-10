@@ -7,6 +7,7 @@ import { logger } from '../../src/config/logger.js';
 import app from '../../src/server';
 
 const API_KEY = 'super-secret-api-key-value';
+const DELETION_CONFIRMATION = 'super-secret-deletion-confirmation-value';
 
 const attachCapture = (sink) => {
   const stream = new Writable({
@@ -32,13 +33,22 @@ describe('redactHeaders', function () {
     expect(redacted['x-api-key']).to.equal(REDACTED);
   });
 
+  it('replaces the x-deletion-confirmation value', function () {
+    const redacted = redactHeaders({
+      'x-deletion-confirmation': DELETION_CONFIRMATION,
+    });
+    expect(redacted['x-deletion-confirmation']).to.equal(REDACTED);
+  });
+
   it('matches header names case-insensitively', function () {
     const redacted = redactHeaders({
       'X-Api-Key': API_KEY,
       Authorization: 'Bearer t',
+      'X-Deletion-Confirmation': DELETION_CONFIRMATION,
     });
     expect(redacted['X-Api-Key']).to.equal(REDACTED);
     expect(redacted.Authorization).to.equal(REDACTED);
+    expect(redacted['X-Deletion-Confirmation']).to.equal(REDACTED);
   });
 
   it('preserves non-sensitive headers', function () {
@@ -51,9 +61,14 @@ describe('redactHeaders', function () {
   });
 
   it('does not mutate the source header map', function () {
-    const headers = { 'x-api-key': API_KEY };
-    redactHeaders(headers);
+    const headers = {
+      'x-api-key': API_KEY,
+      'X-Deletion-Confirmation': DELETION_CONFIRMATION,
+    };
+    const redacted = redactHeaders(headers);
+    expect(redacted).to.not.equal(headers);
     expect(headers['x-api-key']).to.equal(API_KEY);
+    expect(headers['X-Deletion-Confirmation']).to.equal(DELETION_CONFIRMATION);
   });
 
   it('passes through non-object input', function () {
@@ -77,34 +92,57 @@ describe('logger credential redaction', function () {
 
   // The transports in src/config/logger.js are pinned to 'debug', so verbose
   // records reach the log stream regardless of APP.LOG_LEVEL.
-  it('keeps an api key out of a verbose record carrying headers', function () {
+  it('keeps sensitive headers out of a verbose record carrying headers', function () {
     logger.verbose('Received request: GET /v1/projects', {
       method: 'GET',
-      headers: { 'x-api-key': API_KEY, 'content-type': 'application/json' },
+      headers: {
+        'x-api-key': API_KEY,
+        'x-deletion-confirmation': DELETION_CONFIRMATION,
+        'content-type': 'application/json',
+      },
     });
 
     const output = captured.join('\n');
+    expect(captured).to.have.lengthOf(1);
     expect(output).to.not.include(API_KEY);
+    expect(output).to.not.include(DELETION_CONFIRMATION);
     expect(output).to.include(REDACTED);
     expect(output).to.include('application/json');
   });
 
-  it('keeps an api key out of records at other levels', function () {
+  it('keeps sensitive headers out of records at other levels', function () {
     const levels = ['error', 'warn', 'info', 'debug', 'silly'];
     for (const level of levels) {
-      logger[level]('request detail', { headers: { 'x-api-key': API_KEY } });
+      logger[level]('request detail', {
+        headers: {
+          'x-api-key': API_KEY,
+          'x-deletion-confirmation': DELETION_CONFIRMATION,
+        },
+      });
     }
 
     expect(captured).to.have.lengthOf(levels.length);
     expect(captured.join('\n')).to.not.include(API_KEY);
+    expect(captured.join('\n')).to.not.include(DELETION_CONFIRMATION);
   });
 
   it('redacts a caller-supplied metadata object without mutating it', function () {
-    const callerMetadata = { headers: { 'x-api-key': API_KEY } };
+    const callerMetadata = {
+      headers: {
+        'x-api-key': API_KEY,
+        'X-Deletion-Confirmation': DELETION_CONFIRMATION,
+      },
+    };
     logger.info('nested metadata', { metadata: callerMetadata });
 
+    expect(captured).to.have.lengthOf(1);
     expect(captured.join('\n')).to.not.include(API_KEY);
+    expect(captured.join('\n')).to.not.include(DELETION_CONFIRMATION);
+    expect(captured.join('\n')).to.include(REDACTED);
     expect(callerMetadata.headers['x-api-key']).to.equal(API_KEY);
+    expect(callerMetadata.headers['X-Deletion-Confirmation']).to.equal(
+      DELETION_CONFIRMATION,
+    );
   });
 });
 
@@ -150,12 +188,16 @@ describe('request logger', function () {
     }
   });
 
-  it('does not log the x-api-key sent with a request', async function () {
-    await supertest(app).get('/health').set('x-api-key', API_KEY);
+  it('does not log sensitive headers sent with a request', async function () {
+    await supertest(app)
+      .get('/health')
+      .set('x-api-key', API_KEY)
+      .set('X-Deletion-Confirmation', DELETION_CONFIRMATION);
 
     const output = captured.join('\n');
     expect(output).to.include('Received request: GET /health');
     expect(output).to.not.include(API_KEY);
+    expect(output).to.not.include(DELETION_CONFIRMATION);
     expect(output).to.include(REDACTED);
   });
 
@@ -166,10 +208,14 @@ describe('request logger', function () {
     const records = [];
     restoreVerbose = recordVerboseCalls(records);
 
-    await supertest(app).get('/health').set('x-api-key', API_KEY);
+    await supertest(app)
+      .get('/health')
+      .set('x-api-key', API_KEY)
+      .set('X-Deletion-Confirmation', DELETION_CONFIRMATION);
 
     const requestRecord = records.find((meta) => meta?.headers);
     expect(requestRecord, 'no request record with headers was logged').to.exist;
     expect(requestRecord.headers['x-api-key']).to.equal(REDACTED);
+    expect(requestRecord.headers['x-deletion-confirmation']).to.equal(REDACTED);
   });
 });

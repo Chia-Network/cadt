@@ -1,3 +1,4 @@
+import { deletePreview } from '../../../controllers/v2/delete-preview.controller.js';
 import express from 'express';
 import joiExpress from 'express-joi-validation';
 import Joi from 'joi';
@@ -20,6 +21,7 @@ const verificationGetSchema = Joi.object({
 // CRUD routes for verification
 VerificationV2Router.post('/', VerificationV2Controller.create);
 VerificationV2Router.get('/', validator.query(verificationGetSchema), VerificationV2Controller.findAll);
+VerificationV2Router.get('/:id/delete-preview', deletePreview('verification'));
 VerificationV2Router.get('/:id', VerificationV2Controller.findOne);
 VerificationV2Router.put('/:id', VerificationV2Controller.update);
 VerificationV2Router.delete('/:id', VerificationV2Controller.destroy);

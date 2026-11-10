@@ -31,6 +31,15 @@ If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to 
 
 For the V2 API, update and delete requests can only stage mutations for records owned by the home organization. See the V2 API guide for details on `orgUid` ownership and child-record ownership resolution.
 
+## V2 Deletion Previews
+
+V2 adds read-only `GET /v2/{project,verification,issuance,unit}/:id/delete-preview`
+endpoints returning the exact affected IDs/counts and a short-lived token. See
+[deletion previews in the V2 guide](/docs/cadt_rpc_api_v2.md#deletion-previews) for
+eligibility, complete-response/cache limits and restart/expiry behavior. These
+endpoints are additive: DELETE confirmation enforcement and replay handling are
+not active yet; existing V1 and V2 DELETE behavior remains unchanged.
+
 ## System endpoints
 
 Several routes are mounted on the server root (not under `/v1` or `/v2`). They are for monitoring and troubleshooting. Unlike most API routes, they are not blocked when the wallet or DataLayer is still syncing or migrations are in progress.

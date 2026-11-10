@@ -165,7 +165,7 @@ const REFERENCE_MAP = {
   ],
 };
 
-const countStagedReferences = async (table, snakeFkField, recordId, matchPredicate = null) => {
+const countStagedReferences = async (table, snakeFkField, recordId, matchPredicate = null, options = {}) => {
   const stagedRows = await StagingV2.findAll({
     where: {
       table,
@@ -174,6 +174,7 @@ const countStagedReferences = async (table, snakeFkField, recordId, matchPredica
       failed_commit: false,
     },
     raw: true,
+    transaction: options.transaction,
   });
 
   let count = 0;
@@ -197,7 +198,7 @@ const countStagedReferences = async (table, snakeFkField, recordId, matchPredica
   return count;
 };
 
-const countStagedReferencesForIds = async (table, snakeFkField, recordIds) => {
+const countStagedReferencesForIds = async (table, snakeFkField, recordIds, options = {}) => {
   const recordIdSet = new Set(recordIds);
   const stagedRows = await StagingV2.findAll({
     where: {
@@ -207,6 +208,7 @@ const countStagedReferencesForIds = async (table, snakeFkField, recordIds) => {
       failed_commit: false,
     },
     raw: true,
+    transaction: options.transaction,
   });
 
   let count = 0;
@@ -226,7 +228,7 @@ const countStagedReferencesForIds = async (table, snakeFkField, recordIds) => {
   return count;
 };
 
-const findPendingStagedDeleteIds = async (table, primaryKeyField) => {
+const findPendingStagedDeleteIds = async (table, primaryKeyField, options = {}) => {
   const stagedRows = await StagingV2.findAll({
     where: {
       table,
@@ -235,6 +237,7 @@ const findPendingStagedDeleteIds = async (table, primaryKeyField) => {
       failed_commit: false,
     },
     raw: true,
+    transaction: options.transaction,
   });
 
   const deletedIds = new Set();
@@ -262,7 +265,7 @@ const findPendingStagedDeleteIds = async (table, primaryKeyField) => {
  * @param {string} recordId – PK of the record being deleted
  * @returns {{ hasReferences: boolean, references: Array<{table: string, count: number, label: string}> }}
  */
-export const checkReferences = async (table, recordId) => {
+export const checkReferences = async (table, recordId, options = {}) => {
   const definitions = REFERENCE_MAP[table];
   if (!definitions) {
     return { hasReferences: false, references: [] };
@@ -273,10 +276,10 @@ export const checkReferences = async (table, recordId) => {
   for (const def of definitions) {
     const { model, fkField, table: refTable, label, buildWhere, stagedMatch } = def;
     const where = buildWhere ? buildWhere(recordId) : { [fkField]: recordId };
-    const mainRecords = await model.findAll({ where, raw: true });
+    const mainRecords = await model.findAll({ where, raw: true, transaction: options.transaction });
     const primaryKeyAttr = model.primaryKeyAttribute;
     const primaryKeyField = getV2PrimaryKeyField(refTable) || toSnakeCase(primaryKeyAttr);
-    const pendingDeleteIds = await findPendingStagedDeleteIds(refTable, primaryKeyField);
+    const pendingDeleteIds = await findPendingStagedDeleteIds(refTable, primaryKeyField, options);
     const mainCount = mainRecords.filter((row) => {
       const rowId = row?.[primaryKeyAttr] ?? row?.[primaryKeyField];
       return !pendingDeleteIds.has(rowId);
@@ -284,8 +287,8 @@ export const checkReferences = async (table, recordId) => {
 
     const snakeFk = toSnakeCase(fkField);
     const stagedCount = stagedMatch
-      ? await countStagedReferences(refTable, snakeFk, recordId, (record) => stagedMatch(record, recordId))
-      : await countStagedReferences(refTable, snakeFk, recordId);
+      ? await countStagedReferences(refTable, snakeFk, recordId, (record) => stagedMatch(record, recordId), options)
+      : await countStagedReferences(refTable, snakeFk, recordId, null, options);
 
     const totalCount = mainCount + stagedCount;
     if (totalCount > 0) {
@@ -299,7 +302,7 @@ export const checkReferences = async (table, recordId) => {
   };
 };
 
-export const checkUnitReferencesForIds = async (unitIds) => {
+export const checkUnitReferencesForIds = async (unitIds, options = {}) => {
   const recordIds = unitIds.filter(Boolean);
   if (recordIds.length === 0) {
     return { hasReferences: false, references: [] };
@@ -312,17 +315,18 @@ export const checkUnitReferencesForIds = async (unitIds) => {
     const { model, fkField, table: refTable, label } = def;
     const primaryKeyAttr = model.primaryKeyAttribute;
     const primaryKeyField = getV2PrimaryKeyField(refTable) || toSnakeCase(primaryKeyAttr);
-    const pendingDeleteIds = await findPendingStagedDeleteIds(refTable, primaryKeyField);
+    const pendingDeleteIds = await findPendingStagedDeleteIds(refTable, primaryKeyField, options);
     const mainRecords = await model.findAll({
       where: { [fkField]: { [Op.in]: recordIds } },
       raw: true,
+      transaction: options.transaction,
     });
     const mainCount = mainRecords.filter((row) => {
       const rowId = row?.[primaryKeyAttr] ?? row?.[primaryKeyField];
       return !pendingDeleteIds.has(rowId);
     }).length;
 
-    const stagedCount = await countStagedReferencesForIds(refTable, toSnakeCase(fkField), recordIds);
+    const stagedCount = await countStagedReferencesForIds(refTable, toSnakeCase(fkField), recordIds, options);
     const totalCount = mainCount + stagedCount;
     if (totalCount > 0) {
       references.push({ table: refTable, count: totalCount, label });

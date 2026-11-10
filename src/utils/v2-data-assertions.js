@@ -211,13 +211,14 @@ export const assertStagingTableIsEmpty = async () => {
  *
  * @throws {Error} If there are pending commits (excluding transfers)
  */
-export const assertNoPendingCommitsExcludingTransfers = async () => {
+export const assertNoPendingCommitsExcludingTransfers = async (options = {}) => {
   const pendingCommits = await StagingV2.count({
     where: {
       committed: true,
       failed_commit: false,
       is_transfer: false,
     },
+    transaction: options.transaction,
   });
 
   if (pendingCommits > 0) {
@@ -252,10 +253,11 @@ export const assertNoPendingCommits = async () => {
  * @throws {Error} If no home organization is found or not subscribed
  * @returns {Object} The home organization record
  */
-export const assertV2HomeOrgExists = async () => {
+export const assertV2HomeOrgExists = async (options = {}) => {
   const homeOrg = await OrganizationsV2.findOne({
     where: { is_home: true },
     raw: true,
+    transaction: options.transaction,
   });
 
   if (!homeOrg) {
