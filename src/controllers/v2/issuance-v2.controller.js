@@ -1,10 +1,10 @@
 'use strict';
 
+import { deleteConfirmation } from './delete-confirmation.controller.js';
+
 import _ from 'lodash';
 import { v4 as uuidv4 } from 'uuid';
 import { Sequelize } from 'sequelize';
-import { sequelizeV2 } from '../../database/v2/index.js';
-import { processingSyncRegistriesTransactionMutexV2 } from '../../utils/v2-mutex-utils.js';
 
 import { StagingV2, IssuanceV2, VerificationV2, ProjectMethodologyV2, ProjectV2, LocationV2 } from '../../models/v2/index.js';
 
@@ -23,7 +23,6 @@ import { resolveOrgUid } from '../../utils/owner-utils.js';
 
 import { loggerV2 } from '../../config/logger.js';
 import { issuanceV2Schema } from '../../validations/v2/issuance-v2.validations.js';
-import { stageIssuanceChildDeletes } from '../../utils/v2-cascade-delete.js';
 
 export const create = async (req, res) => {
   try {
@@ -326,57 +325,4 @@ export const update = async (req, res) => {
   }
 };
 
-export const destroy = async (req, res) => {
-  try {
-    await assertV2IfReadOnlyMode();
-    await assertV2HomeOrgExists();
-    await assertNoPendingCommitsExcludingTransfers();
-
-    const { id } = req.params;
-
-    // Verify record exists
-    const existingRecord = await IssuanceV2.findByPk(id);
-    if (!existingRecord) {
-      return res.status(404).json({
-        message: 'Issuance not found',
-        success: false,
-      });
-    }
-
-    const releaseTransactionMutex =
-      await processingSyncRegistriesTransactionMutexV2.acquire();
-    let stagedChildDeletes;
-    try {
-      stagedChildDeletes = await sequelizeV2.transaction(async (transaction) => {
-        const childDeleteCount = await stageIssuanceChildDeletes(id, { transaction });
-
-        await StagingV2.create({
-          uuid: uuidv4(),
-          table: 'issuance',
-          action: 'DELETE',
-          data: JSON.stringify([{ cad_trust_issuance_id: id }]),
-          committed: false,
-          failed_commit: false,
-          is_transfer: false,
-        }, { transaction });
-
-        return childDeleteCount;
-      });
-    } finally {
-      releaseTransactionMutex();
-    }
-
-    res.json({
-      message: 'Issuance delete staged successfully',
-      stagedChildDeletes,
-      success: true,
-    });
-  } catch (err) {
-    loggerV2.error('[v2]: Error deleting issuance:', err);
-    res.status(400).json({
-      message: 'Error deleting issuance',
-      error: err.message,
-      success: false,
-    });
-  }
-};
+export const destroy = deleteConfirmation('issuance');

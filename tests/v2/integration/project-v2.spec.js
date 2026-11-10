@@ -1183,8 +1183,10 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         cadTrustUnitId: unit.cadTrustUnitId,
       });
 
+      const preview = await supertest(app).get(`/v2/project/${project.cadTrustProjectId}/delete-preview`).expect(200);
       const response = await supertest(app)
         .delete(`/v2/project/${project.cadTrustProjectId}`)
+        .set('X-Deletion-Confirmation', preview.body.confirmationToken)
         .expect(200);
 
       expect(response.body.success).to.be.true;
@@ -1250,7 +1252,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       expect(deleteRows[0].table).to.equal('project');
     });
 
-    it('should create duplicate staging rows on double delete before commit', async function () {
+    it('should replay confirmed cascade deletion before commit', async function () {
       await waitForV2DataLayerSync();
       const homeOrgId = await getV2HomeOrgId();
       const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
@@ -1266,22 +1268,26 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         cadTrustProjectId: project.cadTrustProjectId,
       });
 
+      const preview = await supertest(app).get(`/v2/project/${project.cadTrustProjectId}/delete-preview`).expect(200);
       const res1 = await supertest(app)
         .delete(`/v2/project/${project.cadTrustProjectId}`)
+        .set('X-Deletion-Confirmation', preview.body.confirmationToken)
         .expect(200);
       expect(res1.body.success).to.be.true;
       expect(res1.body.stagedChildDeletes).to.equal(1);
 
       const res2 = await supertest(app)
         .delete(`/v2/project/${project.cadTrustProjectId}`)
+        .set('X-Deletion-Confirmation', preview.body.confirmationToken)
         .expect(200);
       expect(res2.body.success).to.be.true;
       expect(res2.body.stagedChildDeletes).to.equal(1);
+      expect(res2.body.replayed).to.equal(true);
 
       const deleteRows = await StagingV2.findAll({
         where: { action: 'DELETE', table: 'project' },
       });
-      expect(deleteRows).to.have.lengthOf(2);
+      expect(deleteRows).to.have.lengthOf(1);
     });
 
     it('should cascade multiple units per issuance', async function () {
@@ -1331,8 +1337,10 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         cadTrustLabelId: label.cadTrustLabelId,
       });
 
+      const preview = await supertest(app).get(`/v2/project/${chain.project.cadTrustProjectId}/delete-preview`).expect(200);
       const response = await supertest(app)
         .delete(`/v2/project/${chain.project.cadTrustProjectId}`)
+        .set('X-Deletion-Confirmation', preview.body.confirmationToken)
         .expect(200);
 
       expect(response.body.success).to.be.true;

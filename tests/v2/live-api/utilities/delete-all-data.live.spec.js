@@ -1,3 +1,4 @@
+import { requestDeleteWithPreview, DELETE_DEPENDENCY_BATCHES } from '../helpers/delete-confirmation.js';
 import { expect } from 'chai';
 import {
   getLiveApiRequest,
@@ -8,7 +9,7 @@ import {
 } from '../helpers/live-api-helpers.js';
 
 describe('Delete All Test Data', function () {
-  this.timeout(600000); // 10 minute timeout
+  this.timeout(1800000); // 30 minutes for six delete commit/sync batches
 
   let request;
   let homeOrgId;
@@ -255,19 +256,28 @@ describe('Delete All Test Data', function () {
     let errorCount = 0;
     const errors = [];
 
-    for (const { resourceName, resource, id } of allRecordsToDelete) {
-      try {
-        const deleteEndpoint = resource.deleteEndpoint(id);
-        const deleteResponse = await request.delete(deleteEndpoint).expect(200);
+    for (const batch of DELETE_DEPENDENCY_BATCHES) {
+      const members = allRecordsToDelete.filter(record => batch.includes(record.resourceName));
+      for (const { resourceName, resource, id } of members) {
+        try {
+          const deleteEndpoint = resource.deleteEndpoint(id);
+          const deleteResponse = await requestDeleteWithPreview(request, deleteEndpoint);
+          expect(deleteResponse.status).to.equal(200);
 
-        expect(deleteResponse.body.success).to.be.true;
-        deleteCount++;
-      } catch (error) {
-        errorCount++;
-        const errorMsg = `Failed to delete ${resourceName}/${JSON.stringify(id)}: ${error.message}`;
-        errors.push(errorMsg);
-        console.error(`❌ ${errorMsg}`);
-        // Continue with other deletes even if one fails
+          expect(deleteResponse.body.success).to.be.true;
+          deleteCount++;
+        } catch (error) {
+          errorCount++;
+          const errorMsg = `Failed to delete ${resourceName}/${JSON.stringify(id)}: ${error.message}`;
+          errors.push(errorMsg);
+          console.error(`❌ ${errorMsg}`);
+          // Continue with other deletes even if one fails
+        }
+      }
+
+      if (members.length > 0) {
+        await commitStagedRecords(request, []);
+        await waitForStagingEmpty(request);
       }
     }
 
@@ -277,14 +287,6 @@ describe('Delete All Test Data', function () {
       console.error('\nDelete errors:');
       errors.forEach(err => console.error(`  - ${err}`));
     }
-
-    // Step 4: Commit all staged deletes in one batch
-    console.log('\nCommitting all staged deletes...');
-    await commitStagedRecords(request, []); // Empty array means commit all uncommitted records
-
-    // Step 5: Wait for staging table to be empty (truncated)
-    // This indicates the commit has been processed and data has synced
-    await waitForStagingEmpty(request);
 
     // Step 6: Verify all records are deleted
     console.log('\nVerifying all records are deleted...');

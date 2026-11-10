@@ -1,10 +1,10 @@
 'use strict';
 
+import { deleteConfirmation } from './delete-confirmation.controller.js';
+
 import _ from 'lodash';
 import { v4 as uuidv4 } from 'uuid';
 import { Sequelize } from 'sequelize';
-import { sequelizeV2 } from '../../database/v2/index.js';
-import { processingSyncRegistriesTransactionMutexV2 } from '../../utils/v2-mutex-utils.js';
 
 import { StagingV2, ProjectV2, ProgramV2, OrganizationsV2, LocationV2, EstimationV2, RatingV2, CoBenefitV2 } from '../../models/v2/index.js';
 
@@ -35,13 +35,6 @@ import { loggerV2 } from '../../config/logger.js';
 import { projectV2Schema } from '../../validations/v2/project-v2.validations.js';
 import { formatModelAssociationName } from '../../utils/model-utils.js';
 import { resolveOrgUid } from '../../utils/owner-utils.js';
-import { getProjectCascadeUnits, stageProjectChildDeletes } from '../../utils/v2-cascade-delete.js';
-import { checkReferences, buildReferenceConflictBody, checkUnitReferencesForIds } from '../../utils/v2-reference-guards.js';
-
-const checkProjectCascadeUnitReferences = async (projectId) => {
-  const units = await getProjectCascadeUnits(projectId);
-  return checkUnitReferencesForIds(units.map((unit) => unit.cadTrustUnitId));
-};
 
 export const create = async (req, res) => {
   try {
@@ -808,71 +801,7 @@ export const update = async (req, res) => {
   }
 };
 
-export const destroy = async (req, res) => {
-  try {
-    await assertV2IfReadOnlyMode();
-    await assertV2HomeOrgExists();
-    await assertNoPendingCommitsExcludingTransfers();
-
-    const { id } = req.params;
-
-    // Verify record exists
-    const existingRecord = await ProjectV2.findByPk(id);
-    if (!existingRecord) {
-      return res.status(404).json({
-        message: 'Project not found',
-        success: false,
-      });
-    }
-
-    const refResult = await checkReferences('project', id);
-    if (refResult.hasReferences) {
-      return res.status(409).json(buildReferenceConflictBody('project', refResult));
-    }
-
-    const cascadeRefResult = await checkProjectCascadeUnitReferences(id);
-    if (cascadeRefResult.hasReferences) {
-      return res.status(409).json(buildReferenceConflictBody('project', cascadeRefResult));
-    }
-
-    const releaseTransactionMutex =
-      await processingSyncRegistriesTransactionMutexV2.acquire();
-    let stagedChildDeletes;
-    try {
-      stagedChildDeletes = await sequelizeV2.transaction(async (transaction) => {
-        const childDeleteCount = await stageProjectChildDeletes(id, { transaction });
-
-        // Stage the delete
-        await StagingV2.create({
-          uuid: uuidv4(),
-          table: 'project',
-          action: 'DELETE',
-          data: JSON.stringify([{ cad_trust_project_id: id }]), // Use UUID string directly
-          committed: false,
-          failed_commit: false,
-          is_transfer: false,
-        }, { transaction });
-
-        return childDeleteCount;
-      });
-    } finally {
-      releaseTransactionMutex();
-    }
-
-    res.json({
-      message: 'Project delete staged successfully',
-      stagedChildDeletes,
-      success: true,
-    });
-  } catch (err) {
-    loggerV2.error('[v2]: Error deleting project:', err);
-    res.status(400).json({
-      message: 'Error deleting project',
-      error: err.message,
-      success: false,
-    });
-  }
-};
+export const destroy = deleteConfirmation('project');
 
 /**
  * Transfer a project between organizations

@@ -33,12 +33,21 @@ For the V2 API, update and delete requests can only stage mutations for records 
 
 ## V2 Deletion Previews
 
-V2 adds read-only `GET /v2/{project,verification,issuance,unit}/:id/delete-preview`
-endpoints returning the exact affected IDs/counts and a short-lived token. See
-[deletion previews in the V2 guide](/docs/cadt_rpc_api_v2.md#deletion-previews) for
-eligibility, complete-response/cache limits and restart/expiry behavior. These
-endpoints are additive: DELETE confirmation enforcement and replay handling are
-not active yet; existing V1 and V2 DELETE behavior remains unchanged.
+V2 provides read-only `GET /v2/{project,verification,issuance,unit}/:id/delete-preview`
+endpoints returning every affected ID/count and a 10-minute token. When a root
+currently has committed descendants, its DELETE requires that token in
+`X-Deletion-Confirmation`; otherwise it returns 409 with `previewRoute` and stages
+nothing. Zero-child no-token deletes, the other 17 V2 record DELETEs and all V1
+DELETEs retain their existing behavior.
+
+See [deletion previews in the V2 guide](/docs/cadt_rpc_api_v2.md#deletion-previews)
+for eligibility, bounded cache/response sizes, exact-plan validation, errors and
+examples. Successful retries return the original result with `replayed: true`
+without restoring caller-edited/removed/committed staging. Normal staging edits,
+removal and selective commits remain available without approval parameters.
+Tokens and receipts expire at the original deadline and are lost on restart;
+a lost response across restart does not provide exactly-once execution. Inspect
+staging and resolve overlaps before requesting a fresh preview.
 
 ## System endpoints
 

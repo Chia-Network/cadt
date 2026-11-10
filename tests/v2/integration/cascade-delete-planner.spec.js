@@ -56,8 +56,12 @@ describe('CAR-229 cascade membership', function () {
     it(`DELETE ${table} stages exactly its root and descendants, preserving shared records and siblings`, async function () {
       const expected = fixture.expected[table];
       const before = await dataSnapshot();
+      const preview = await supertest(app)
+        .get(`/v2/${table}/${expected[0].id}/delete-preview`)
+        .expect(200);
       const response = await supertest(app)
         .delete(`/v2/${table}/${expected[0].id}`)
+        .set('X-Deletion-Confirmation', preview.body.confirmationToken)
         .expect(200);
       expect(response.body.success).to.equal(true);
       const rows = await StagingV2.findAll();
@@ -199,8 +203,12 @@ describe('CAR-229 cascade membership', function () {
           throw error;
         });
         try {
+          const preview = await supertest(app)
+            .get(`/v2/${table}/${expected[0].id}/delete-preview`)
+            .expect(200);
           const response = await supertest(app)
             .delete(`/v2/${table}/${expected[0].id}`)
+            .set('X-Deletion-Confirmation', preview.body.confirmationToken)
             .expect(400);
           expect(response.body.success).to.equal(false);
           expect(response.body.error).to.equal(error.message);

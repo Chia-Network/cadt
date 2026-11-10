@@ -44,12 +44,12 @@ The following additive, read-only endpoints preview the exact committed cascade:
 - `GET /v2/issuance/:id/delete-preview`
 - `GET /v2/unit/:id/delete-preview`
 
-**DELETE confirmation enforcement is not active in this increment.** Existing
-DELETE requests continue to stage deletions as before, with or without an
-`X-Deletion-Confirmation` header. The preview token establishes the foundation
-for a later confirmation workflow; token consumption, claims and replay receipts
-are not yet exposed. `confirmationRequired` describes whether the reviewed set
-has descendants, rather than changing current DELETE behavior.
+Project, verification, issuance and unit DELETEs require acknowledgement when
+**current committed children** would also be deleted. Review the complete preview,
+then send its token in `X-Deletion-Confirmation` on the corresponding DELETE.
+A no-token cascade returns 409 and stages nothing. Zero-child DELETEs without a
+token and the other 17 record DELETE endpoints retain their existing behavior.
+Supplying any token opts into validation, even when the root now has no children.
 
 No pagination parameters are needed. Include the usual `x-api-key` header when
 configured. Existing network/Data Layer readiness gates still apply. Preview
@@ -94,8 +94,8 @@ semantic values but excluding volatile local timestamps. They do not reserve or
 freeze records. Supported deployments guarantee one application process. Tokens
 are process-local and become unknown after restart; request a new preview then.
 The cache admits at most **1,024 tokens** and **1 MiB of serialized retained token
-context plus token strings**. Expired entries are reclaimed on admission (and an
-expired token is removed on lookup). Valid entries are not evicted to admit new
+context, token strings and completion receipts**. Expired entries are reclaimed
+on admission (and an expired token is removed on lookup). Valid entries are not evicted to admit new
 ones. No complete graph is retained in the cache.
 
 A complete response is limited to **10,000 records and 1 MiB of JSON**, including
@@ -118,10 +118,65 @@ Errors use `success: false`, a descriptive `error`, and a `code` where applicabl
 - 400: existing home-organization, pending-commit or ownership eligibility error.
 - 403: existing read-only response.
 
-The token store also distinguishes unknown/restart, expired and wrong
-root/type/org/registry tokens for the later confirmation increment. Current
-DELETE endpoints do not validate or reject tokens yet. API authentication and
-readiness errors retain their existing responses.
+### Confirming and retrying a deletion
+
+```shell
+curl --request DELETE http://localhost:31310/v2/unit/<unit-id> \
+  --header 'X-Deletion-Confirmation: <opaque-token>'
+```
+
+Normal authentication, readiness, write mode, home organization/registry binding,
+ownership, reference and pending-commit checks still apply. The server acquires
+its registry synchronization lock, validates the token after any wait, and
+compares the exact current plan in one SQLite write transaction. It stages that
+compared member set atomically; failures leave no partial parent/child deletes.
+Relevant imports, reparenting, failed/transfer work and overlapping staged deletes
+are rechecked in that transaction. Commit or remove conflicting work before a
+fresh preview. Batch clients deleting descendants and then ancestors must commit
+and sync the descendant work before previewing an ancestor.
+
+Successful responses preserve the existing fields:
+
+```json
+{
+  "message": "Unit delete staged successfully",
+  "stagedChildDeletes": 1,
+  "success": true
+}
+```
+
+Repeat the same DELETE and token after a lost response. Within the original
+10-minute token lifetime, a completed receipt returns the original success with
+`"replayed": true`, without staging again. The receipt is checked after normal
+authentication and home-org/registry binding, before current root existence,
+pending commits or staging overlap checks. It therefore works after the caller
+edits/removes staging, selectively commits it, or sync removes the original root.
+It never restores changed or removed rows. Executing tokens remain pinned until
+the transaction finishes; receipt capacity is reserved before staging writes.
+
+Use the normal staging endpoints afterward: editing, removing, retrying and
+selectively committing rows require no approval flag or token. Confirmation
+acknowledges staging; it does not constrain subsequent commit selection.
+
+Additional confirmation errors (all stage nothing):
+
+- 409 `DELETE_CONFIRMATION_REQUIRED`: current children require confirmation;
+  `previewRoute` identifies the GET endpoint to review.
+- 409 `DELETE_PREVIEW_CHANGED`: exact membership or semantic values changed,
+  including a first/last-child transition or disappearance of the reviewed root.
+- 409 `DELETE_PREVIEW_UNKNOWN`: unknown token or process restart; request a preview.
+- 409 `DELETE_PREVIEW_EXPIRED`: the original token/receipt lifetime elapsed.
+- 409 `DELETE_PREVIEW_MISMATCH`: wrong root type/ID, home org or registry.
+- 409 `DELETE_PREVIEW_STAGING_CONFLICT`: overlapping or unsafe relevant staging.
+- 503 `DELETE_PREVIEW_CAPACITY`: token or receipt capacity is full; wait and retry.
+
+Existing not-found responses for no-token deletes, reference-blocking responses,
+read-only errors and other authentication/readiness errors remain effective.
+Tokens and receipts are process-local: restart invalidates both. A lost response
+followed by restart cannot promise exactly-once execution. Inspect staging before
+retrying with a new preview; existing overlapping staged deletes block a new
+confirmation. Multiple independent application processes require shared token and
+receipt coordination and are outside this supported deployment contract.
 
 ## System endpoints
 

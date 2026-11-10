@@ -66,7 +66,7 @@ export const assertNoDeletePreviewStagingConflicts = async (plan, options) => {
     } catch {
       throw deletePreviewError(
         'DELETE_PREVIEW_STAGING_CONFLICT',
-        `Cannot safely preview deletion while ${row.table} staging contains malformed data. Resolve that staged row and request a new preview.`,
+        `Cannot safely preview deletion while ${row.table} staging row ${row.uuid} contains malformed data. Resolve that staged row and request a new preview.`,
       );
     }
     for (const record of records) {
@@ -78,7 +78,7 @@ export const assertNoDeletePreviewStagingConflicts = async (plan, options) => {
         ) {
           throw deletePreviewError(
             'DELETE_PREVIEW_STAGING_CONFLICT',
-            `Pending ${row.table} staging overlaps this deletion. Commit or remove the conflicting work and request a new preview.`,
+            `Pending ${row.table} staging row ${row.uuid} overlaps this deletion. Commit or remove the conflicting work and request a new preview.`,
           );
         }
       }

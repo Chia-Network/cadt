@@ -7,8 +7,8 @@ cd "$REPO_ROOT"
 
 MODE="${1:-all}"
 case "$MODE" in
-  all|redaction|delete|planner|preview|guards|regression|xls|crud|v1) ;;
-  *) echo "Usage: bash scripts/test-car-229.sh [all|redaction|delete|planner|preview|guards|regression|xls|crud|v1]" >&2; exit 2 ;;
+  all|redaction|delete|planner|preview|confirmation|guards|regression|xls|crud|v1|v2) ;;
+  *) echo "Usage: bash scripts/test-car-229.sh [all|redaction|delete|planner|preview|confirmation|guards|regression|xls|crud|v1|v2]" >&2; exit 2 ;;
 esac
 
 node -e 'if (Number(process.versions.node.split(".")[0]) < 24) process.exit(1)' || {
@@ -28,9 +28,13 @@ mkdir -p "$CHIA_ROOT/cadt/v1/logs" "$CHIA_ROOT/cadt/v2/logs"
 cp tests/v2/config/test-config.yaml "$CHIA_ROOT/cadt/config.yaml"
 
 run_specs() {
+  local selection=()
+  if [[ -n "${CAR229_TEST_GREP:-}" ]]; then
+    selection+=(--grep "$CAR229_TEST_GREP")
+  fi
   bash tests/run-tests.sh ./node_modules/.bin/mocha \
     --loader node_modules/extensionless/src/register.js \
-    --reporter dot --exit --timeout 300000 --fail-zero "$@"
+    --reporter "${CAR229_TEST_REPORTER:-dot}" --exit --timeout 300000 --fail-zero "$@" "${selection[@]}"
 }
 
 # Keep V1 server imports in a separate process from the V2 suites.
@@ -39,6 +43,9 @@ if [[ "$MODE" == all || "$MODE" == redaction ]]; then
 fi
 if [[ "$MODE" == all || "$MODE" == preview ]]; then
   run_specs tests/v2/integration/delete-preview*.spec.js
+fi
+if [[ "$MODE" == all || "$MODE" == confirmation ]]; then
+  run_specs tests/v2/integration/delete-confirmation*.spec.js tests/v2/integration/delete-preview-token.spec.js
 fi
 if [[ "$MODE" == all || "$MODE" == planner ]]; then
   run_specs tests/v2/integration/cascade-delete-planner.spec.js
@@ -63,6 +70,9 @@ fi
 
 if [[ "$MODE" == crud ]]; then
   run_specs tests/v2/integration/{project,verification,issuance,unit}-v2.spec.js
+fi
+if [[ "$MODE" == v2 ]]; then
+  npm run test:v2
 fi
 if [[ "$MODE" == v1 ]]; then
   run_specs tests/integration/{project,unit}.spec.js
