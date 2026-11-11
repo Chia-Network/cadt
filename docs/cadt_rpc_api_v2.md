@@ -89,9 +89,12 @@ staging notifications. Abandoning a preview needs no cancellation. The response
 has `Cache-Control: no-store`; do not put tokens in URLs or logs.
 
 Tokens expire after **10 minutes** and bind the root type/ID, home organization,
-registry and exact graph fingerprint, including relationship/ownership and
-semantic values but excluding volatile local timestamps. They do not reserve or
-freeze records. Supported deployments guarantee one application process. Tokens
+registry and exact graph fingerprint. The fingerprint includes relationship,
+ownership and other semantic values on the affected records, excluding volatile
+local timestamps. Ownership inherited through records outside the affected graph
+is still checked at confirmation/write time; a change to such an external owner
+need not change the fingerprint. Tokens do not reserve or freeze records.
+Supported deployments guarantee one application process. Tokens
 are process-local and become unknown after restart; request a new preview then.
 The cache admits at most **1,024 tokens** and **1 MiB of serialized retained token
 context, token strings and completion receipts**. Expired entries are reclaimed
@@ -2877,10 +2880,13 @@ After importing, use the [staging endpoints](#staging) to review and commit the 
 
 **Note**: The ID in the URL path is the `cadTrustProjectId`.
 
+When this record has committed descendants, first review its [deletion previews](#deletion-previews) and send the returned token in `X-Deletion-Confirmation`, as shown below. A record with no committed descendants can still be deleted without a token.
+
 Request
 ```shell
 curl --location -g --request DELETE 'http://localhost:31310/v2/project/693d37f6-318e-4d8b-9e14-3d2328b569be' \
---header 'Content-Type: application/json'
+--header 'Content-Type: application/json' \
+--header 'X-Deletion-Confirmation: <opaque-token>'
 ```
 
 Response
@@ -3257,12 +3263,15 @@ Response
 
 **Note**: The ID in the URL path is the `cadTrustVerificationId`.
 
-**Cascade delete**: Deleting a verification automatically stages DELETE entries for all child issuances and their units. The `stagedChildDeletes` field in the response reports the total number of child rows staged.
+**Cascade delete**: After confirmation, deleting a verification stages DELETE entries for all child issuances, their units and unit labels. The `stagedChildDeletes` field in the response reports the total number of child rows staged.
+
+When this record has committed descendants, first review its [deletion previews](#deletion-previews) and send the returned token in `X-Deletion-Confirmation`, as shown below. A record with no committed descendants can still be deleted without a token.
 
 Request
 ```shell
 curl --location --request DELETE 'localhost:31310/v2/verification/b2c3d4e5-f6a7-8901-bcde-f23456789012' \
---header 'Content-Type: application/json'
+--header 'Content-Type: application/json' \
+--header 'X-Deletion-Confirmation: <opaque-token>'
 ```
 
 Response
@@ -3619,12 +3628,15 @@ Response
 
 **Note**: The ID in the URL path is the `cadTrustIssuanceId`.
 
-**Cascade delete**: Deleting an issuance automatically stages DELETE entries for all child units and their unit labels. The `stagedChildDeletes` field in the response reports the total number of child rows staged.
+**Cascade delete**: After confirmation, deleting an issuance stages DELETE entries for all child units and their unit labels. The `stagedChildDeletes` field in the response reports the total number of child rows staged.
+
+When this record has committed descendants, first review its [deletion previews](#deletion-previews) and send the returned token in `X-Deletion-Confirmation`, as shown below. A record with no committed descendants can still be deleted without a token.
 
 Request
 ```shell
 curl --location --request DELETE 'localhost:31310/v2/issuance/d9f58b08-af25-461c-88eb-403bb02b135e' \
---header 'Content-Type: application/json'
+--header 'Content-Type: application/json' \
+--header 'X-Deletion-Confirmation: <opaque-token>'
 ```
 
 Response
@@ -4212,10 +4224,13 @@ After importing, use the [staging endpoints](#staging) to review and commit the 
 
 **Note**: The ID in the URL path is the `cadTrustUnitId`.
 
+When this record has committed descendants, first review its [deletion previews](#deletion-previews) and send the returned token in `X-Deletion-Confirmation`, as shown below. A record with no committed descendants can still be deleted without a token.
+
 Request
 ```shell
 curl --location -g --request DELETE 'localhost:31310/v2/unit/104b082c-b112-4c39-9249-a52c6c53282b' \
-     --header 'Content-Type: application/json'
+     --header 'Content-Type: application/json' \
+     --header 'X-Deletion-Confirmation: <opaque-token>'
 ```
 
 Response
