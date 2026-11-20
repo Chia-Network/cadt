@@ -48,6 +48,10 @@ to their intersection and combine with existing organization/creator filters.
 See the [V2 unit-label guide](/docs/cadt_rpc_api_v2.md#unit-label) for parameters
 and examples.
 
+## V2 Project IDs in Read Responses
+
+Default JSON list/detail responses for `/v2/unit` and `/v2/issuance` include response-only `cadTrustProjectId`. Resolution follows unit → issuance → project-methodology → committed project (starting at issuance for issuance reads). A missing link returns `null`; verification is never a fallback. Unit lists support `columns=cadTrustProjectId`, alone or with other fields, without exposing internal lookup IDs. Other explicit scalar projections omit the field, and association-only selections retain existing behavior. POST/PUT reject this field; storage, staging, XLS exports and V1 responses are unchanged. Existing V2 filters and verification-based project search retain their behavior. See the [V2 unit guide](/docs/cadt_rpc_api_v2.md#unit) and [issuance guide](/docs/cadt_rpc_api_v2.md#issuance).
+
 ## V2 Deletion Previews
 
 V2 provides read-only `GET /v2/{project,verification,issuance,unit}/:id/delete-preview`

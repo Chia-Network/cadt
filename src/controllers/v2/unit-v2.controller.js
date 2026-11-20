@@ -1,6 +1,7 @@
 'use strict';
 
 import { deleteConfirmation } from './delete-confirmation.controller.js';
+import { unitResponsesWithProjectId } from '../../utils/v2-response-project-id.js';
 
 import _ from 'lodash';
 import { v4 as uuidv4 } from 'uuid';
@@ -370,7 +371,7 @@ export const findAll = async (req, res) => {
       const validColumns = columnsArray.filter((col) =>
         defaultColumns
           .concat(includes.map(formatModelAssociationName))
-          .concat(validAssociationNames)
+          .concat(validAssociationNames, xls ? [] : ['cadTrustProjectId'])
           .includes(col),
       );
 
@@ -382,6 +383,9 @@ export const findAll = async (req, res) => {
       }
     }
     // When no columns specified, normalizedColumns stays undefined - Sequelize will include all fields
+
+    const includeProjectId =
+      !normalizedColumns || normalizedColumns.includes('cadTrustProjectId');
 
     // Handle pagination
     let pagination = paginationParams(page, limit);
@@ -443,6 +447,14 @@ export const findAll = async (req, res) => {
         ftsColumns = validColumns.length > 0 ? validColumns : ['cadTrustUnitId'];
       }
 
+      // FTS supplies IDs to the final page query, including for computed-only projections.
+      if (normalizedColumns?.includes('cadTrustProjectId')) {
+        ftsColumns = [...new Set([
+          ...ftsColumns.filter(col => col !== 'cadTrustProjectId'),
+          'cadTrustUnitId',
+        ])];
+      }
+
       // Call FTS method (use pagination without XLS override for FTS)
       const ftsPagination = paginationParams(page, limit);
       const ftsResults = await UnitV2.fts(
@@ -488,16 +500,27 @@ export const findAll = async (req, res) => {
     // Build query with column selection (no includes - only show data from this table)
     // Consistent with other V2 controllers: if no columns specified, don't set attributes
     let queryAttributes = undefined;
+    let hideIssuanceLookupId = false;
 
     if (normalizedColumns) {
       // Filter out association names - we don't support joins anymore
       const associationNames = ['issuance', 'IssuanceV2', 'unitLabels', 'UnitLabelV2'];
-      const regularColumns = normalizedColumns.filter(col => !associationNames.includes(col));
+      const regularColumns = normalizedColumns.filter(col =>
+        !associationNames.includes(col) && col !== 'cadTrustProjectId');
 
       // Use columnsToInclude helper only for regular columns
       if (regularColumns.length > 0) {
         const columnQuery = columnsToInclude(regularColumns, []);
         queryAttributes = columnQuery.attributes;
+      }
+      const associationOnlyColumns =
+        regularColumns.length === 0 &&
+        normalizedColumns.some(col => associationNames.includes(col));
+      if (includeProjectId && !xls && !associationOnlyColumns) {
+        queryAttributes = [...new Set([
+          ...(queryAttributes || []), 'cadTrustIssuanceId',
+        ])];
+        hideIssuanceLookupId = !normalizedColumns.includes('cadTrustIssuanceId');
       }
     }
 
@@ -615,7 +638,13 @@ export const findAll = async (req, res) => {
       );
     }
 
-    res.json(response);
+    if (includeProjectId) {
+      results.rows = await unitResponsesWithProjectId(results.rows);
+      if (hideIssuanceLookupId) {
+        for (const row of results.rows) delete row.cadTrustIssuanceId;
+      }
+    }
+    res.json(optionallyPaginatedResponse(results, page, limit));
   } catch (err) {
     loggerV2.error('[v2]: Error retrieving units:', err);
     res.status(400).json({
@@ -638,7 +667,8 @@ export const findOne = async (req, res) => {
       });
     }
 
-    res.json(record);
+    const [response] = await unitResponsesWithProjectId([record]);
+    res.json(response);
   } catch (err) {
     loggerV2.error('[v2]: Error retrieving unit:', err);
     res.status(400).json({
