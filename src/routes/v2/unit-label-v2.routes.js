@@ -17,6 +17,8 @@ const router = express.Router();
 
 const unitLabelGetSchema = Joi.object({
   ...paginationSchema,
+  cadTrustUnitId: Joi.string().uuid().optional(),
+  cadTrustLabelId: Joi.string().uuid().optional(),
   orgUid: Joi.string().optional(),
   createdByOrgUid: Joi.string().optional(),
 });
