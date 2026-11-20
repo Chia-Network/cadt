@@ -497,11 +497,15 @@ export const findAll = async (req, res) => {
       }
     }
 
-    // Computed-only projections still need the project key for bulk lookup.
-    // Remove that internal key from JSON if the caller did not request it.
-    const omitLookupProjectId = relatedIdColumns.length > 0 && normalizedColumns &&
-      !normalizedColumns.includes('cadTrustProjectId');
-    if (relatedIdColumns.length > 0 && normalizedColumns) {
+    // Association-only selections retain all base fields, including the key.
+    // Restricted projections need a lookup key that stays out of the response.
+    const requiresProjectedLookup =
+      relatedIdColumns.length > 0 &&
+      normalizedColumns &&
+      (queryAttributes !== undefined || queryIncludes.length === 0);
+    const omitLookupProjectId =
+      requiresProjectedLookup && !normalizedColumns.includes('cadTrustProjectId');
+    if (requiresProjectedLookup) {
       queryAttributes = [...new Set([...(queryAttributes || []), 'cadTrustProjectId'])];
     }
 

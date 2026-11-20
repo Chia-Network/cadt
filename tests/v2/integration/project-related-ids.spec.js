@@ -244,6 +244,55 @@ describe('V2 Project related ID read enrichment', function () {
     );
   });
 
+  for (const columns of [
+    'program,cadTrustValidationIds',
+    ['program', 'cadTrustVerificationIds'],
+    ['ProgramV2', 'cadTrustValidationIds', 'cadTrustVerificationIds'],
+  ]) {
+    it(`preserves association-only projection for ${columns}`, async function () {
+      const baseline = await list({
+        columns: 'program',
+        projectIds: id(3),
+      }).expect(200);
+      const project = baseline.body.data[0];
+      expect(project.cadTrustProjectId).to.equal(id(3));
+      expect(project.projectName).to.equal('C Relatedforest multiple');
+      expect(project.program.cadTrustProgramId).to.equal(id(90));
+      const expectedProject = { ...project };
+      if (columns.includes('cadTrustValidationIds')) {
+        expectedProject.cadTrustValidationIds = [...validationIds].sort();
+      }
+      if (columns.includes('cadTrustVerificationIds')) {
+        expectedProject.cadTrustVerificationIds = [...verificationIds].sort();
+      }
+      const response = await list({ columns, projectIds: id(3) }).expect(200);
+      expect(response.body).to.deep.equal({
+        ...baseline.body,
+        data: [expectedProject],
+      });
+    });
+  }
+
+  it('keeps explicit base and association projections narrow with computed arrays', async function () {
+    const baseline = await list({
+      columns: 'program',
+      projectIds: id(3),
+    }).expect(200);
+    const response = await list({
+      columns:
+        'projectName,program,cadTrustValidationIds,cadTrustVerificationIds',
+      projectIds: id(3),
+    }).expect(200);
+    expect(response.body.data).to.deep.equal([
+      {
+        projectName: 'C Relatedforest multiple',
+        program: baseline.body.data[0].program,
+        cadTrustValidationIds: [...validationIds].sort(),
+        cadTrustVerificationIds: [...verificationIds].sort(),
+      },
+    ]);
+  });
+
   it('preserves requested program and location associations with computed arrays', async function () {
     const columns =
       'cadTrustProjectId,program,cadTrustValidationIds,cadTrustVerificationIds';

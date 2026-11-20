@@ -2438,10 +2438,13 @@ These are computed response fields: do not send them in POST/PUT requests. They
 do not change the stored project schema or XLSX export/import columns.
 
 When `columns` is supplied, each array is included only if explicitly requested.
-For the list endpoint, base fields also follow the requested projection; the
-project ID used internally for lookup is not exposed unless requested. For the
-single-project endpoint, `columns` continues to select associations and computed
-arrays while retaining all base project fields.
+For the list endpoint, explicit base-field or computed-only selections restrict
+base fields to the requested projection; an internal lookup project ID is not
+exposed unless requested. Association-only selections retain all base project
+fields, including `cadTrustProjectId`, even when computed arrays are added (for
+example, `columns=program,cadTrustValidationIds`). For the single-project endpoint,
+`columns` continues to select associations and computed arrays while retaining
+all base project fields.
 
 For example, `GET /v2/project?page=1&limit=10&columns=projectName,cadTrustValidationIds`
 can return:
