@@ -208,7 +208,8 @@ export const getProjectMethodologyV2 = async (req, res) => {
 
 export const getAllProjectMethodologiesV2 = async (req, res) => {
   try {
-    const { page, limit, orgUid, createdByOrgUid } = req.query;
+    const { page, limit, orgUid, createdByOrgUid, cadTrustProjectId } =
+      req.query;
     const pagination = paginationParams(page, limit);
     const resolvedOrgUid = await resolveOrgUid(orgUid);
     const resolvedCreatedByOrgUid = await resolveOrgUid(createdByOrgUid);
@@ -222,6 +223,9 @@ export const getAllProjectMethodologiesV2 = async (req, res) => {
         where: { orgUid: resolvedOrgUid },
         required: true,
       }];
+    }
+    if (cadTrustProjectId) {
+      queryOptions.where = { cadTrustProjectId };
     }
     if (resolvedCreatedByOrgUid) {
       queryOptions.where = { ...queryOptions.where, createdByOrgUid: resolvedCreatedByOrgUid };

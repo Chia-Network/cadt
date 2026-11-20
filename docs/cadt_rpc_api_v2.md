@@ -2924,11 +2924,21 @@ Query string options:
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
 | createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
+| cadTrustProjectId | UUID | Optional exact parent project filter; combined with organization and creator filters |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
 <a id="validation-get-examples"></a>
 ### GET Examples
+
+Filter by project (keep `page` and `limit`):
+
+```shell
+curl --location --request GET 'localhost:31310/v2/validation?page=1&limit=10&cadTrustProjectId=5acac704-25ef-4ea1-ad0a-388290509cf7'
+```
+
+Invalid project UUIDs return `400`. A valid UUID with no matching records returns
+`data: []` and `pageCount: 0`. Pagination counts only the matching records.
 
 #### List all validations
 
@@ -3117,11 +3127,21 @@ Query string options:
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
 | createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
+| cadTrustProjectId | UUID | Optional exact parent project filter; combined with organization and creator filters |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
 <a id="verification-get-examples"></a>
 ### GET Examples
+
+Filter by project (keep `page` and `limit`):
+
+```shell
+curl --location --request GET 'localhost:31310/v2/verification?page=1&limit=10&cadTrustProjectId=5acac704-25ef-4ea1-ad0a-388290509cf7'
+```
+
+Invalid project UUIDs return `400`. A valid UUID with no matching records returns
+`data: []` and `pageCount: 0`. Pagination counts only the matching records.
 
 #### List all verifications
 
@@ -4753,11 +4773,21 @@ Query string options:
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
 | createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
+| cadTrustProjectId | UUID | Optional exact parent project filter; combined with organization and creator filters |
 | page | Number | **Required**. Page number for pagination (min: 1) |
 | limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
 <a id="project-methodology-get-examples"></a>
 ### GET Examples
+
+Filter by project (keep `page` and `limit`):
+
+```shell
+curl --location --request GET 'localhost:31310/v2/project-methodology?page=1&limit=10&cadTrustProjectId=5acac704-25ef-4ea1-ad0a-388290509cf7'
+```
+
+Invalid project UUIDs return `400`. A valid UUID with no matching records returns
+`data: []` and `pageCount: 0`. Pagination counts only the matching records.
 
 #### List all project-methodology relationships
 

@@ -16,6 +16,7 @@ const verificationGetSchema = Joi.object({
   ).optional(),
   orgUid: Joi.string().optional(),
   createdByOrgUid: Joi.string().optional(),
+  cadTrustProjectId: Joi.string().uuid().optional(),
 });
 
 // CRUD routes for verification

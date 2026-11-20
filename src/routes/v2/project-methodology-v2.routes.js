@@ -19,6 +19,7 @@ const projectMethodologyGetSchema = Joi.object({
   ...paginationSchema,
   orgUid: Joi.string().optional(),
   createdByOrgUid: Joi.string().optional(),
+  cadTrustProjectId: Joi.string().uuid().optional(),
 });
 
 // Project-Methodology CRUD routes

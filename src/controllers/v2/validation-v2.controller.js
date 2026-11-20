@@ -135,7 +135,8 @@ export const create = async (req, res) => {
 
 export const findAll = async (req, res) => {
   try {
-    const { page, limit, columns, orgUid, createdByOrgUid } = req.query;
+    const { page, limit, columns, orgUid, createdByOrgUid, cadTrustProjectId } =
+      req.query;
     const pagination = paginationParams(page, limit);
     const resolvedOrgUid = await resolveOrgUid(orgUid);
     const resolvedCreatedByOrgUid = await resolveOrgUid(createdByOrgUid);
@@ -158,6 +159,9 @@ export const findAll = async (req, res) => {
     }
 
     const whereClause = {};
+    if (cadTrustProjectId) {
+      whereClause.cadTrustProjectId = cadTrustProjectId;
+    }
     if (resolvedCreatedByOrgUid) {
       whereClause.createdByOrgUid = resolvedCreatedByOrgUid;
     }

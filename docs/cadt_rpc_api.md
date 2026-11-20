@@ -27,6 +27,15 @@ The CADT RPC API is exposed by default on port 31310. This document will give ex
 
 If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to your `curl` request.
 
+## V2 Project Child Filters
+
+V2 validation, verification and project-methodology list endpoints accept an
+optional exact `cadTrustProjectId` UUID filter alongside `page` and `limit`.
+See the [V2 validation](./cadt_rpc_api_v2.md#validation),
+[verification](./cadt_rpc_api_v2.md#verification) and
+[project-methodology](./cadt_rpc_api_v2.md#project-methodology) query parameters
+and examples. V1 request behavior is unchanged.
+
 ## V2 Ownership Note
 
 For the V2 API, update and delete requests can only stage mutations for records owned by the home organization. See the V2 API guide for details on `orgUid` ownership and child-record ownership resolution.
