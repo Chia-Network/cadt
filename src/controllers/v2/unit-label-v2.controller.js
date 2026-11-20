@@ -207,12 +207,18 @@ export const getUnitLabelV2 = async (req, res) => {
 
 export const getAllUnitLabelsV2 = async (req, res) => {
   try {
-    const { page, limit, orgUid, createdByOrgUid } = req.query;
+    const { page, limit, cadTrustUnitId, cadTrustLabelId, orgUid, createdByOrgUid } = req.query;
     const pagination = paginationParams(page, limit);
     const resolvedOrgUid = await resolveOrgUid(orgUid);
     const resolvedCreatedByOrgUid = await resolveOrgUid(createdByOrgUid);
 
-    const queryOptions = { distinct: true, order: [['createdAt', 'DESC']], ...pagination };
+    const queryOptions = { where: {}, distinct: true, order: [['createdAt', 'DESC']], ...pagination };
+    if (cadTrustUnitId) {
+      queryOptions.where.cadTrustUnitId = cadTrustUnitId;
+    }
+    if (cadTrustLabelId) {
+      queryOptions.where.cadTrustLabelId = cadTrustLabelId;
+    }
     if (resolvedOrgUid) {
       queryOptions.include = [{
         model: UnitV2,
@@ -223,7 +229,7 @@ export const getAllUnitLabelsV2 = async (req, res) => {
       }];
     }
     if (resolvedCreatedByOrgUid) {
-      queryOptions.where = { ...queryOptions.where, createdByOrgUid: resolvedCreatedByOrgUid };
+      queryOptions.where.createdByOrgUid = resolvedCreatedByOrgUid;
     }
 
     const records = await UnitLabelV2.findAndCountAll(queryOptions);

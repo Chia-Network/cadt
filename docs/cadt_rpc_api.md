@@ -40,6 +40,14 @@ and examples. V1 request behavior is unchanged.
 
 For the V2 API, update and delete requests can only stage mutations for records owned by the home organization. See the V2 API guide for details on `orgUid` ownership and child-record ownership resolution.
 
+## V2 Unit-Label Filters
+
+`GET /v2/unit-label` accepts optional UUID filters `cadTrustUnitId` and
+`cadTrustLabelId` alongside required `page` and `limit`. Both IDs narrow results
+to their intersection and combine with existing organization/creator filters.
+See the [V2 unit-label guide](/docs/cadt_rpc_api_v2.md#unit-label) for parameters
+and examples.
+
 ## V2 Deletion Previews
 
 V2 provides read-only `GET /v2/{project,verification,issuance,unit}/:id/delete-preview`

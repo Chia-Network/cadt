@@ -5455,8 +5455,19 @@ Query string options:
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
+| page | integer | Required page number, starting at 1 |
+| limit | integer | Required number of records per page (1–1000) |
+| cadTrustUnitId | UUID | Optional exact unit ID filter |
+| cadTrustLabelId | UUID | Optional exact label ID filter |
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
 | createdByOrgUid | string | Filter by creator organization UID. Use `me` for home org records |
+
+Filters apply to committed unit-label relationships. When both IDs are supplied,
+only relationships matching both are returned (AND). They also intersect with
+`orgUid` (the owning unit's organization) and `createdByOrgUid`. Invalid UUIDs
+return 400; valid IDs with no matching relationship return an empty `data` array
+and `pageCount: 0`. Pagination counts matching relationships only; creation order
+remains newest first.
 
 <a id="unit-label-get-examples"></a>
 ### GET Examples
@@ -5466,6 +5477,14 @@ Query string options:
 Request
 ```shell
 curl --location --request GET 'localhost:31310/v2/unit-label?page=1&limit=10' --header 'Content-Type: application/json'
+```
+
+Filter by unit, label, or their intersection:
+
+```shell
+curl 'localhost:31310/v2/unit-label?page=1&limit=100&cadTrustUnitId=89d7a102-a5a6-4f80-bc67-d28eba4952f3'
+curl 'localhost:31310/v2/unit-label?page=1&limit=100&cadTrustLabelId=dcacd68e-1cfb-4f06-9798-efa0aacda42c'
+curl 'localhost:31310/v2/unit-label?page=1&limit=100&cadTrustUnitId=89d7a102-a5a6-4f80-bc67-d28eba4952f3&cadTrustLabelId=dcacd68e-1cfb-4f06-9798-efa0aacda42c&orgUid=me'
 ```
 
 Response
