@@ -35,6 +35,10 @@ import { loggerV2 } from '../../config/logger.js';
 import { projectV2Schema } from '../../validations/v2/project-v2.validations.js';
 import { formatModelAssociationName } from '../../utils/model-utils.js';
 import { resolveOrgUid } from '../../utils/owner-utils.js';
+import {
+  enrichProjectRelatedIds,
+  projectRelatedIdColumns,
+} from '../../utils/v2-project-related-ids.js';
 
 export const create = async (req, res) => {
   try {
@@ -325,6 +329,7 @@ export const findAll = async (req, res) => {
         defaultColumns
           .concat(includes.map(formatModelAssociationName))
           .concat(validAssociationNames)
+          .concat(xls ? [] : projectRelatedIdColumns)
           .includes(col),
       );
 
@@ -336,6 +341,12 @@ export const findAll = async (req, res) => {
       }
     }
     // When no columns specified, normalizedColumns stays undefined - Sequelize will include all fields
+
+    const relatedIdColumns = xls
+      ? []
+      : projectRelatedIdColumns.filter(
+          (column) => !normalizedColumns || normalizedColumns.includes(column),
+        );
 
     // Handle pagination
     let pagination = paginationParams(page, limit);
@@ -422,7 +433,9 @@ export const findAll = async (req, res) => {
     if (normalizedColumns) {
       // Association names that can be included
       const associationNames = ['program', 'ProgramV2', 'locations', 'LocationV2', 'estimations', 'EstimationV2', 'ratings', 'RatingV2', 'coBenefits', 'CoBenefitV2'];
-      const regularColumns = normalizedColumns.filter(col => !associationNames.includes(col));
+      const regularColumns = normalizedColumns.filter(
+        (column) => !associationNames.includes(column) && !projectRelatedIdColumns.includes(column),
+      );
 
       // Check if associations are requested
       const requestedAssociations = normalizedColumns.filter(col => associationNames.includes(col));
@@ -482,6 +495,14 @@ export const findAll = async (req, res) => {
         const columnQuery = columnsToInclude(regularColumns, []);
         queryAttributes = columnQuery.attributes;
       }
+    }
+
+    // Computed-only projections still need the project key for bulk lookup.
+    // Remove that internal key from JSON if the caller did not request it.
+    const omitLookupProjectId = relatedIdColumns.length > 0 && normalizedColumns &&
+      !normalizedColumns.includes('cadTrustProjectId');
+    if (relatedIdColumns.length > 0 && normalizedColumns) {
+      queryAttributes = [...new Set([...(queryAttributes || []), 'cadTrustProjectId'])];
     }
 
     const query = {
@@ -584,6 +605,10 @@ export const findAll = async (req, res) => {
       ...query,
     });
 
+    results.rows = await enrichProjectRelatedIds(results.rows, relatedIdColumns);
+    if (omitLookupProjectId) {
+      for (const project of results.rows) delete project.cadTrustProjectId;
+    }
     const response = optionallyPaginatedResponse(results, page, limit);
 
     // Handle XLS export
@@ -610,11 +635,14 @@ export const findOne = async (req, res) => {
   try {
     const { id } = req.params;
     const { columns } = req.query;
+    const selectedColumns = columns
+      ? (Array.isArray(columns) ? columns : columns.split(',').map((column) => column.trim()))
+      : undefined;
 
     // Handle association includes
     let queryIncludes = [];
     if (columns) {
-      const columnsArray = Array.isArray(columns) ? columns : columns.split(',').map(c => c.trim());
+      const columnsArray = selectedColumns;
       if (columnsArray.includes('program') || columnsArray.includes('ProgramV2')) {
         queryIncludes.push({
           model: ProgramV2,
@@ -663,7 +691,11 @@ export const findOne = async (req, res) => {
       });
     }
 
-    res.json(record);
+    const relatedIdColumns = projectRelatedIdColumns.filter(
+      (column) => !selectedColumns || selectedColumns.includes(column),
+    );
+    const [response] = await enrichProjectRelatedIds([record], relatedIdColumns);
+    res.json(response);
   } catch (err) {
     loggerV2.error('[v2]: Error retrieving project:', err);
     res.status(400).json({

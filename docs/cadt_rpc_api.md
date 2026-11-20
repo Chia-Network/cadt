@@ -662,6 +662,11 @@ Response
 
 ---
 
+**V2 project related IDs:** V2 JSON project reads include read-only
+`cadTrustValidationIds` and `cadTrustVerificationIds` arrays (empty when there are
+no committed children). See the [V2 field definitions and column selection rules](/docs/cadt_rpc_api_v2.md#project-related-ids).
+V1 project responses are unchanged.
+
 #### Get a single project record by `warehouseProjectId`
 
 - Pagination is not required when providing a warehouseProjectId

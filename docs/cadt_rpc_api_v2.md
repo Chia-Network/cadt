@@ -2422,6 +2422,47 @@ Query string options:
 <a id="project-get-examples"></a>
 ### GET Examples
 
+<a id="project-related-ids"></a>
+#### Read-only related IDs
+
+JSON responses from `GET /v2/project` and `GET /v2/project/:id` include:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `cadTrustValidationIds` | Array of UUID strings | All committed validation IDs linked to this project via `cadTrustProjectId`, sorted ascending; `[]` if none. |
+| `cadTrustVerificationIds` | Array of UUID strings | All committed verification IDs linked directly to this project via `cadTrustProjectId`, sorted ascending; `[]` if none. |
+
+Both arrays are included by default. They contain IDs only, regardless of the
+child records' creator organization; pending staging changes are not included.
+These are computed response fields: do not send them in POST/PUT requests. They
+do not change the stored project schema or XLSX export/import columns.
+
+When `columns` is supplied, each array is included only if explicitly requested.
+For the list endpoint, base fields also follow the requested projection; the
+project ID used internally for lookup is not exposed unless requested. For the
+single-project endpoint, `columns` continues to select associations and computed
+arrays while retaining all base project fields.
+
+For example, `GET /v2/project?page=1&limit=10&columns=projectName,cadTrustValidationIds`
+can return:
+
+```json
+{
+  "page": 1,
+  "pageCount": 1,
+  "data": [
+    {
+      "projectName": "Stop Desertification",
+      "cadTrustValidationIds": ["7758b3c4-df93-433e-99f6-f18620827521"]
+    },
+    {
+      "projectName": "New Project",
+      "cadTrustValidationIds": []
+    }
+  ]
+}
+```
+
 #### List all projects
 
 - Pagination is required when not filtering by cadTrustProjectId
@@ -2455,6 +2496,8 @@ Response
       "projectUnitMetric":"tCO2e",
       "cadTrustReferenceProjectId":"REF-001",
       "cadTrustProgramId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
+      "cadTrustValidationIds":["7758b3c4-df93-433e-99f6-f18620827521"],
+      "cadTrustVerificationIds":[],
       "createdAt":"2022-03-11T05:17:55.427Z",
       "updatedAt":"2022-03-11T05:17:55.427Z"
     }
@@ -2464,7 +2507,7 @@ Response
 
 **Note**: The `orgUid` field is automatically set from the home organization when creating or updating projects. It cannot be provided in POST or PUT requests and will be rejected if included.
 
-**Note**: By default, GET requests return only project data. To include associated models (e.g., program, locations, estimations, ratings, coBenefits), use the `columns` parameter (e.g., `?columns=program` or `?columns=program&columns=locations`).
+**Note**: By default, JSON GET responses return project data and the read-only related ID arrays described above. To include associated models (e.g., program, locations, estimations, ratings, coBenefits), use the `columns` parameter (e.g., `?columns=program` or `?columns=program&columns=locations`).
 
 ---
 
@@ -2496,6 +2539,8 @@ Response
   "projectUnitMetric":"tCO2e",
   "cadTrustReferenceProjectId":"REF-555",
   "cadTrustProgramId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
+  "cadTrustValidationIds":[],
+  "cadTrustVerificationIds":[],
   "createdAt":"2022-03-11T05:17:55.422Z",
   "updatedAt":"2022-03-11T05:17:55.422Z"
 }
