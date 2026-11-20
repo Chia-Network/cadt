@@ -1,6 +1,7 @@
 'use strict';
 
 import { deleteConfirmation } from './delete-confirmation.controller.js';
+import { issuanceResponsesWithProjectId } from '../../utils/v2-response-project-id.js';
 
 import _ from 'lodash';
 import { v4 as uuidv4 } from 'uuid';
@@ -179,6 +180,7 @@ export const findAll = async (req, res) => {
 
     const records = await IssuanceV2.findAndCountAll(queryOptions);
 
+    records.rows = await issuanceResponsesWithProjectId(records.rows);
     res.json(optionallyPaginatedResponse(records, page, limit));
   } catch (err) {
     loggerV2.error('[v2]: Error retrieving issuances:', err);
@@ -203,7 +205,8 @@ export const findOne = async (req, res) => {
       });
     }
 
-    res.json(record);
+    const [response] = await issuanceResponsesWithProjectId([record]);
+    res.json(response);
   } catch (err) {
     loggerV2.error('[v2]: Error retrieving issuance:', err);
     res.status(400).json({

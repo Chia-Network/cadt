@@ -3549,7 +3549,7 @@ Functionality: Create, read, update, and delete issuance records
 >
 > ⚠️ **v2 change:** `cadTrustProjectMethodologyId` is now required. Create a [`project-methodology`](#project-methodology) record first and use its UUID here — this FK did not exist in v1.
 
-**Note**: By default, GET requests return only issuance data. Associated models (verification, projectMethodology, location) are not included unless explicitly requested via query parameters.
+**Note**: Default list and detail JSON responses include the response-only `cadTrustProjectId`, resolved through `issuance → project-methodology → project`. Missing committed links return `null`; verification is never used as a fallback, even if it points to a different project. Associated records are not embedded. This field is rejected in POST/PUT payloads and is not stored or staged. Existing organization filters still follow verification; `createdByOrgUid` filtering is unchanged.
 
 Query string options:
 
@@ -3582,6 +3582,7 @@ Response
       "issuanceDate": "2022-01-02T00:00:00.000Z",
       "cadTrustVerificationId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
       "cadTrustProjectMethodologyId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+      "cadTrustProjectId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
       "cadTrustLocationId": "8182100d-7794-4df7-b3b3-758391d13011",
       "createdAt": "2022-03-12T08:58:43.271Z",
       "updatedAt": "2022-03-12T08:58:43.271Z"
@@ -3607,6 +3608,7 @@ Response
   "issuanceDate": "2022-01-02T00:00:00.000Z",
   "cadTrustVerificationId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
   "cadTrustProjectMethodologyId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "cadTrustProjectId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "cadTrustLocationId": "8182100d-7794-4df7-b3b3-758391d13011",
   "createdAt": "2022-03-12T08:58:43.271Z",
   "updatedAt": "2022-03-12T08:58:43.271Z"
@@ -3726,7 +3728,9 @@ Functionality: Create, read, update, delete, and manage unit records with advanc
 >
 > ⚠️ **v2 change:** `unitStatus: 'Active'` from v1 is now `'Held'`. Sending `'Active'` will fail validation. New in v2: `unitRetirementDetail`, `unitRetirementBeneficiary`, `unitRetirementBeneficiaryId` (LEI), and `unitItmosReferenceId` for Article 6.2 ITMO tracking.
 
-**Note**: By default, GET requests return only unit data. Associated models (issuance, unitLabels) are not included unless explicitly requested via the `columns` parameter (e.g., `?columns=issuance`).
+**Note**: Default list and detail JSON responses include the response-only `cadTrustProjectId`, resolved through `unit → issuance → project-methodology → project`. Missing committed links return `null`; verification is never used as a fallback, even if it points to a different project. This field is rejected in POST/PUT payloads and is not stored or staged. XLS exports are unchanged. Existing organization filtering and verification-based project search are unchanged.
+
+For list projections, request `columns=cadTrustProjectId` alone or alongside other unit fields. Only requested fields are returned; internal lookup IDs are hidden unless requested. Other explicit scalar projections omit `cadTrustProjectId`. Association-only column requests retain the existing unit-field response without embedding associations. Adding `cadTrustProjectId` to those requests preserves the unit fields and includes the computed field; otherwise it is omitted. The computed field is not a filter or sort key.
 
 Query string options:
 
@@ -3736,7 +3740,7 @@ Query string options:
 | cadTrustUnitId | String  | Only display units matching this cadTrustUnitId                                                               |
 |       orgUid       | String  | Filter by organization UID. Use `me` for home org records                                                                           |
 |       search       | String  | Display all units that contain the specified query (case insensitive)                                             |
-|      columns       | String  | Limit the result to the specified column. Can be used multiple times to show multiple columns. Can also include associated models (e.g., `columns=issuance` to include issuance data in unit responses)                                   |
+|      columns       | String  | Limit the JSON result to specified unit fields, including response-only `cadTrustProjectId`. Accepts comma-separated or repeated values; association-only names retain existing unit-field behavior                                   |
 |       limit        | Number  | **Required** (optional when xls=true). Limit the number of units to be displayed (must be used with page, eg `?page=5&limit=2`) |
 |        page        | Number  | **Required** (optional when xls=true). Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)             |
 |        xls         | Boolean | If `true`, save the results to xls (Excel spreadsheet) format                                                                   |
@@ -3784,6 +3788,7 @@ Response
       "marketplaceLink":"http://climateWarehouse.com/myMarketplace",
       "marketplaceIdentifier":"AKFEE3",
       "cadTrustIssuanceId":"d9f58b08-af25-461c-88eb-403bb02b135e",
+      "cadTrustProjectId":"a1b2c3d4-e5f6-7890-abcd-ef1234567890",
       "createdAt":"2022-03-13T05:29:39.647Z",
       "updatedAt":"2022-03-13T05:29:39.647Z"
     }
@@ -3824,6 +3829,7 @@ Response
   "marketplaceLink":"http://climateWarehouse.com/myMarketplace",
   "marketplaceIdentifier":"AKFEE3",
   "cadTrustIssuanceId":"d9f58b08-af25-461c-88eb-403bb02b135e",
+  "cadTrustProjectId":"a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "createdAt":"2022-03-13T05:29:39.647Z",
   "updatedAt":"2022-03-13T05:29:39.647Z"
 }
