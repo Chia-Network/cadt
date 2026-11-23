@@ -1,13 +1,16 @@
+import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { expect } from 'chai';
 import mysql from 'mysql2/promise';
 import { Sequelize } from 'sequelize';
 
 import { migrations } from '../../../src/database/v2/migrations/index.js';
-import createProject from '../../../src/database/v2/migrations/20250110120008-create-project-v2.js';
 
 const entry = migrations.find(
   ({ name }) => name === '20261123120000-widen-project-name-v2',
+);
+const projectCreation = migrations.find(
+  ({ name }) => name === '20250110120008-create-project-v2',
 );
 const database = `cadt_project_name_test_${randomUUID().replaceAll('-', '')}`;
 const strictMode = 'STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION';
@@ -36,6 +39,13 @@ describe('V2 project name migration on strict MySQL/MariaDB', function () {
       'INSERT INTO project (cad_trust_project_id, org_uid, project_registry_name, project_id, project_name) VALUES (?, ?, ?, ?, ?)',
       [id, 'test-org', 'test-registry', id, name],
     );
+  const projectName = async (id) => {
+    const [row] = await query(
+      'SELECT project_name FROM project WHERE cad_trust_project_id = ?',
+      [id],
+    );
+    return row.project_name;
+  };
   const up = async () => {
     expect(entry, 'registered width migration').to.exist;
     await entry.migration.up(queryInterface, Sequelize);
@@ -44,14 +54,11 @@ describe('V2 project name migration on strict MySQL/MariaDB', function () {
     const before = await schema();
     const oldIndexes = await indexes();
     const rows = await query('SELECT * FROM project');
-    let failure;
-    try {
-      await up();
-    } catch (error) {
-      failure = error;
-    }
-    expect(failure?.cause?.original?.code).to.equal(code);
-    expect(failure.message).to.match(/project_name.*manual schema review/i);
+    await assert.rejects(up, (error) => {
+      expect(error.cause?.original?.code).to.equal(code);
+      expect(error.message).to.match(/project_name.*manual schema review/i);
+      return true;
+    });
     expect(await schema()).to.equal(before);
     expect(await indexes()).to.deep.equal(oldIndexes);
     expect(await query('SELECT * FROM project')).to.deep.equal(rows);
@@ -97,7 +104,7 @@ describe('V2 project name migration on strict MySQL/MariaDB', function () {
   });
 
   beforeEach(async function () {
-    await createProject.up(queryInterface, Sequelize);
+    await projectCreation.migration.up(queryInterface, Sequelize);
   });
 
   afterEach(async function () {
@@ -143,16 +150,11 @@ describe('V2 project name migration on strict MySQL/MariaDB', function () {
     ];
     await insert('legacy', 'Existing forest project');
     for (const [index, name] of names.entries()) {
-      let failure;
-      try {
-        await insert(`too-long-${index}`, name);
-      } catch (error) {
-        failure = error;
-      }
-      expect(
-        failure?.original?.code,
+      await assert.rejects(
+        () => insert(`too-long-${index}`, name),
+        (error) => error.original?.code === 'ER_DATA_TOO_LONG',
         `legacy rejection of ${Array.from(name).length} characters`,
-      ).to.equal('ER_DATA_TOO_LONG');
+      );
     }
     expect(await query('SELECT project_name FROM project')).to.deep.equal([
       { project_name: 'Existing forest project' },
@@ -182,30 +184,13 @@ describe('V2 project name migration on strict MySQL/MariaDB', function () {
         'UPDATE project SET project_name = ? WHERE cad_trust_project_id = ?',
         [name, 'legacy'],
       );
-      expect(
-        (
-          await query(
-            'SELECT project_name FROM project WHERE cad_trust_project_id = ?',
-            [`accepted-${index}`],
-          )
-        )[0].project_name,
-      ).to.equal(name);
-      expect(
-        (
-          await query(
-            'SELECT project_name FROM project WHERE cad_trust_project_id = ?',
-            ['legacy'],
-          )
-        )[0].project_name,
-      ).to.equal(name);
+      expect(await projectName(`accepted-${index}`)).to.equal(name);
+      expect(await projectName('legacy')).to.equal(name);
     }
-    let failure;
-    try {
-      await insert('over-boundary', 'z'.repeat(501));
-    } catch (error) {
-      failure = error;
-    }
-    expect(failure?.original?.code).to.equal('ER_DATA_TOO_LONG');
+    await assert.rejects(
+      () => insert('over-boundary', 'z'.repeat(501)),
+      (error) => error.original?.code === 'ER_DATA_TOO_LONG',
+    );
     const widenedSchema = await schema();
     const rows = await query(
       'SELECT * FROM project ORDER BY cad_trust_project_id',
@@ -217,22 +202,6 @@ describe('V2 project name migration on strict MySQL/MariaDB', function () {
       await query('SELECT * FROM project ORDER BY cad_trust_project_id'),
     ).to.deep.equal(rows);
     expect(await indexes()).to.deep.equal(oldIndexes);
-  });
-
-  it('repairs a fresh project created by the registered migration sequence', async function () {
-    await queryInterface.dropTable('project');
-    const creationIndex = migrations.findIndex(
-      ({ name }) => name === '20250110120008-create-project-v2',
-    );
-    expect(migrations.indexOf(entry)).to.be.greaterThan(creationIndex);
-    await migrations[creationIndex].migration.up(queryInterface, Sequelize);
-    await up();
-    await insert('fresh', 'f'.repeat(500));
-    expect(
-      (
-        await query('SELECT CHAR_LENGTH(project_name) AS length FROM project')
-      )[0].length,
-    ).to.equal(500);
   });
 
   it('preserves custom charset, collation, nullable default and quoted comment', async function () {
@@ -249,16 +218,12 @@ describe('V2 project name migration on strict MySQL/MariaDB', function () {
         '`project_name` varchar(500)',
       ),
     );
-    expect(
-      (await query('SELECT project_name FROM project'))[0].project_name,
-    ).to.equal(null);
+    expect(await projectName('nullable')).to.equal(null);
     await query(
       'UPDATE project SET project_name = DEFAULT WHERE cad_trust_project_id = ?',
       ['nullable'],
     );
-    expect(
-      (await query('SELECT project_name FROM project'))[0].project_name,
-    ).to.equal("Default ' forest, `name`");
+    expect(await projectName('nullable')).to.equal("Default ' forest, `name`");
   });
 
   for (const type of ['VARCHAR(700)', 'TEXT', 'MEDIUMTEXT', 'LONGTEXT']) {
@@ -271,9 +236,7 @@ describe('V2 project name migration on strict MySQL/MariaDB', function () {
       const before = await schema();
       await up();
       expect(await schema()).to.equal(before);
-      expect(
-        (await query('SELECT project_name FROM project'))[0].project_name,
-      ).to.equal('c'.repeat(700));
+      expect(await projectName('custom')).to.equal('c'.repeat(700));
     });
   }
 
@@ -284,13 +247,7 @@ describe('V2 project name migration on strict MySQL/MariaDB', function () {
         `ALTER TABLE project MODIFY COLUMN project_name ${type} NOT NULL`,
       );
       const before = await schema();
-      let failure;
-      try {
-        await up();
-      } catch (error) {
-        failure = error;
-      }
-      expect(failure?.message).to.match(/project_name.*unsupported.*manual/i);
+      await assert.rejects(up, /project_name.*unsupported.*manual/i);
       expect(await schema()).to.equal(before);
     });
   }
