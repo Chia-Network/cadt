@@ -37,7 +37,7 @@ initMirrorModelV2(() => {
         field: 'project_crediting_program',
       },
       projectName: {
-        type: Sequelize.STRING,
+        type: Sequelize.STRING(500),
         allowNull: false,
         field: 'project_name',
       },

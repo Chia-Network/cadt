@@ -164,6 +164,7 @@ jobs:
           CREATE USER IF NOT EXISTS 'cadt_test'@'localhost' IDENTIFIED BY 'cadt_test_password';
           GRANT ALL PRIVILEGES ON cadt_mirror_test.* TO 'cadt_test'@'localhost';
           GRANT ALL PRIVILEGES ON cadt_mirror_test_v2.* TO 'cadt_test'@'localhost';
+          GRANT ALL PRIVILEGES ON \`cadt_project_name_test_%\`.* TO 'cadt_test'@'localhost';
           FLUSH PRIVILEGES;
           EOF
 
@@ -338,6 +339,13 @@ jobs:
             exit 1
           }
           echo "✓ MariaDB back online - CADT mirror recovery path will engage"
+
+      - name: V2 project name database migration tests
+        env:
+          CADT_MIGRATION_TEST_HOST: 127.0.0.1
+          CADT_MIGRATION_TEST_USER: cadt_test
+          CADT_MIGRATION_TEST_PASSWORD: cadt_test_password
+        run: npm run test:v2:database:project-name-width
 
       - name: Wait for wallet sync and datalayer readiness
         shell: bash
