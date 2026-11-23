@@ -61,8 +61,8 @@ import RenameAefCooperativeApproachColumnsV2 from './20260629210000-rename-aef-c
 // V2 Creator Provenance Field
 import AddCreatedByOrgUidV2 from './20260727120000-add-created-by-org-uid-v2.js';
 
-// V2 MySQL mirror: accommodate existing on-chain project names through 500 characters.
-import WidenProjectNameV2 from './20261123120000-widen-project-name-v2.js';
+// V2 MySQL mirror: widen indexed project name and serialized sector/type fields.
+import WidenProjectFieldsV2 from './20261123120000-widen-project-fields-v2.js';
 
 export const migrations = [
   {
@@ -222,7 +222,7 @@ export const migrations = [
     name: '20260727120000-add-created-by-org-uid-v2',
   },
   {
-    migration: WidenProjectNameV2,
-    name: '20261123120000-widen-project-name-v2',
+    migration: WidenProjectFieldsV2,
+    name: '20261123120000-widen-project-fields-v2',
   },
 ];

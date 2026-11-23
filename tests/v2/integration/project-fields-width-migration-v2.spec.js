@@ -4,9 +4,9 @@ import { Sequelize } from 'sequelize';
 import { migrations } from '../../../src/database/v2/migrations/index.js';
 import { ProjectV2Mirror } from '../../../src/models/v2/project-v2.model.mirror.js';
 
-const migrationName = '20261123120000-widen-project-name-v2';
+const migrationName = '20261123120000-widen-project-fields-v2';
 
-describe('V2 project name mirror width', function () {
+describe('V2 project mirror field widths', function () {
   it('registers the corrective migration after the project creation migration', function () {
     const index = migrations.findIndex(({ name }) => name === migrationName);
     expect(index).to.be.greaterThan(
@@ -16,24 +16,36 @@ describe('V2 project name mirror width', function () {
     );
   });
 
-  it('declares a 500-character mirror name', function () {
-    expect(ProjectV2Mirror.rawAttributes.projectName.type.toSql()).to.equal(
-      'VARCHAR(500)',
-    );
-  });
+  for (const [field, length] of [
+    ['projectName', 500],
+    ['projectSector', 768],
+    ['projectType', 768],
+  ]) {
+    it(`declares ${field} as VARCHAR(${length})`, function () {
+      expect(ProjectV2Mirror.rawAttributes[field].type.toSql()).to.equal(
+        `VARCHAR(${length})`,
+      );
+    });
+  }
 
   it('leaves SQLite schema, indexes and existing values unchanged in both directions', async function () {
     const sequelize = new Sequelize('sqlite::memory:', { logging: false });
     try {
       await sequelize.query(
-        'CREATE TABLE project (project_name VARCHAR(255) NOT NULL)',
+        'CREATE TABLE project (project_name VARCHAR(255) NOT NULL, project_sector VARCHAR(255), project_type VARCHAR(255))',
       );
-      await sequelize.query(
-        'CREATE INDEX project_project_name ON project (project_name)',
-      );
-      const name = '森'.repeat(500);
-      await sequelize.query('INSERT INTO project VALUES (?)', {
-        replacements: [name],
+      for (const field of ['project_name', 'project_sector', 'project_type']) {
+        await sequelize.query(
+          `CREATE INDEX project_${field} ON project (${field})`,
+        );
+      }
+      const values = {
+        project_name: '森'.repeat(500),
+        project_sector: '森'.repeat(768),
+        project_type: '🌲'.repeat(768),
+      };
+      await sequelize.query('INSERT INTO project VALUES (?, ?, ?)', {
+        replacements: Object.values(values),
       });
       const [before] = await sequelize.query(
         'SELECT * FROM sqlite_master ORDER BY name',
@@ -47,7 +59,7 @@ describe('V2 project name mirror width', function () {
       );
       const [rows] = await sequelize.query('SELECT * FROM project');
       expect(after).to.deep.equal(before);
-      expect(rows).to.deep.equal([{ project_name: name }]);
+      expect(rows).to.deep.equal([values]);
     } finally {
       await sequelize.close();
     }
