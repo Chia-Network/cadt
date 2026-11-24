@@ -37,7 +37,7 @@ initMirrorModelV2(() => {
         field: 'project_crediting_program',
       },
       projectName: {
-        type: Sequelize.STRING,
+        type: Sequelize.STRING(500),
         allowNull: false,
         field: 'project_name',
       },
@@ -52,12 +52,12 @@ initMirrorModelV2(() => {
         field: 'project_description',
       },
       projectSector: {
-        type: Sequelize.STRING,
+        type: Sequelize.STRING(768),
         allowNull: true,
         field: 'project_sector',
       },
       projectType: {
-        type: Sequelize.TEXT,
+        type: Sequelize.STRING(768),
         allowNull: true,
         field: 'project_type',
       },
