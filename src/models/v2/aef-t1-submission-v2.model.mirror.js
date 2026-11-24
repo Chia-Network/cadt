@@ -61,6 +61,11 @@ initMirrorModelV2(() => {
         allowNull: true,
         field: 'aef_t1_submission_reference_review_report',
       },
+      orgUid: {
+        type: Sequelize.STRING(64),
+        allowNull: true,
+        field: 'org_uid',
+      },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,

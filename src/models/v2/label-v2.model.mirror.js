@@ -36,6 +36,11 @@ initMirrorModelV2(() => {
         allowNull: true,
         field: 'label_date',
       },
+      orgUid: {
+        type: Sequelize.STRING(64),
+        allowNull: true,
+        field: 'org_uid',
+      },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,

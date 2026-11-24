@@ -13,6 +13,7 @@ import { seeders } from './seeders';
 import dotenv from 'dotenv';
 import { installSqlitePragmas } from '../sqlite-pragmas.js';
 import { matchingUpdatedAtAttr, isMirrorInSync } from '../mirror-sync-gate.js';
+import { hasMissingMirrorOwners } from './mirror-ownership.js';
 dotenv.config({ quiet: true });
 
 // possible values: local, test
@@ -606,13 +607,19 @@ const runBackfillMirrorV2 = async () => {
         source: models.StakeholderV2,
         mirror: models.StakeholderV2Mirror,
         name: 'stakeholder',
+        repairMissingOwners: true,
       },
       {
         source: models.StakeholderProjectV2,
         mirror: models.StakeholderProjectV2Mirror,
         name: 'stakeholder_projects',
       },
-      { source: models.LabelV2, mirror: models.LabelV2Mirror, name: 'label' },
+      {
+        source: models.LabelV2,
+        mirror: models.LabelV2Mirror,
+        name: 'label',
+        repairMissingOwners: true,
+      },
       {
         source: models.UnitLabelV2,
         mirror: models.UnitLabelV2Mirror,
@@ -622,6 +629,7 @@ const runBackfillMirrorV2 = async () => {
         source: models.AefT1SubmissionV2,
         mirror: models.AefT1SubmissionV2Mirror,
         name: 'aef_t1_submission',
+        repairMissingOwners: true,
       },
       {
         source: models.AefT5AuthorizedEntitiesV2,
@@ -650,7 +658,7 @@ const runBackfillMirrorV2 = async () => {
     let totalOrphansRemoved = 0;
     let totalGateSkipped = 0;
 
-    for (const { source, mirror, name } of mirrorPairs) {
+    for (const { source, mirror, name, repairMissingOwners } of mirrorPairs) {
       try {
         // Verify mirror model is initialized (init may not have completed if mirror was just configured)
         if (
@@ -695,7 +703,13 @@ const runBackfillMirrorV2 = async () => {
             loggerV2,
             '[v2]: ',
           );
-          if (inSync) {
+          // These three models historically omitted orgUid from mirror
+          // metadata. Equal counts/timestamps alone cannot prove recovery.
+          const missingOwners =
+            inSync &&
+            repairMissingOwners &&
+            (await hasMissingMirrorOwners(source, mirror, BACKFILL_BATCH_SIZE));
+          if (inSync && !missingOwners) {
             totalGateSkipped += 1;
             continue;
           }
