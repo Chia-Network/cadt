@@ -31,6 +31,11 @@ initMirrorModelV2(() => {
         allowNull: true,
         field: 'stakeholder_link',
       },
+      orgUid: {
+        type: Sequelize.STRING(64),
+        allowNull: true,
+        field: 'org_uid',
+      },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
